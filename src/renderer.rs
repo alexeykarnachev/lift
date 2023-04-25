@@ -1,17 +1,14 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
-use crate::world::{World};
+use crate::world::World;
 
-
-pub struct Renderer {
-}
+pub struct Renderer {}
 
 impl Renderer {
     pub fn create() -> Self {
         Self {}
     }
 
-    pub fn render(&self, world: &World) {
-    }
+    pub fn render(&self, world: &World) {}
 }
