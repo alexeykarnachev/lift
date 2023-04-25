@@ -2,22 +2,15 @@
 #![allow(unused_variables)]
 
 use renderer::Renderer;
-use sdlgl::SDLGL;
 use std::time::Instant;
 use world::{Camera, Lift, World};
 
 mod renderer;
-mod sdlgl;
 mod world;
 
 fn main() {
-    // let gl_attr = video.gl_attr();
-    // gl_attr.set_context_profile(sdl2::video::GLProfile::Core);
-    // gl_attr.set_context_version(4, 6);
-
-    let sdlgl = SDLGL::create("Lift", 800, 600);
-
-    let renderer = Renderer::create();
+    let sdl = sdl2::init().unwrap();
+    let renderer = Renderer::create(&sdl, "Lift", 800, 600);
 
     // -------------------------------------------------------------------
     let lift = Lift {
@@ -35,7 +28,7 @@ fn main() {
     let mut world = World { lift, camera };
 
     // -------------------------------------------------------------------
-    let mut event_pump = sdlgl.sdl.event_pump().unwrap();
+    let mut event_pump = sdl.event_pump().unwrap();
     let mut prev_upd_time = Instant::now();
     'main: loop {
         for event in event_pump.poll_iter() {
@@ -45,10 +38,10 @@ fn main() {
         }
 
         let dt = prev_upd_time.elapsed().as_nanos() as f32 / 1.0e9;
-
+        println!("{}", dt);
         world.update(dt);
-        renderer.render(&world);
-
         prev_upd_time = Instant::now();
+
+        renderer.render(&world);
     }
 }
