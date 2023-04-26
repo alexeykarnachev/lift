@@ -164,20 +164,13 @@ impl PrimitiveRenderer {
         gl: &glow::Context,
         primitives: &[DrawPrimitive],
     ) {
-        for primitive in primitives {
-            self.a_xywh.push_data(&primitive.xywh);
-            self.a_rgba.push_data(&primitive.rgba);
-            self.a_orientation.push_data(&[primitive.orientation]);
-        }
+        primitives.iter().for_each(|p| self.push_primitive(p));
 
         unsafe {
             gl.use_program(Some(self.program));
-            gl.bind_vertex_array(Some(self.vao));
         }
 
-        self.a_xywh.sync_data(gl);
-        self.a_rgba.sync_data(gl);
-        self.a_orientation.sync_data(gl);
+        self.sync_data(gl);
 
         unsafe {
             gl.draw_arrays_instanced(
@@ -187,6 +180,21 @@ impl PrimitiveRenderer {
                 primitives.len() as i32,
             );
         }
+    }
+
+    fn push_primitive(&mut self, primitive: &DrawPrimitive) {
+        self.a_xywh.push_data(&primitive.xywh);
+        self.a_rgba.push_data(&primitive.rgba);
+        self.a_orientation.push_data(&[primitive.orientation]);
+    }
+
+    fn sync_data(&mut self, gl: &glow::Context) {
+        unsafe {
+            gl.bind_vertex_array(Some(self.vao));
+        }
+        self.a_xywh.sync_data(gl);
+        self.a_rgba.sync_data(gl);
+        self.a_orientation.sync_data(gl);
     }
 }
 
