@@ -6,7 +6,7 @@ use glow::HasContext;
 use std::fs;
 use std::mem::size_of;
 
-const MAX_N_INSTANCED_PRIMITIVES: usize = 1 << 14;
+const MAX_N_INSTANCED_PRIMITIVES: usize = 1 << 12;
 const COMMON_GLSL_SHADER_FP: &str = "./assets/shaders/common.glsl";
 const PRIMITIVE_VERT_SHADER_FP: &str = "./assets/shaders/primitive.vert";
 const PRIMITIVE_FRAG_SHADER_FP: &str = "./assets/shaders/primitive.frag";
@@ -19,7 +19,6 @@ pub struct Renderer {
     window: sdl2::video::Window,
     gl: glow::Context,
     _gl_context: sdl2::video::GLContext,
-    _dummy_vao: glow::NativeVertexArray,
 
     primitive_renderer: PrimitiveRenderer,
     hdr_resolve_renderer: HDRResolveRenderer,
@@ -46,14 +45,11 @@ impl Renderer {
         gl_attr.set_context_version(4, 6);
 
         let _gl_context = window.gl_create_context().unwrap();
-        let _dummy_vao;
         let gl: glow::Context;
         unsafe {
             gl = glow::Context::from_loader_function(|s| {
                 video.gl_get_proc_address(s) as *const _
             });
-            _dummy_vao = create_vao(&gl);
-            gl.bind_vertex_array(Some(_dummy_vao));
         }
 
         video.gl_set_swap_interval(1).unwrap();
@@ -66,7 +62,6 @@ impl Renderer {
             window: window,
             gl: gl,
             _gl_context: _gl_context,
-            _dummy_vao: _dummy_vao,
             primitive_renderer: primitive_renderer,
             hdr_resolve_renderer: hdr_resolve_renderer,
         }
@@ -78,9 +73,9 @@ impl Renderer {
 
         let primitives = [
             DrawPrimitive {
-                xywh: [0.5, 0.5, 0.1, 0.1],
+                xywh: [0.5, 0.5, 0.2, 0.2],
                 rgba: [1.0, 0.0, 0.0, 1.0],
-                orientation: 0.0,
+                orientation: 1.0,
             },
             DrawPrimitive {
                 xywh: [-0.5, -0.5, 0.1, 0.1],
@@ -90,6 +85,12 @@ impl Renderer {
         ];
 
         self.hdr_resolve_renderer.bind_framebuffer(&self.gl);
+
+        unsafe {
+            self.gl.clear_color(0.1, 0.05, 0.3, 1.0);
+            self.gl.clear(glow::COLOR_BUFFER_BIT);
+        }
+
         self.primitive_renderer.render(&self.gl, &primitives);
 
         self.bind_screen_framebuffer();
@@ -116,6 +117,7 @@ struct DrawPrimitive {
 struct PrimitiveRenderer {
     program: glow::NativeProgram,
 
+    vao: glow::NativeVertexArray,
     a_xywh: Attribute,
     a_rgba: Attribute,
     a_orientation: Attribute,
@@ -130,6 +132,11 @@ impl PrimitiveRenderer {
             PRIMITIVE_FRAG_SHADER_FP,
         );
 
+        let vao = create_vao(gl);
+        unsafe {
+            gl.bind_vertex_array(Some(vao));
+        }
+
         let a_xywh = Attribute::create(gl, 4, "a_xywh", glow::FLOAT, 1);
         let a_rgba = Attribute::create(gl, 4, "a_rgba", glow::FLOAT, 1);
         let a_orientation =
@@ -137,6 +144,7 @@ impl PrimitiveRenderer {
 
         Self {
             program,
+            vao,
             a_xywh,
             a_rgba,
             a_orientation,
@@ -148,6 +156,7 @@ impl PrimitiveRenderer {
         gl: &glow::Context,
         primitives: &[DrawPrimitive],
     ) {
+
         self.a_xywh.clear();
         self.a_rgba.clear();
         self.a_orientation.clear();
@@ -158,12 +167,22 @@ impl PrimitiveRenderer {
             self.a_orientation.data.push(primitive.orientation);
         }
 
+        unsafe {
+            gl.use_program(Some(self.program));
+            gl.bind_vertex_array(Some(self.vao));
+        }
+
         self.a_xywh.set(gl, self.program);
         self.a_rgba.set(gl, self.program);
         self.a_orientation.set(gl, self.program);
 
         unsafe {
-            gl.use_program(Some(self.program));
+            gl.draw_arrays_instanced(
+                glow::TRIANGLE_STRIP,
+                0,
+                4,
+                primitives.len() as i32,
+            );
         }
     }
 }
@@ -259,9 +278,9 @@ impl Attribute {
         data_type: u32,
         divisor: u32,
     ) -> Self {
-        let size = MAX_N_INSTANCED_PRIMITIVES * size_of::<f32>() * size;
+        let vbo_size = MAX_N_INSTANCED_PRIMITIVES * size_of::<f32>() * size;
         let data = Vec::<f32>::with_capacity(MAX_N_INSTANCED_PRIMITIVES);
-        let vbo = create_vbo(gl, size, glow::DYNAMIC_DRAW);
+        let vbo = create_vbo(gl, vbo_size, glow::DYNAMIC_DRAW);
 
         Self {
             size,
@@ -279,7 +298,11 @@ impl Attribute {
 
     pub fn set(&self, gl: &glow::Context, program: glow::NativeProgram) {
         unsafe {
-            let loc = gl.get_attrib_location(program, &self.name).unwrap();
+            let loc = match gl.get_attrib_location(program, &self.name) {
+                Some(loc) => loc,
+                None => panic!("Can't obtain attribute location: {}", self.name),
+            };
+
             gl.bind_buffer(glow::ARRAY_BUFFER, Some(self.vbo));
             gl.enable_vertex_attrib_array(loc);
 
