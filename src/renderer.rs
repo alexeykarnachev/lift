@@ -4,7 +4,9 @@
 use crate::world::World;
 use glow::HasContext;
 use std::fs;
+use std::mem::size_of;
 
+const MAX_N_INSTANCED_PRIMITIVES: usize = 1 << 14;
 const COMMON_GLSL_SHADER_FP: &str = "./assets/shaders/common.glsl";
 const PRIMITIVE_VERT_SHADER_FP: &str = "./assets/shaders/primitive.vert";
 const PRIMITIVE_FRAG_SHADER_FP: &str = "./assets/shaders/primitive.frag";
@@ -70,7 +72,7 @@ impl Renderer {
         }
     }
 
-    pub fn render(&self, world: &World) {
+    pub fn render(&mut self, world: &World) {
         let camera = &world.camera;
         let lift = &world.lift;
 
@@ -113,25 +115,53 @@ struct DrawPrimitive {
 
 struct PrimitiveRenderer {
     program: glow::NativeProgram,
+
+    a_xywh: Attribute,
+    a_rgba: Attribute,
+    a_orientation: Attribute,
 }
 
 impl PrimitiveRenderer {
     pub fn create(gl: &glow::Context) -> Self {
         let program = create_program(
-            &gl,
+            gl,
             Some(COMMON_GLSL_SHADER_FP),
             PRIMITIVE_VERT_SHADER_FP,
             PRIMITIVE_FRAG_SHADER_FP,
         );
 
-        Self { program }
+        let a_xywh = Attribute::create(gl, 4, "a_xywh", glow::FLOAT, 1);
+        let a_rgba = Attribute::create(gl, 4, "a_rgba", glow::FLOAT, 1);
+        let a_orientation =
+            Attribute::create(gl, 1, "a_orientation", glow::FLOAT, 1);
+
+        Self {
+            program,
+            a_xywh,
+            a_rgba,
+            a_orientation,
+        }
     }
 
     pub fn render(
-        &self,
+        &mut self,
         gl: &glow::Context,
         primitives: &[DrawPrimitive],
     ) {
+        self.a_xywh.clear();
+        self.a_rgba.clear();
+        self.a_orientation.clear();
+
+        for primitive in primitives {
+            self.a_xywh.data.extend(&primitive.xywh);
+            self.a_rgba.data.extend(&primitive.rgba);
+            self.a_orientation.data.push(primitive.orientation);
+        }
+
+        self.a_xywh.set(gl, self.program);
+        self.a_rgba.set(gl, self.program);
+        self.a_orientation.set(gl, self.program);
+
         unsafe {
             gl.use_program(Some(self.program));
         }
@@ -210,6 +240,101 @@ impl HDRResolveRenderer {
             gl.draw_arrays(glow::TRIANGLE_STRIP, 0, 4);
         }
     }
+}
+
+pub struct Attribute {
+    pub size: usize,
+    pub name: &'static str,
+    pub data_type: u32,
+    pub divisor: u32,
+    pub data: Vec<f32>,
+    pub vbo: glow::NativeBuffer,
+}
+
+impl Attribute {
+    pub fn create(
+        gl: &glow::Context,
+        size: usize,
+        name: &'static str,
+        data_type: u32,
+        divisor: u32,
+    ) -> Self {
+        let size = MAX_N_INSTANCED_PRIMITIVES * size_of::<f32>() * size;
+        let data = Vec::<f32>::with_capacity(MAX_N_INSTANCED_PRIMITIVES);
+        let vbo = create_vbo(gl, size, glow::DYNAMIC_DRAW);
+
+        Self {
+            size,
+            name,
+            data_type,
+            divisor,
+            data,
+            vbo,
+        }
+    }
+
+    pub fn clear(&mut self) {
+        self.data.clear();
+    }
+
+    pub fn set(&self, gl: &glow::Context, program: glow::NativeProgram) {
+        unsafe {
+            let loc = gl.get_attrib_location(program, &self.name).unwrap();
+            gl.bind_buffer(glow::ARRAY_BUFFER, Some(self.vbo));
+            gl.enable_vertex_attrib_array(loc);
+
+            match self.data_type {
+                glow::FLOAT => {
+                    gl.vertex_attrib_pointer_f32(
+                        loc,
+                        self.size as i32,
+                        self.data_type,
+                        false,
+                        0,
+                        0,
+                    );
+                }
+                glow::INT | glow::UNSIGNED_INT => {
+                    gl.vertex_attrib_pointer_i32(
+                        loc,
+                        self.size as i32,
+                        self.data_type,
+                        0,
+                        0,
+                    );
+                }
+                _ => {
+                    panic!(
+                        "Unsopported vertex attrib data type: {}",
+                        self.data_type
+                    );
+                }
+            }
+
+            gl.vertex_attrib_divisor(loc, self.divisor);
+            gl.buffer_sub_data_u8_slice(
+                glow::ARRAY_BUFFER,
+                0,
+                cast_slice_to_u8(&self.data),
+            );
+        }
+    }
+}
+
+fn create_vbo(
+    gl: &glow::Context,
+    size: usize,
+    usage: u32,
+) -> glow::NativeBuffer {
+    let vbo;
+
+    unsafe {
+        vbo = gl.create_buffer().unwrap();
+        gl.bind_buffer(glow::ARRAY_BUFFER, Some(vbo));
+        gl.buffer_data_size(glow::ARRAY_BUFFER, size as i32, usage);
+    }
+
+    vbo
 }
 
 fn create_vao(gl: &glow::Context) -> glow::NativeVertexArray {
@@ -381,4 +506,16 @@ fn set_uniform_4_f32(
         let loc = gl.get_uniform_location(program, name);
         gl.uniform_4_f32_slice(loc.as_ref(), value)
     }
+}
+
+fn cast_slice_to_u8<T>(slice: &[T]) -> &[u8] {
+    let casted: &[u8];
+    unsafe {
+        casted = core::slice::from_raw_parts(
+            slice.as_ptr() as *const u8,
+            slice.len() * core::mem::size_of::<T>(),
+        );
+    }
+
+    casted
 }

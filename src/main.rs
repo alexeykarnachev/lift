@@ -10,7 +10,7 @@ mod world;
 
 fn main() {
     let sdl = sdl2::init().unwrap();
-    let renderer = Renderer::create(&sdl, "Lift", 800, 600);
+    let mut renderer = Renderer::create(&sdl, "Lift", 800, 600);
 
     // -------------------------------------------------------------------
     let lift = Lift {
