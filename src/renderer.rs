@@ -1,7 +1,8 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
-use crate::world::World;
+use crate::vec::Vec2;
+use crate::world::{Camera, World};
 use glow::HasContext;
 use std::fs;
 use std::mem::size_of;
@@ -28,13 +29,12 @@ impl Renderer {
     pub fn create(
         sdl: &sdl2::Sdl,
         window_name: &str,
-        window_width: u32,
-        window_height: u32,
+        window_size: Vec2<u32>,
     ) -> Self {
         let video = sdl.video().unwrap();
 
         let window = video
-            .window(window_name, window_width, window_height)
+            .window(window_name, window_size.x, window_size.y)
             .opengl()
             .resizable()
             .build()
@@ -56,7 +56,7 @@ impl Renderer {
 
         let primitive_renderer = PrimitiveRenderer::create(&gl);
         let hdr_resolve_renderer =
-            HDRResolveRenderer::create(&gl, window_width, window_height);
+            HDRResolveRenderer::create(&gl, window_size);
 
         Self {
             window: window,
@@ -91,7 +91,11 @@ impl Renderer {
             self.gl.clear(glow::COLOR_BUFFER_BIT);
         }
 
-        self.primitive_renderer.render(&self.gl, &primitives);
+        self.primitive_renderer.render(
+            &self.gl,
+            &world.camera,
+            &primitives,
+        );
 
         self.bind_screen_framebuffer();
         self.hdr_resolve_renderer.render(&self.gl);
@@ -137,16 +141,31 @@ impl PrimitiveRenderer {
             gl.bind_vertex_array(Some(vao));
         }
 
-        let a_xywh =
-            Attribute::create(gl, program, 4, "a_xywh", glow::FLOAT, 1);
-        let a_rgba =
-            Attribute::create(gl, program, 4, "a_rgba", glow::FLOAT, 1);
+        let a_xywh = Attribute::create(
+            gl,
+            program,
+            4,
+            "a_xywh",
+            glow::FLOAT,
+            MAX_N_INSTANCED_PRIMITIVES,
+            1,
+        );
+        let a_rgba = Attribute::create(
+            gl,
+            program,
+            4,
+            "a_rgba",
+            glow::FLOAT,
+            MAX_N_INSTANCED_PRIMITIVES,
+            1,
+        );
         let a_orientation = Attribute::create(
             gl,
             program,
             1,
             "a_orientation",
             glow::FLOAT,
+            MAX_N_INSTANCED_PRIMITIVES,
             1,
         );
 
@@ -162,6 +181,7 @@ impl PrimitiveRenderer {
     pub fn render(
         &mut self,
         gl: &glow::Context,
+        camera: &Camera,
         primitives: &[DrawPrimitive],
     ) {
         primitives.iter().for_each(|p| self.push_primitive(p));
@@ -172,6 +192,7 @@ impl PrimitiveRenderer {
 
         self.sync_data(gl);
 
+        set_uniform_camera(gl, self.program, camera);
         unsafe {
             gl.draw_arrays_instanced(
                 glow::TRIANGLE_STRIP,
@@ -202,12 +223,11 @@ struct HDRResolveRenderer {
     program: glow::NativeProgram,
     fbo: glow::NativeFramebuffer,
     tex: glow::Texture,
-    width: i32,
-    height: i32,
+    buffer_size: Vec2<u32>,
 }
 
 impl HDRResolveRenderer {
-    pub fn create(gl: &glow::Context, width: u32, height: u32) -> Self {
+    pub fn create(gl: &glow::Context, buffer_size: Vec2<u32>) -> Self {
         let program = create_program(
             gl,
             Some(COMMON_GLSL_SHADER_FP),
@@ -217,8 +237,8 @@ impl HDRResolveRenderer {
 
         let fbo;
         let tex;
-        let width = width as i32;
-        let height = height as i32;
+        let width = buffer_size.x as i32;
+        let height = buffer_size.y as i32;
         unsafe {
             fbo = gl.create_framebuffer().unwrap();
             tex = create_texture(
@@ -247,14 +267,18 @@ impl HDRResolveRenderer {
             program,
             fbo,
             tex,
-            width,
-            height,
+            buffer_size,
         }
     }
 
     pub fn bind_framebuffer(&self, gl: &glow::Context) {
         unsafe {
-            gl.viewport(0, 0, self.width, self.height);
+            gl.viewport(
+                0,
+                0,
+                self.buffer_size.x as i32,
+                self.buffer_size.y as i32,
+            );
             gl.bind_framebuffer(glow::FRAMEBUFFER, Some(self.fbo));
         }
     }
@@ -284,10 +308,10 @@ impl Attribute {
         size: usize,
         name: &'static str,
         data_type: u32,
+        max_n_instances: usize,
         divisor: u32,
     ) -> Self {
-        let vbo_size =
-            MAX_N_INSTANCED_PRIMITIVES * size_of::<f32>() * size;
+        let vbo_size = max_n_instances * size_of::<f32>() * size;
         let data = Vec::<f32>::with_capacity(MAX_N_INSTANCED_PRIMITIVES);
         let vbo = create_vbo(gl, vbo_size, glow::DYNAMIC_DRAW);
 
@@ -490,6 +514,23 @@ fn create_texture(
     }
 
     tex
+}
+
+fn set_uniform_camera(
+    gl: &glow::Context,
+    program: glow::NativeProgram,
+    camera: &Camera,
+) {
+    let view_size = camera.get_view_size();
+    let xywh = [camera.position.to_array(), view_size.to_array()].concat();
+
+    set_uniform_4_f32(gl, program, "camera.xywh", &xywh);
+    set_uniform_1_f32(
+        gl,
+        program,
+        "camera.orientation",
+        camera.orientation,
+    );
 }
 
 fn set_uniform_1_f32(

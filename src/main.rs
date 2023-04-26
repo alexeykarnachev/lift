@@ -1,45 +1,42 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
+use input::Input;
 use renderer::Renderer;
 use std::time::Instant;
+use vec::Vec2;
 use world::{Camera, Lift, World};
 
+mod input;
 mod renderer;
+mod vec;
 mod world;
 
 fn main() {
+    let window_size: Vec2<u32> = Vec2::new(1600, 1000);
     let sdl = sdl2::init().unwrap();
-    let mut renderer = Renderer::create(&sdl, "Lift", 1600, 1000);
+    let mut renderer = Renderer::create(&sdl, "Lift", window_size);
+    let mut input = Input::create(window_size);
 
     // -------------------------------------------------------------------
-    let lift = Lift {
-        width: 1.0,
-        height: 2.0,
-        max_speed: 1.0,
-        ..Default::default()
-    };
-
-    let camera = Camera {
-        view_height: 10.0,
-        ..Default::default()
-    };
-
+    let lift = Lift::default();
+    let camera = Camera::default();
     let mut world = World { lift, camera };
 
-    // -------------------------------------------------------------------
+    // ------------------------------------------------------------------
     let mut event_pump = sdl.event_pump().unwrap();
     let mut prev_upd_time = Instant::now();
     'main: loop {
         for event in event_pump.poll_iter() {
-            if let sdl2::event::Event::Quit { .. } = event {
+            input.handle_event(&event);
+            if input.should_quit {
                 break 'main;
             }
         }
+        input.update();
 
         let dt = prev_upd_time.elapsed().as_nanos() as f32 / 1.0e9;
-        println!("{}", dt);
-        world.update(dt);
+        world.update(dt, &input);
         prev_upd_time = Instant::now();
 
         renderer.render(&world);
