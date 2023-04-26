@@ -137,10 +137,18 @@ impl PrimitiveRenderer {
             gl.bind_vertex_array(Some(vao));
         }
 
-        let a_xywh = Attribute::create(gl, 4, "a_xywh", glow::FLOAT, 1);
-        let a_rgba = Attribute::create(gl, 4, "a_rgba", glow::FLOAT, 1);
-        let a_orientation =
-            Attribute::create(gl, 1, "a_orientation", glow::FLOAT, 1);
+        let a_xywh =
+            Attribute::create(gl, program, 4, "a_xywh", glow::FLOAT, 1);
+        let a_rgba =
+            Attribute::create(gl, program, 4, "a_rgba", glow::FLOAT, 1);
+        let a_orientation = Attribute::create(
+            gl,
+            program,
+            1,
+            "a_orientation",
+            glow::FLOAT,
+            1,
+        );
 
         Self {
             program,
@@ -156,15 +164,10 @@ impl PrimitiveRenderer {
         gl: &glow::Context,
         primitives: &[DrawPrimitive],
     ) {
-
-        self.a_xywh.clear();
-        self.a_rgba.clear();
-        self.a_orientation.clear();
-
         for primitive in primitives {
-            self.a_xywh.data.extend(&primitive.xywh);
-            self.a_rgba.data.extend(&primitive.rgba);
-            self.a_orientation.data.push(primitive.orientation);
+            self.a_xywh.push_data(&primitive.xywh);
+            self.a_rgba.push_data(&primitive.rgba);
+            self.a_orientation.push_data(&[primitive.orientation]);
         }
 
         unsafe {
@@ -172,9 +175,9 @@ impl PrimitiveRenderer {
             gl.bind_vertex_array(Some(self.vao));
         }
 
-        self.a_xywh.set(gl, self.program);
-        self.a_rgba.set(gl, self.program);
-        self.a_orientation.set(gl, self.program);
+        self.a_xywh.sync_data(gl);
+        self.a_rgba.sync_data(gl);
+        self.a_orientation.sync_data(gl);
 
         unsafe {
             gl.draw_arrays_instanced(
@@ -262,10 +265,6 @@ impl HDRResolveRenderer {
 }
 
 pub struct Attribute {
-    pub size: usize,
-    pub name: &'static str,
-    pub data_type: u32,
-    pub divisor: u32,
     pub data: Vec<f32>,
     pub vbo: glow::NativeBuffer,
 }
@@ -273,45 +272,34 @@ pub struct Attribute {
 impl Attribute {
     pub fn create(
         gl: &glow::Context,
+        program: glow::NativeProgram,
         size: usize,
         name: &'static str,
         data_type: u32,
         divisor: u32,
     ) -> Self {
-        let vbo_size = MAX_N_INSTANCED_PRIMITIVES * size_of::<f32>() * size;
+        let vbo_size =
+            MAX_N_INSTANCED_PRIMITIVES * size_of::<f32>() * size;
         let data = Vec::<f32>::with_capacity(MAX_N_INSTANCED_PRIMITIVES);
         let vbo = create_vbo(gl, vbo_size, glow::DYNAMIC_DRAW);
 
-        Self {
-            size,
-            name,
-            data_type,
-            divisor,
-            data,
-            vbo,
-        }
-    }
-
-    pub fn clear(&mut self) {
-        self.data.clear();
-    }
-
-    pub fn set(&self, gl: &glow::Context, program: glow::NativeProgram) {
         unsafe {
-            let loc = match gl.get_attrib_location(program, &self.name) {
+            let loc = match gl.get_attrib_location(program, name) {
                 Some(loc) => loc,
-                None => panic!("Can't obtain attribute location: {}", self.name),
+                None => {
+                    panic!("Can't obtain attribute location: {}", name)
+                }
             };
 
-            gl.bind_buffer(glow::ARRAY_BUFFER, Some(self.vbo));
+            gl.bind_buffer(glow::ARRAY_BUFFER, Some(vbo));
             gl.enable_vertex_attrib_array(loc);
 
-            match self.data_type {
+            match data_type {
                 glow::FLOAT => {
                     gl.vertex_attrib_pointer_f32(
                         loc,
-                        self.size as i32,
-                        self.data_type,
+                        size as i32,
+                        data_type,
                         false,
                         0,
                         0,
@@ -320,8 +308,8 @@ impl Attribute {
                 glow::INT | glow::UNSIGNED_INT => {
                     gl.vertex_attrib_pointer_i32(
                         loc,
-                        self.size as i32,
-                        self.data_type,
+                        size as i32,
+                        data_type,
                         0,
                         0,
                     );
@@ -329,18 +317,31 @@ impl Attribute {
                 _ => {
                     panic!(
                         "Unsopported vertex attrib data type: {}",
-                        self.data_type
+                        data_type
                     );
                 }
             }
 
-            gl.vertex_attrib_divisor(loc, self.divisor);
+            gl.vertex_attrib_divisor(loc, divisor);
+        }
+
+        Self { data, vbo }
+    }
+
+    pub fn push_data(&mut self, data: &[f32]) {
+        self.data.extend(data);
+    }
+
+    pub fn sync_data(&mut self, gl: &glow::Context) {
+        unsafe {
+            gl.bind_buffer(glow::ARRAY_BUFFER, Some(self.vbo));
             gl.buffer_sub_data_u8_slice(
                 glow::ARRAY_BUFFER,
                 0,
                 cast_slice_to_u8(&self.data),
             );
         }
+        self.data.clear();
     }
 }
 
