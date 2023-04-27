@@ -5,8 +5,9 @@ use crate::input::Input;
 use crate::vec::Vec2;
 
 pub struct World {
-    pub lift: Lift,
     pub camera: Camera,
+    pub lift: Lift,
+    pub player: Player,
 
     pub n_floors: u32,
     pub floor_size: Vec2<f32>,
@@ -14,16 +15,20 @@ pub struct World {
 
 impl World {
     pub fn create(n_floors: u32, floor_size: Vec2<f32>) -> Self {
-        let lift_size = Vec2::new(floor_size.y * 0.5, floor_size.y);
+        let floor_size = Vec2::new(500.0, 3.0);
+
         let lift_floor = 0;
-        let lift_ground_y = lift_floor as f32 * floor_size.y;
         let lift_max_speed = 4.0;
-        let lift = Lift::create(lift_size, lift_ground_y, lift_max_speed);
-        let camera = Camera::create(lift.get_position());
+        let lift =
+            Lift::from_floor(lift_floor, floor_size.y, lift_max_speed);
+        let camera = Camera::create(lift.get_primitive_position());
+
+        let player = Player::from_lift(&lift);
 
         Self {
-            lift,
             camera,
+            lift,
+            player,
             n_floors,
             floor_size,
         }
@@ -31,6 +36,7 @@ impl World {
 
     pub fn update(&mut self, dt: f32, input: &Input) {
         self.update_lift(dt, input);
+        self.update_player(dt);
         self.update_free_camera(input);
         // self.camera.position = self.lift.get_position();
     }
@@ -52,17 +58,20 @@ impl World {
             lift_floor = lift_floor
                 .min(self.get_max_floor() as f32)
                 .max(self.get_min_floor() as f32);
-            self.lift.target_ground_y =
-                lift_floor.floor() * self.floor_size.y;
+            self.lift.target_y = lift_floor.floor() * self.floor_size.y;
         }
 
-        let diff = self.lift.target_ground_y - self.lift.ground_y;
+        let diff = self.lift.target_y - self.lift.y;
         let step = dt * self.lift.max_speed;
         if step >= diff.abs() {
-            self.lift.ground_y = self.lift.target_ground_y;
+            self.lift.y = self.lift.target_y;
         } else {
-            self.lift.ground_y += step * diff.signum();
+            self.lift.y += step * diff.signum();
         }
+    }
+
+    fn update_player(&mut self, dt: f32) {
+        self.player.position.y = self.lift.y;
     }
 
     fn update_free_camera(&mut self, input: &Input) {
@@ -95,7 +104,7 @@ impl World {
     }
 
     pub fn get_lift_floor(&self) -> f32 {
-        self.lift.ground_y / self.floor_size.y
+        self.lift.y / self.floor_size.y
     }
 
     pub fn get_max_floor(&self) -> i32 {
@@ -106,7 +115,7 @@ impl World {
         -(self.n_floors as i32 - self.get_max_floor() - 1)
     }
 
-    pub fn get_shaft_xywh(&self) -> [f32; 4] {
+    pub fn get_shaft_primitive_xywh(&self) -> [f32; 4] {
         let min_y = self.get_min_floor() as f32 * self.floor_size.y;
         let max_y = (self.get_max_floor() + 1) as f32 * self.floor_size.y;
         let y = (max_y + min_y) / 2.0;
@@ -115,42 +124,10 @@ impl World {
         [0.0, y, self.lift.size.x * 1.2, height]
     }
 
-    pub fn get_floor_xywh(&self, floor: i32) -> [f32; 4] {
+    pub fn get_floor_primitive_xywh(&self, floor: i32) -> [f32; 4] {
         let y = self.floor_size.y * (floor as f32 + 0.5);
 
         [0.0, y, self.floor_size.x, self.floor_size.y]
-    }
-}
-
-pub struct Lift {
-    pub size: Vec2<f32>,
-    pub ground_y: f32,
-    pub target_ground_y: f32,
-    pub max_speed: f32,
-    speed: f32,
-}
-
-impl Lift {
-    pub fn create(size: Vec2<f32>, ground_y: f32, max_speed: f32) -> Self {
-        Self {
-            size: size,
-            ground_y: ground_y,
-            target_ground_y: ground_y,
-            max_speed: max_speed,
-            speed: 0.0,
-        }
-    }
-
-    pub fn get_xywh(&self) -> [f32; 4] {
-        let y = self.ground_y + 0.5 * self.size.y;
-
-        [0.0, y, self.size.x, self.size.y]
-    }
-
-    pub fn get_position(&self) -> Vec2<f32> {
-        let xywh = self.get_xywh();
-
-        Vec2::new(xywh[0], xywh[1])
     }
 }
 
@@ -176,6 +153,69 @@ impl Camera {
         let view_height = self.view_width / self.aspect;
 
         Vec2::new(self.view_width, view_height)
+    }
+}
+
+pub struct Lift {
+    pub size: Vec2<f32>,
+    pub y: f32,
+    pub target_y: f32,
+    pub max_speed: f32,
+    speed: f32,
+}
+
+impl Lift {
+    pub fn create(size: Vec2<f32>, y: f32, max_speed: f32) -> Self {
+        Self {
+            size: size,
+            y: y,
+            target_y: y,
+            max_speed: max_speed,
+            speed: 0.0,
+        }
+    }
+
+    pub fn from_floor(
+        floor: i32,
+        floor_height: f32,
+        max_speed: f32,
+    ) -> Self {
+        let size = Vec2::new(floor_height * 0.6, floor_height);
+        let y = floor as f32 * floor_height;
+
+        Lift::create(size, y, max_speed)
+    }
+
+    pub fn get_primitive_xywh(&self) -> [f32; 4] {
+        let y = self.y + 0.5 * self.size.y;
+
+        [0.0, y, self.size.x, self.size.y]
+    }
+
+    pub fn get_primitive_position(&self) -> Vec2<f32> {
+        let xywh = self.get_primitive_xywh();
+
+        Vec2::new(xywh[0], xywh[1])
+    }
+}
+
+pub struct Player {
+    pub size: Vec2<f32>,
+    pub position: Vec2<f32>,
+}
+
+impl Player {
+    pub fn from_lift(lift: &Lift) -> Self {
+        let size = lift.size * Vec2::new(0.25, 0.55);
+        let position = Vec2::new(0.0, lift.y);
+
+        Self { size, position }
+    }
+
+    pub fn get_primitive_xywh(&self) -> [f32; 4] {
+        let y = self.position.y + 0.5 * self.size.y;
+
+        [self.position.x, y, self.size.x, self.size.y]
     }
 }
 

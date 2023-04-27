@@ -71,32 +71,11 @@ impl Renderer {
     }
 
     pub fn render(&mut self, world: &World) {
-        let camera = &world.camera;
-        let lift = &world.lift;
-
         self.primitives.clear();
-
-        let lift_floor = world.get_lift_floor();
-        for floor in world.get_min_floor()..world.get_max_floor() + 1 {
-            let c =
-                0.5 - (0.6 * (floor as f32 - lift_floor).abs()).powf(2.0);
-            self.primitives.push(DrawPrimitive {
-                xywh: world.get_floor_xywh(floor),
-                rgba: [c, c, c, 1.0],
-                orientation: 0.0,
-            });
-        }
-
-        self.primitives.push(DrawPrimitive {
-            xywh: world.get_shaft_xywh(),
-            rgba: [0.0, 0.0, 0.0, 1.0],
-            orientation: 0.0,
-        });
-        self.primitives.push(DrawPrimitive {
-            xywh: lift.get_xywh(),
-            rgba: [0.8, 0.6, 0.4, 1.0],
-            orientation: 0.0,
-        });
+        self.push_floors(world);
+        self.push_shaft(world);
+        self.push_lift(world);
+        self.push_player(world);
 
         self.hdr_resolve_renderer.bind_framebuffer(&self.gl);
 
@@ -115,6 +94,43 @@ impl Renderer {
         self.hdr_resolve_renderer.render(&self.gl);
 
         self.window.gl_swap_window();
+    }
+
+    fn push_floors(&mut self, world: &World) {
+        let lift_floor = world.get_lift_floor();
+        for floor in world.get_min_floor()..world.get_max_floor() + 1 {
+            let c =
+                0.5 - (0.6 * (floor as f32 - lift_floor).abs()).powf(2.0);
+            self.primitives.push(DrawPrimitive {
+                xywh: world.get_floor_primitive_xywh(floor),
+                rgba: [c, c, c, 1.0],
+                orientation: 0.0,
+            });
+        }
+    }
+
+    fn push_shaft(&mut self, world: &World) {
+        self.primitives.push(DrawPrimitive {
+            xywh: world.get_shaft_primitive_xywh(),
+            rgba: [0.0, 0.0, 0.0, 1.0],
+            orientation: 0.0,
+        });
+    }
+
+    fn push_lift(&mut self, world: &World) {
+        self.primitives.push(DrawPrimitive {
+            xywh: world.lift.get_primitive_xywh(),
+            rgba: [0.7, 0.7, 0.7, 1.0],
+            orientation: 0.0,
+        });
+    }
+
+    fn push_player(&mut self, world: &World) {
+        self.primitives.push(DrawPrimitive {
+            xywh: world.player.get_primitive_xywh(),
+            rgba: [0.5, 0.2, 0.1, 1.0],
+            orientation: 0.0,
+        });
     }
 
     fn bind_screen_framebuffer(&self) {
