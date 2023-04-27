@@ -23,6 +23,8 @@ pub struct Renderer {
 
     primitive_renderer: PrimitiveRenderer,
     hdr_resolve_renderer: HDRResolveRenderer,
+
+    primitives: Vec<DrawPrimitive>,
 }
 
 impl Renderer {
@@ -64,6 +66,7 @@ impl Renderer {
             _gl_context: _gl_context,
             primitive_renderer: primitive_renderer,
             hdr_resolve_renderer: hdr_resolve_renderer,
+            primitives: Vec::with_capacity(MAX_N_INSTANCED_PRIMITIVES),
         }
     }
 
@@ -71,30 +74,41 @@ impl Renderer {
         let camera = &world.camera;
         let lift = &world.lift;
 
-        let primitives = [
-            DrawPrimitive {
-                xywh: [0.5, 0.5, 0.2, 0.2],
-                rgba: [1.0, 0.0, 0.0, 1.0],
-                orientation: 1.0,
-            },
-            DrawPrimitive {
-                xywh: [-0.5, -0.5, 0.1, 0.1],
-                rgba: [0.0, 0.0, 1.0, 1.0],
+        self.primitives.clear();
+
+        let lift_floor = world.get_lift_floor();
+        for floor in world.get_min_floor()..world.get_max_floor() + 1 {
+            let c =
+                0.5 - (0.6 * (floor as f32 - lift_floor).abs()).powf(2.0);
+            self.primitives.push(DrawPrimitive {
+                xywh: world.get_floor_xywh(floor),
+                rgba: [c, c, c, 1.0],
                 orientation: 0.0,
-            },
-        ];
+            });
+        }
+
+        self.primitives.push(DrawPrimitive {
+            xywh: world.get_shaft_xywh(),
+            rgba: [0.0, 0.0, 0.0, 1.0],
+            orientation: 0.0,
+        });
+        self.primitives.push(DrawPrimitive {
+            xywh: lift.get_xywh(),
+            rgba: [0.8, 0.6, 0.4, 1.0],
+            orientation: 0.0,
+        });
 
         self.hdr_resolve_renderer.bind_framebuffer(&self.gl);
 
         unsafe {
-            self.gl.clear_color(0.1, 0.05, 0.3, 1.0);
+            self.gl.clear_color(0.2, 0.2, 0.2, 1.0);
             self.gl.clear(glow::COLOR_BUFFER_BIT);
         }
 
         self.primitive_renderer.render(
             &self.gl,
             &world.camera,
-            &primitives,
+            &self.primitives,
         );
 
         self.bind_screen_framebuffer();
@@ -182,7 +196,7 @@ impl PrimitiveRenderer {
         &mut self,
         gl: &glow::Context,
         camera: &Camera,
-        primitives: &[DrawPrimitive],
+        primitives: &Vec<DrawPrimitive>,
     ) {
         primitives.iter().for_each(|p| self.push_primitive(p));
 
@@ -311,8 +325,9 @@ impl Attribute {
         max_n_instances: usize,
         divisor: u32,
     ) -> Self {
-        let vbo_size = max_n_instances * size_of::<f32>() * size;
-        let data = Vec::<f32>::with_capacity(MAX_N_INSTANCED_PRIMITIVES);
+        let max_n_elements = max_n_instances * size;
+        let vbo_size = size_of::<f32>() * max_n_elements;
+        let data = Vec::<f32>::with_capacity(max_n_elements);
         let vbo = create_vbo(gl, vbo_size, glow::DYNAMIC_DRAW);
 
         unsafe {

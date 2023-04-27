@@ -5,7 +5,7 @@ use input::Input;
 use renderer::Renderer;
 use std::time::Instant;
 use vec::Vec2;
-use world::{Camera, Lift, World};
+use world::World;
 
 mod input;
 mod renderer;
@@ -18,10 +18,10 @@ fn main() {
     let mut renderer = Renderer::create(&sdl, "Lift", window_size);
     let mut input = Input::create(window_size);
 
-    // -------------------------------------------------------------------
-    let lift = Lift::default();
-    let camera = Camera::default();
-    let mut world = World { lift, camera };
+    // ------------------------------------------------------------------
+    let n_floors = 100;
+    let floor_size = Vec2::new(100.0, 2.5);
+    let mut world = World::create(n_floors, floor_size);
 
     // ------------------------------------------------------------------
     let mut event_pump = sdl.event_pump().unwrap();
