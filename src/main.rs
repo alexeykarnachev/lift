@@ -19,7 +19,7 @@ fn main() {
     let mut input = Input::create(window_size);
 
     // ------------------------------------------------------------------
-    let n_floors = 100;
+    let n_floors = 16;
     let floor_size = Vec2::new(100.0, 2.5);
     let mut world = World::create(n_floors, floor_size);
 

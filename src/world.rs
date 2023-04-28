@@ -10,6 +10,8 @@ pub struct World {
     pub player: Player,
     pub enemies: Vec<Vec<Enemy>>,
 
+    pub shaft_width: f32,
+
     pub floors: Vec<Floor>,
     pub floor_size: Vec2<f32>,
 }
@@ -33,6 +35,7 @@ impl World {
                 let enemy = Enemy {
                     size: Vec2::new(0.5, 0.8),
                     position: Vec2::new(2.0 + 2.0 * enemy_idx as f32, 0.0),
+                    max_speed: 2.0,
                 };
                 floor_enemies.push(enemy);
             }
@@ -44,6 +47,7 @@ impl World {
         let max_speed = 4.0;
         let floor = &floors[idx];
         let lift = Lift::from_floor(floor, max_speed);
+        let shaft_width = lift.size.x * 1.2;
 
         let player = Player {
             size: lift.size * Vec2::new(0.25, 0.4),
@@ -57,6 +61,7 @@ impl World {
             lift,
             player,
             enemies,
+            shaft_width,
             floors,
             floor_size,
         }
@@ -64,6 +69,7 @@ impl World {
 
     pub fn update(&mut self, dt: f32, input: &Input) {
         self.update_lift(dt, input);
+        self.update_enemies(dt);
         self.update_free_camera(input);
     }
 
@@ -92,6 +98,22 @@ impl World {
             self.lift.y = self.lift.target_y;
         } else {
             self.lift.y += step * diff.signum();
+        }
+    }
+
+    pub fn update_enemies(&mut self, dt: f32) {
+        let floor_idx;
+        let floor = if let Some(floor) = self.get_lift_floor() {
+            floor_idx = floor.idx;
+        } else {
+            return;
+        };
+
+        let player_position = self.player.position;
+        for enemy in self.enemies[floor_idx].iter_mut() {
+            let diff = player_position.x - enemy.position.x;
+            let step = dt * enemy.max_speed;
+            enemy.position.x += step * diff.signum();
         }
     }
 
@@ -143,50 +165,85 @@ impl World {
         None
     }
 
-    pub fn get_shaft_primitive_xywh(&self) -> [f32; 4] {
+    pub fn get_shaft_world_rect(&self) -> Rect {
         let height = self.floors.len() as f32 * self.floor_size.y;
-        let y = height / 2.0;
+        let size = Vec2::new(self.shaft_width, height);
 
-        [0.0, y, self.lift.size.x * 1.2, height]
+        Rect {
+            bot_left: Vec2::new(-size.x * 0.5, 0.0),
+            top_right: Vec2::new(size.x * 0.5, size.y),
+        }
     }
 
-    pub fn get_floor_primitive_xywh(&self, floor_idx: usize) -> [f32; 4] {
+    pub fn get_floor_world_rect(&self, floor_idx: usize) -> Rect {
         let y = self.floor_size.y * (floor_idx as f32 + 0.5);
+        let center = Vec2::new(0.0, y);
+        let rect = Rect {
+            bot_left: center - self.floor_size.scale(0.5),
+            top_right: center + self.floor_size.scale(0.5),
+        };
 
-        [0.0, y, self.floor_size.x, self.floor_size.y]
+        Rect {
+            bot_left: center - self.floor_size.scale(0.5),
+            top_right: center + self.floor_size.scale(0.5),
+        }
     }
 
-    pub fn get_lift_primitive_xywh(&self) -> [f32; 4] {
+    pub fn get_lift_world_rect(&self) -> Rect {
         let y = self.lift.y + 0.5 * self.lift.size.y;
+        let center = Vec2::new(0.0, y);
 
-        [0.0, y, self.lift.size.x, self.lift.size.y]
+        Rect {
+            bot_left: center - self.lift.size.scale(0.5),
+            top_right: center + self.lift.size.scale(0.5),
+        }
     }
 
-    pub fn get_lift_primitive_position(&self) -> Vec2<f32> {
-        let xywh = self.get_lift_primitive_xywh();
-
-        Vec2::new(xywh[0], xywh[1])
-    }
-
-    pub fn get_player_primitive_xywh(&self) -> [f32; 4] {
+    pub fn get_player_world_rect(&self) -> Rect {
         let x = 0.0 + self.player.position.x;
         let local_y = self.player.position.y + 0.5 * self.player.size.y;
         let y = self.lift.y + local_y;
+        let center = Vec2::new(x, y);
 
-        [x, y, self.player.size.x, self.player.size.y]
+        Rect {
+            bot_left: center - self.player.size.scale(0.5),
+            top_right: center + self.player.size.scale(0.5),
+        }
     }
 
-    pub fn get_enemy_primitive_xywh(
+    pub fn get_enemy_world_rect(
         &self,
         floor_idx: usize,
         enemy_idx: usize,
-    ) -> [f32; 4] {
+    ) -> Rect {
         let enemy = &self.enemies[floor_idx][enemy_idx];
         let x = 0.0 + enemy.position.x;
         let local_y = enemy.position.y + 0.5 * enemy.size.y;
         let y = self.floors[floor_idx].y + local_y;
+        let center = Vec2::new(x, y);
 
-        [x, y, enemy.size.x, enemy.size.y]
+        Rect {
+            bot_left: center - enemy.size.scale(0.5),
+            top_right: center + enemy.size.scale(0.5),
+        }
+    }
+}
+
+pub struct Rect {
+    pub bot_left: Vec2<f32>,
+    pub top_right: Vec2<f32>,
+}
+
+impl Rect {
+    pub fn get_center(&self) -> Vec2<f32> {
+        (self.top_right + self.bot_left).scale(0.5)
+    }
+
+    pub fn to_xywh(&self) -> [f32; 4] {
+        let center = self.get_center();
+        let size = self.top_right - self.bot_left;
+
+        [center.x, center.y, size.x, size.y]
     }
 }
 
@@ -249,6 +306,8 @@ pub struct Player {
 pub struct Enemy {
     pub size: Vec2<f32>,
     pub position: Vec2<f32>,
+
+    pub max_speed: f32,
 }
 
 pub struct Floor {
