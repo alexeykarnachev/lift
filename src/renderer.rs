@@ -76,6 +76,7 @@ impl Renderer {
         self.push_shaft(world);
         self.push_lift(world);
         self.push_player(world);
+        self.push_enemies(world);
 
         self.hdr_resolve_renderer.bind_framebuffer(&self.gl);
 
@@ -103,7 +104,7 @@ impl Renderer {
                 - (0.6 * (floor_idx as f32 - lift_floor_idx).abs())
                     .powf(2.0);
             self.primitives.push(DrawPrimitive {
-                xywh: world.get_floor_primitive_xywh(floor_idx as u32),
+                xywh: world.get_floor_primitive_xywh(floor_idx),
                 rgba: [c, c, c, 1.0],
                 orientation: 0.0,
             });
@@ -120,7 +121,7 @@ impl Renderer {
 
     fn push_lift(&mut self, world: &World) {
         self.primitives.push(DrawPrimitive {
-            xywh: world.lift.get_primitive_xywh(),
+            xywh: world.get_lift_primitive_xywh(),
             rgba: [0.7, 0.7, 0.7, 1.0],
             orientation: 0.0,
         });
@@ -128,10 +129,23 @@ impl Renderer {
 
     fn push_player(&mut self, world: &World) {
         self.primitives.push(DrawPrimitive {
-            xywh: world.player.get_primitive_xywh(),
-            rgba: [0.5, 0.2, 0.1, 1.0],
+            xywh: world.get_player_primitive_xywh(),
+            rgba: [0.2, 0.5, 0.1, 1.0],
             orientation: 0.0,
         });
+    }
+
+    fn push_enemies(&mut self, world: &World) {
+        let floor = world.get_lift_nearest_floor();
+        let floor_idx = floor.idx;
+        let n_enemies = world.enemies[floor_idx].len();
+        for enemy_idx in 0..n_enemies {
+            self.primitives.push(DrawPrimitive {
+                xywh: world.get_enemy_primitive_xywh(floor_idx, enemy_idx),
+                rgba: [0.5, 0.2, 0.1, 1.0],
+                orientation: 0.0,
+            });
+        }
     }
 
     fn bind_screen_framebuffer(&self) {
