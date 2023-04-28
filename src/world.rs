@@ -29,7 +29,7 @@ impl World {
             };
             floors.push(floor);
 
-            let n_enemies = 10;
+            let n_enemies = 1;
             let mut floor_enemies = Vec::with_capacity(n_enemies);
             for enemy_idx in 0..n_enemies {
                 let enemy = Enemy {
@@ -81,15 +81,25 @@ impl World {
         );
 
         if let Some(floor) = self.get_lift_floor() {
-            let mut idx = floor.idx as i32;
-            if let Some(_) = input.lmb_press_pos {
-                idx += 1;
-            } else if let Some(_) = input.rmb_press_pos {
-                idx -= 1;
-            }
+            let n_enemies = self.enemies[floor.idx].len();
+            let shaft_width = self.get_shaft_world_rect().get_size().x;
+            let is_enemy_in_lift = (0..n_enemies).any(|enemy_idx| {
+                let rect = self.get_enemy_world_rect(floor.idx, enemy_idx);
+                let x = rect.bot_left.x.abs().min(rect.top_right.x.abs());
+                x <= 0.5 * shaft_width
+            });
 
-            idx = idx.clamp(0, self.floors.len() as i32 - 1);
-            self.lift.target_y = idx as f32 * self.floor_size.y;
+            if !is_enemy_in_lift {
+                let mut idx = floor.idx as i32;
+                if let Some(_) = input.lmb_press_pos {
+                    idx += 1;
+                } else if let Some(_) = input.rmb_press_pos {
+                    idx -= 1;
+                }
+
+                idx = idx.clamp(0, self.floors.len() as i32 - 1);
+                self.lift.target_y = idx as f32 * self.floor_size.y;
+            }
         }
 
         let diff = self.lift.target_y - self.lift.y;
@@ -112,8 +122,8 @@ impl World {
         let player_position = self.player.position;
         for enemy in self.enemies[floor_idx].iter_mut() {
             let diff = player_position.x - enemy.position.x;
-            let step = dt * enemy.max_speed;
-            enemy.position.x += step * diff.signum();
+            let step = dt * enemy.max_speed * diff.signum();
+            enemy.position.x += step;
         }
     }
 
@@ -239,9 +249,13 @@ impl Rect {
         (self.top_right + self.bot_left).scale(0.5)
     }
 
+    pub fn get_size(&self) -> Vec2<f32> {
+        self.top_right - self.bot_left
+    }
+
     pub fn to_xywh(&self) -> [f32; 4] {
         let center = self.get_center();
-        let size = self.top_right - self.bot_left;
+        let size = self.get_size();
 
         [center.x, center.y, size.x, size.y]
     }
