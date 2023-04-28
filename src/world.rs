@@ -29,13 +29,24 @@ impl World {
             };
             floors.push(floor);
 
-            let n_enemies = 1;
+            let n_enemies = 4;
             let mut floor_enemies = Vec::with_capacity(n_enemies);
             for enemy_idx in 0..n_enemies {
+                let side = if enemy_idx % 2 == 1 { -1.0 } else { 1.0 };
+                let position =
+                    Vec2::new(2.0 + 2.0 * enemy_idx as f32, 0.0)
+                        .scale(side);
+                let weapon = Weapon {
+                    range: 0.2,
+                    speed: 1.0,
+                    cooldown: 0.0,
+                };
+
                 let enemy = Enemy {
                     size: Vec2::new(0.5, 0.8),
-                    position: Vec2::new(2.0 + 2.0 * enemy_idx as f32, 0.0),
+                    position: position,
                     max_speed: 2.0,
+                    weapon: weapon,
                 };
                 floor_enemies.push(enemy);
             }
@@ -70,6 +81,7 @@ impl World {
     pub fn update(&mut self, dt: f32, input: &Input) {
         self.update_lift(dt, input);
         self.update_enemies(dt);
+        self.update_player(dt);
         self.update_free_camera(input);
     }
 
@@ -120,12 +132,23 @@ impl World {
         };
 
         let player_position = self.player.position;
+        let player_width = self.player.size.x;
         for enemy in self.enemies[floor_idx].iter_mut() {
             let diff = player_position.x - enemy.position.x;
-            let step = dt * enemy.max_speed * diff.signum();
-            enemy.position.x += step;
+            if diff.abs()
+                > enemy.weapon.range + 0.5 * (player_width + enemy.size.x)
+            {
+                let step = dt * enemy.max_speed * diff.signum();
+                enemy.position.x += step;
+            } else if enemy.weapon.cooldown >= 1.0 / enemy.weapon.speed {
+                enemy.weapon.cooldown = 0.0;
+            } else {
+                enemy.weapon.cooldown += dt;
+            }
         }
     }
+
+    pub fn update_player(&mut self, dt: f32) {}
 
     fn update_free_camera(&mut self, input: &Input) {
         self.camera.aspect =
@@ -322,6 +345,13 @@ pub struct Enemy {
     pub position: Vec2<f32>,
 
     pub max_speed: f32,
+    pub weapon: Weapon,
+}
+
+pub struct Weapon {
+    pub range: f32,
+    pub speed: f32,
+    pub cooldown: f32,
 }
 
 pub struct Floor {
