@@ -97,12 +97,13 @@ impl Renderer {
     }
 
     fn push_floors(&mut self, world: &World) {
-        let lift_floor = world.get_lift_floor();
-        for floor in world.get_min_floor()..world.get_max_floor() + 1 {
-            let c =
-                0.5 - (0.6 * (floor as f32 - lift_floor).abs()).powf(2.0);
+        let lift_floor_idx = world.get_lift_floor_idx();
+        for floor_idx in 0..world.floors.len() {
+            let c = 0.5
+                - (0.6 * (floor_idx as f32 - lift_floor_idx).abs())
+                    .powf(2.0);
             self.primitives.push(DrawPrimitive {
-                xywh: world.get_floor_primitive_xywh(floor),
+                xywh: world.get_floor_primitive_xywh(floor_idx as u32),
                 rgba: [c, c, c, 1.0],
                 orientation: 0.0,
             });
