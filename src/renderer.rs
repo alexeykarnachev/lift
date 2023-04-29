@@ -28,7 +28,7 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    pub fn create(
+    pub fn new(
         sdl: &sdl2::Sdl,
         window_name: &str,
         window_size: Vec2<u32>,
@@ -56,9 +56,9 @@ impl Renderer {
 
         video.gl_set_swap_interval(1).unwrap();
 
-        let primitive_renderer = PrimitiveRenderer::create(&gl);
+        let primitive_renderer = PrimitiveRenderer::new(&gl);
         let hdr_resolve_renderer =
-            HDRResolveRenderer::create(&gl, window_size);
+            HDRResolveRenderer::new(&gl, window_size);
 
         Self {
             window: window,
@@ -105,7 +105,7 @@ impl Renderer {
                     .powf(2.0);
             self.primitives.push(DrawPrimitive {
                 xywh: world.get_floor_world_rect(floor_idx).to_xywh(),
-                rgba: [c, c, c, 1.0],
+                color: Color::new_gray(c, 1.0),
                 orientation: 0.0,
             });
         }
@@ -114,7 +114,7 @@ impl Renderer {
     fn push_shaft(&mut self, world: &World) {
         self.primitives.push(DrawPrimitive {
             xywh: world.get_shaft_world_rect().to_xywh(),
-            rgba: [0.0, 0.0, 0.0, 1.0],
+            color: Color::new_gray(0.0, 1.0),
             orientation: 0.0,
         });
     }
@@ -122,7 +122,7 @@ impl Renderer {
     fn push_lift(&mut self, world: &World) {
         self.primitives.push(DrawPrimitive {
             xywh: world.get_lift_world_rect().to_xywh(),
-            rgba: [0.7, 0.7, 0.7, 1.0],
+            color: Color::new_gray(0.7, 1.0),
             orientation: 0.0,
         });
     }
@@ -131,7 +131,7 @@ impl Renderer {
         let rect = world.get_player_world_rect();
         self.primitives.push(DrawPrimitive {
             xywh: rect.to_xywh(),
-            rgba: [0.2, 0.5, 0.1, 1.0],
+            color: Color::new(0.2, 0.5, 0.1, 1.0),
             orientation: 0.0,
         });
 
@@ -142,7 +142,7 @@ impl Renderer {
         let rect = Rect::from_center(center, size);
         self.primitives.push(DrawPrimitive {
             xywh: rect.to_xywh(),
-            rgba: [0.2, 0.2, 0.2, 1.0],
+            color: Color::new_gray(0.2, 1.0),
             orientation: 0.0,
         });
 
@@ -153,7 +153,7 @@ impl Renderer {
             size.x * (1.0 - world.player.health / world.player.max_health);
         self.primitives.push(DrawPrimitive {
             xywh: rect.to_xywh(),
-            rgba: [0.2, 0.6, 0.1, 1.0],
+            color: Color::new(0.2, 0.6, 0.1, 1.0),
             orientation: 0.0,
         });
     }
@@ -167,7 +167,7 @@ impl Renderer {
                 world.get_enemy_world_rect(floor_idx, enemy_idx).to_xywh();
             self.primitives.push(DrawPrimitive {
                 xywh: xywh,
-                rgba: [0.5, 0.2, 0.1, 1.0],
+                color: Color::new(0.5, 0.2, 0.1, 1.0),
                 orientation: 0.0,
             });
         }
@@ -182,9 +182,35 @@ impl Renderer {
     }
 }
 
+pub struct Color {
+    r: f32,
+    g: f32,
+    b: f32,
+    a: f32,
+}
+
+impl Color {
+    pub fn new(r: f32, g: f32, b: f32, a: f32) -> Self {
+        Self { r, g, b, a }
+    }
+
+    pub fn new_gray(c: f32, a: f32) -> Self {
+        Self {
+            r: c,
+            g: c,
+            b: c,
+            a: a,
+        }
+    }
+
+    pub fn to_array(&self) -> [f32; 4] {
+        [self.r, self.g, self.b, self.a]
+    }
+}
+
 struct DrawPrimitive {
     pub xywh: [f32; 4],
-    pub rgba: [f32; 4],
+    pub color: Color,
     pub orientation: f32,
 }
 
@@ -198,7 +224,7 @@ struct PrimitiveRenderer {
 }
 
 impl PrimitiveRenderer {
-    pub fn create(gl: &glow::Context) -> Self {
+    pub fn new(gl: &glow::Context) -> Self {
         let program = create_program(
             gl,
             Some(COMMON_GLSL_SHADER_FP),
@@ -211,7 +237,7 @@ impl PrimitiveRenderer {
             gl.bind_vertex_array(Some(vao));
         }
 
-        let a_xywh = Attribute::create(
+        let a_xywh = Attribute::new(
             gl,
             program,
             4,
@@ -220,7 +246,7 @@ impl PrimitiveRenderer {
             MAX_N_INSTANCED_PRIMITIVES,
             1,
         );
-        let a_rgba = Attribute::create(
+        let a_rgba = Attribute::new(
             gl,
             program,
             4,
@@ -229,7 +255,7 @@ impl PrimitiveRenderer {
             MAX_N_INSTANCED_PRIMITIVES,
             1,
         );
-        let a_orientation = Attribute::create(
+        let a_orientation = Attribute::new(
             gl,
             program,
             1,
@@ -275,7 +301,7 @@ impl PrimitiveRenderer {
 
     fn push_primitive(&mut self, primitive: &DrawPrimitive) {
         self.a_xywh.push_data(&primitive.xywh);
-        self.a_rgba.push_data(&primitive.rgba);
+        self.a_rgba.push_data(&primitive.color.to_array());
         self.a_orientation.push_data(&[primitive.orientation]);
     }
 
@@ -297,7 +323,7 @@ struct HDRResolveRenderer {
 }
 
 impl HDRResolveRenderer {
-    pub fn create(gl: &glow::Context, buffer_size: Vec2<u32>) -> Self {
+    pub fn new(gl: &glow::Context, buffer_size: Vec2<u32>) -> Self {
         let program = create_program(
             gl,
             Some(COMMON_GLSL_SHADER_FP),
@@ -372,7 +398,7 @@ pub struct Attribute {
 }
 
 impl Attribute {
-    pub fn create(
+    pub fn new(
         gl: &glow::Context,
         program: glow::NativeProgram,
         size: usize,

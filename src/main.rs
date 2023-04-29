@@ -15,13 +15,13 @@ mod world;
 fn main() {
     let window_size: Vec2<u32> = Vec2::new(1600, 1000);
     let sdl = sdl2::init().unwrap();
-    let mut renderer = Renderer::create(&sdl, "Lift", window_size);
-    let mut input = Input::create(window_size);
+    let mut renderer = Renderer::new(&sdl, "Lift", window_size);
+    let mut input = Input::new(window_size);
 
     // ------------------------------------------------------------------
     let n_floors = 16;
     let floor_size = Vec2::new(100.0, 2.5);
-    let mut world = World::create(n_floors, floor_size);
+    let mut world = World::new(n_floors, floor_size);
 
     // ------------------------------------------------------------------
     let mut event_pump = sdl.event_pump().unwrap();

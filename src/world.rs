@@ -17,7 +17,7 @@ pub struct World {
 }
 
 impl World {
-    pub fn create(n_floors: usize, floor_size: Vec2<f32>) -> Self {
+    pub fn new(n_floors: usize, floor_size: Vec2<f32>) -> Self {
         let mut floors = Vec::with_capacity(n_floors as usize);
         let mut enemies = Vec::with_capacity(n_floors as usize);
         for floor_idx in 0..n_floors {
@@ -68,7 +68,7 @@ impl World {
             health: 1000.0,
         };
 
-        let camera = Camera::create(Vec2::new(0.0, floor.y));
+        let camera = Camera::new(Vec2::new(0.0, floor.y));
 
         Self {
             camera,
@@ -305,7 +305,7 @@ pub struct Camera {
 }
 
 impl Camera {
-    fn create(position: Vec2<f32>) -> Self {
+    fn new(position: Vec2<f32>) -> Self {
         Self {
             position: position,
             orientation: 0.0,
@@ -330,7 +330,7 @@ pub struct Lift {
 }
 
 impl Lift {
-    pub fn create(size: Vec2<f32>, y: f32, max_speed: f32) -> Self {
+    pub fn new(size: Vec2<f32>, y: f32, max_speed: f32) -> Self {
         Self {
             size: size,
             y: y,
@@ -343,7 +343,7 @@ impl Lift {
     pub fn from_floor(floor: &Floor, max_speed: f32) -> Self {
         let lift_size = Vec2::new(floor.size.y * 0.6, floor.size.y);
 
-        Lift::create(lift_size, floor.y, max_speed)
+        Lift::new(lift_size, floor.y, max_speed)
     }
 }
 

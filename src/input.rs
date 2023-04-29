@@ -29,7 +29,7 @@ pub struct Input {
 }
 
 impl Input {
-    pub fn create(initial_window_size: Vec2<u32>) -> Self {
+    pub fn new(initial_window_size: Vec2<u32>) -> Self {
         Self {
             accum: Accum {
                 cursor_pos: Vec2::new(0, 0),
