@@ -23,7 +23,7 @@ vec2 rotate2d(vec2 point, vec2 center, float angle) {
 vec2 world2proj(vec2 world_pos, Camera camera) {
     vec2 half_size = vec2(0.5 * camera.xywh.zw);
 
-    vec2 view_pos = rotate2d(world_pos, vec2(0.0), -camera.orientation);
+    vec2 view_pos = rotate2d(world_pos, camera.xywh.xy, -camera.orientation);
     view_pos -= camera.xywh.xy;
 
     return view_pos / half_size;

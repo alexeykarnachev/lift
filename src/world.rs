@@ -39,6 +39,7 @@ impl World {
                 let weapon = Weapon {
                     range: 0.2,
                     speed: 1.0,
+                    damage: 100.0,
                     cooldown: 0.0,
                 };
 
@@ -63,6 +64,8 @@ impl World {
         let player = Player {
             size: lift.size * Vec2::new(0.25, 0.4),
             position: Vec2::new(0.0, 0.0),
+            max_health: 1000.0,
+            health: 1000.0,
         };
 
         let camera = Camera::create(Vec2::new(0.0, floor.y));
@@ -86,7 +89,7 @@ impl World {
     }
 
     fn update_lift(&mut self, dt: f32, input: &Input) {
-        let cursor_world_pos = screen_to_world(
+        let cursor_world_pos = window_to_world(
             &self.camera,
             input.window_size,
             input.cursor_pos,
@@ -125,7 +128,7 @@ impl World {
 
     pub fn update_enemies(&mut self, dt: f32) {
         let floor_idx;
-        let floor = if let Some(floor) = self.get_lift_floor() {
+        if let Some(floor) = self.get_lift_floor() {
             floor_idx = floor.idx;
         } else {
             return;
@@ -133,6 +136,7 @@ impl World {
 
         let player_position = self.player.position;
         let player_width = self.player.size.x;
+        let mut damage = 0.0;
         for enemy in self.enemies[floor_idx].iter_mut() {
             let diff = player_position.x - enemy.position.x;
             if diff.abs()
@@ -142,10 +146,13 @@ impl World {
                 enemy.position.x += step;
             } else if enemy.weapon.cooldown >= 1.0 / enemy.weapon.speed {
                 enemy.weapon.cooldown = 0.0;
+                damage += enemy.weapon.damage;
             } else {
                 enemy.weapon.cooldown += dt;
             }
         }
+
+        self.player.health = (self.player.health - damage).max(0.0);
     }
 
     pub fn update_player(&mut self, dt: f32) {}
@@ -159,22 +166,18 @@ impl World {
         }
 
         if input.mmb_is_down {
-            let cursor_world_pos = screen_to_world(
+            let cursor_world_pos = window_to_world(
                 &self.camera,
                 input.window_size,
                 input.cursor_pos,
             );
-            let cursor_world_prev_pos = screen_to_world(
+            let cursor_world_prev_pos = window_to_world(
                 &self.camera,
                 input.window_size,
                 input.cursor_prev_pos,
             );
-            let mut cursor_world_diff =
+            let cursor_world_diff =
                 cursor_world_pos - cursor_world_prev_pos;
-            cursor_world_diff.rotate_inplace(
-                Vec2::new(0.0, 0.0),
-                -self.camera.orientation,
-            );
             self.camera.position -= cursor_world_diff;
         }
     }
@@ -268,6 +271,15 @@ pub struct Rect {
 }
 
 impl Rect {
+    pub fn from_center(center: Vec2<f32>, size: Vec2<f32>) -> Self {
+        let half_size = size.scale(0.5);
+
+        Self {
+            bot_left: center - half_size,
+            top_right: center + half_size,
+        }
+    }
+
     pub fn get_center(&self) -> Vec2<f32> {
         (self.top_right + self.bot_left).scale(0.5)
     }
@@ -338,6 +350,9 @@ impl Lift {
 pub struct Player {
     pub size: Vec2<f32>,
     pub position: Vec2<f32>,
+
+    pub max_health: f32,
+    pub health: f32,
 }
 
 pub struct Enemy {
@@ -351,6 +366,7 @@ pub struct Enemy {
 pub struct Weapon {
     pub range: f32,
     pub speed: f32,
+    pub damage: f32,
     pub cooldown: f32,
 }
 
@@ -361,24 +377,45 @@ pub struct Floor {
     pub idx: usize,
 }
 
-fn screen_to_world(
+pub fn window_to_world(
     camera: &Camera,
     window_size: Vec2<i32>,
-    screen_pos: Vec2<i32>,
+    window_pos: Vec2<i32>,
 ) -> Vec2<f32> {
     let width = window_size.x as f32;
     let height = window_size.y as f32;
     let window_size = Vec2::new(width, height);
-    let aspect = width / height;
 
     let view_size = camera.get_view_size();
 
-    let screen_pos = Vec2::<f32>::new(
-        screen_pos.x as f32,
-        height - screen_pos.y as f32,
+    let window_pos = Vec2::<f32>::new(
+        window_pos.x as f32,
+        height - window_pos.y as f32,
     );
     let bot_left = camera.position - view_size.scale(0.5);
-    let mut world_pos = bot_left + view_size * screen_pos / window_size;
+    let mut world_pos = bot_left + view_size * window_pos / window_size;
     world_pos = world_pos.rotate(Vec2::zeros(), camera.orientation);
     return world_pos;
+}
+
+pub fn world_to_screen(
+    camera: &Camera,
+    window_size: Vec2<i32>,
+    world_pos: Vec2<f32>,
+) -> Vec2<i32> {
+    let view_size = camera.get_view_size();
+    let bot_left = camera.position - view_size.scale(0.5);
+    let view_pos = world_pos.rotate(camera.position, -camera.orientation)
+        - camera.position;
+    let ndc_pos = view_pos.scale(2.0) / view_size;
+    let window_size =
+        Vec2::new(window_size.x as f32, window_size.y as f32);
+    let window_pos =
+        window_size.scale(0.5) * (ndc_pos + Vec2::new(1.0, 1.0));
+    let window_pos = Vec2::new(
+        window_pos.x as i32,
+        (window_size.y - window_pos.y) as i32,
+    );
+
+    window_pos
 }

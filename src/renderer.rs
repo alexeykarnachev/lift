@@ -2,7 +2,7 @@
 #![allow(unused_variables)]
 
 use crate::vec::Vec2;
-use crate::world::{Camera, World};
+use crate::world::{Camera, Rect, World};
 use glow::HasContext;
 use std::fs;
 use std::mem::size_of;
@@ -128,9 +128,32 @@ impl Renderer {
     }
 
     fn push_player(&mut self, world: &World) {
+        let rect = world.get_player_world_rect();
         self.primitives.push(DrawPrimitive {
-            xywh: world.get_player_world_rect().to_xywh(),
+            xywh: rect.to_xywh(),
             rgba: [0.2, 0.5, 0.1, 1.0],
+            orientation: 0.0,
+        });
+
+        // Healthbar
+        let size = Vec2::new(0.9, 0.15);
+        let center = rect.get_center()
+            + Vec2::new(0.0, 0.5 * rect.get_size().y + size.y);
+        let rect = Rect::from_center(center, size);
+        self.primitives.push(DrawPrimitive {
+            xywh: rect.to_xywh(),
+            rgba: [0.2, 0.2, 0.2, 1.0],
+            orientation: 0.0,
+        });
+
+        let size = Vec2::new(0.85, 0.1);
+        let mut rect = Rect::from_center(center, size);
+
+        rect.top_right.x -=
+            size.x * (1.0 - world.player.health / world.player.max_health);
+        self.primitives.push(DrawPrimitive {
+            xywh: rect.to_xywh(),
+            rgba: [0.2, 0.6, 0.1, 1.0],
             orientation: 0.0,
         });
     }
