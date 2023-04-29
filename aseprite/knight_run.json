@@ -1,0 +1,108 @@
+{ "frames": [
+   {
+    "filename": "knight_run.0",
+    "frame": { "x": 1, "y": 1, "w": 31, "h": 40 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 41, "y": 42, "w": 29, "h": 38 },
+    "sourceSize": { "w": 120, "h": 80 },
+    "duration": 100
+   },
+   {
+    "filename": "knight_run.1",
+    "frame": { "x": 33, "y": 1, "w": 31, "h": 40 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 41, "y": 42, "w": 29, "h": 38 },
+    "sourceSize": { "w": 120, "h": 80 },
+    "duration": 100
+   },
+   {
+    "filename": "knight_run.2",
+    "frame": { "x": 65, "y": 1, "w": 31, "h": 40 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 41, "y": 42, "w": 29, "h": 38 },
+    "sourceSize": { "w": 120, "h": 80 },
+    "duration": 100
+   },
+   {
+    "filename": "knight_run.3",
+    "frame": { "x": 97, "y": 1, "w": 31, "h": 40 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 41, "y": 42, "w": 29, "h": 38 },
+    "sourceSize": { "w": 120, "h": 80 },
+    "duration": 100
+   },
+   {
+    "filename": "knight_run.4",
+    "frame": { "x": 129, "y": 1, "w": 31, "h": 40 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 41, "y": 42, "w": 29, "h": 38 },
+    "sourceSize": { "w": 120, "h": 80 },
+    "duration": 100
+   },
+   {
+    "filename": "knight_run.5",
+    "frame": { "x": 161, "y": 1, "w": 31, "h": 40 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 41, "y": 42, "w": 29, "h": 38 },
+    "sourceSize": { "w": 120, "h": 80 },
+    "duration": 100
+   },
+   {
+    "filename": "knight_run.6",
+    "frame": { "x": 193, "y": 1, "w": 31, "h": 40 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 41, "y": 42, "w": 29, "h": 38 },
+    "sourceSize": { "w": 120, "h": 80 },
+    "duration": 100
+   },
+   {
+    "filename": "knight_run.7",
+    "frame": { "x": 225, "y": 1, "w": 31, "h": 40 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 41, "y": 42, "w": 29, "h": 38 },
+    "sourceSize": { "w": 120, "h": 80 },
+    "duration": 100
+   },
+   {
+    "filename": "knight_run.8",
+    "frame": { "x": 257, "y": 1, "w": 31, "h": 40 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 41, "y": 42, "w": 29, "h": 38 },
+    "sourceSize": { "w": 120, "h": 80 },
+    "duration": 100
+   },
+   {
+    "filename": "knight_run.9",
+    "frame": { "x": 289, "y": 1, "w": 31, "h": 40 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 41, "y": 42, "w": 29, "h": 38 },
+    "sourceSize": { "w": 120, "h": 80 },
+    "duration": 100
+   }
+ ],
+ "meta": {
+  "app": "http://www.aseprite.org/",
+  "version": "1.3-rc2-x64",
+  "image": "knight_run.png",
+  "format": "RGBA8888",
+  "size": { "w": 320, "h": 41 },
+  "scale": "1",
+  "frameTags": [
+  ],
+  "layers": [
+   { "name": "default", "opacity": 255, "blendMode": "normal" }
+  ],
+  "slices": [
+  ]
+ }
+}

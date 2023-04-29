@@ -1,0 +1,54 @@
+{ "frames": [
+   {
+    "filename": "knight_attack.0",
+    "frame": { "x": 1, "y": 1, "w": 82, "h": 44 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 37, "y": 38, "w": 80, "h": 42 },
+    "sourceSize": { "w": 120, "h": 80 },
+    "duration": 100
+   },
+   {
+    "filename": "knight_attack.1",
+    "frame": { "x": 84, "y": 1, "w": 82, "h": 44 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 37, "y": 38, "w": 80, "h": 42 },
+    "sourceSize": { "w": 120, "h": 80 },
+    "duration": 100
+   },
+   {
+    "filename": "knight_attack.2",
+    "frame": { "x": 167, "y": 1, "w": 82, "h": 44 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 37, "y": 38, "w": 80, "h": 42 },
+    "sourceSize": { "w": 120, "h": 80 },
+    "duration": 100
+   },
+   {
+    "filename": "knight_attack.3",
+    "frame": { "x": 250, "y": 1, "w": 82, "h": 44 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 37, "y": 38, "w": 80, "h": 42 },
+    "sourceSize": { "w": 120, "h": 80 },
+    "duration": 100
+   }
+ ],
+ "meta": {
+  "app": "http://www.aseprite.org/",
+  "version": "1.3-rc2-x64",
+  "image": "knight_attack.png",
+  "format": "RGBA8888",
+  "size": { "w": 332, "h": 45 },
+  "scale": "1",
+  "frameTags": [
+  ],
+  "layers": [
+   { "name": "Sprite Sheet", "opacity": 255, "blendMode": "normal" }
+  ],
+  "slices": [
+  ]
+ }
+}

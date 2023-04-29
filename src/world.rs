@@ -3,8 +3,22 @@
 
 use crate::input::Input;
 use crate::vec::Vec2;
+use image::imageops::flip_vertical_in_place;
+use image::io::Reader as ImageReader;
+use image::DynamicImage;
+use serde::Deserialize;
+use std::collections::HashMap;
+use std::fs;
+
+#[derive(PartialEq)]
+pub enum WorldState {
+    Play,
+    GameOver,
+}
 
 pub struct World {
+    pub state: WorldState,
+
     pub camera: Camera,
     pub lift: Lift,
     pub player: Player,
@@ -14,10 +28,17 @@ pub struct World {
 
     pub floors: Vec<Floor>,
     pub floor_size: Vec2<f32>,
+
+    pub sprite_atlas: SpriteAtlas,
 }
 
 impl World {
     pub fn new(n_floors: usize, floor_size: Vec2<f32>) -> Self {
+        let sprite_atlas = SpriteAtlas::new(
+            "./assets/sprites/atlas.json",
+            "./assets/sprites/atlas.png",
+        );
+
         let mut floors = Vec::with_capacity(n_floors as usize);
         let mut enemies = Vec::with_capacity(n_floors as usize);
         for floor_idx in 0..n_floors {
@@ -42,12 +63,43 @@ impl World {
                     damage: 100.0,
                     cooldown: 0.0,
                 };
+                let mut animator =
+                    Animator::new(AnimatedSprite::from_atlas(
+                        &sprite_atlas,
+                        "knight_idle",
+                        2.0,
+                    ));
+                animator.add(
+                    "idle",
+                    AnimatedSprite::from_atlas(
+                        &sprite_atlas,
+                        "knight_idle",
+                        2.0,
+                    ),
+                );
+                animator.add(
+                    "attack",
+                    AnimatedSprite::from_atlas(
+                        &sprite_atlas,
+                        "knight_attack",
+                        2.0,
+                    ),
+                );
+                animator.add(
+                    "run",
+                    AnimatedSprite::from_atlas(
+                        &sprite_atlas,
+                        "knight_run",
+                        2.0,
+                    ),
+                );
 
                 let enemy = Enemy {
                     size: Vec2::new(0.5, 0.8),
                     position: position,
                     max_speed: 2.0,
                     weapon: weapon,
+                    animator: animator,
                 };
                 floor_enemies.push(enemy);
             }
@@ -68,9 +120,11 @@ impl World {
             health: 1000.0,
         };
 
+        let state = WorldState::Play;
         let camera = Camera::new(Vec2::new(0.0, floor.y));
 
         Self {
+            state,
             camera,
             lift,
             player,
@@ -78,14 +132,21 @@ impl World {
             shaft_width,
             floors,
             floor_size,
+            sprite_atlas,
         }
     }
 
     pub fn update(&mut self, dt: f32, input: &Input) {
-        self.update_lift(dt, input);
-        self.update_enemies(dt);
-        self.update_player(dt);
-        self.update_free_camera(input);
+        use WorldState::*;
+        match self.state {
+            Play => {
+                self.update_lift(dt, input);
+                self.update_enemies(dt);
+                self.update_player(dt);
+                self.update_free_camera(input);
+            }
+            GameOver => {}
+        }
     }
 
     fn update_lift(&mut self, dt: f32, input: &Input) {
@@ -138,21 +199,29 @@ impl World {
         let player_width = self.player.size.x;
         let mut damage = 0.0;
         for enemy in self.enemies[floor_idx].iter_mut() {
-            let diff = player_position.x - enemy.position.x;
-            if diff.abs()
-                > enemy.weapon.range + 0.5 * (player_width + enemy.size.x)
-            {
-                let step = dt * enemy.max_speed * diff.signum();
+            let dist = player_position.x - enemy.position.x;
+            let attack_dist =
+                enemy.weapon.range + 0.5 * (player_width + enemy.size.x);
+            if dist.abs() > attack_dist {
+                let step = dt * enemy.max_speed * dist.signum();
                 enemy.position.x += step;
+                enemy.animator.play("run");
             } else if enemy.weapon.cooldown >= 1.0 / enemy.weapon.speed {
                 enemy.weapon.cooldown = 0.0;
                 damage += enemy.weapon.damage;
+                enemy.animator.play("attack");
             } else {
-                enemy.weapon.cooldown += dt;
+                enemy.animator.play("idle");
             }
+
+            enemy.animator.update(dt);
+            enemy.weapon.cooldown += dt;
         }
 
         self.player.health = (self.player.health - damage).max(0.0);
+        if self.player.health <= 0.0 {
+            self.state = WorldState::GameOver;
+        }
     }
 
     pub fn update_player(&mut self, dt: f32) {}
@@ -362,6 +431,8 @@ pub struct Enemy {
 
     pub max_speed: f32,
     pub weapon: Weapon,
+
+    pub animator: Animator,
 }
 
 pub struct Weapon {
@@ -376,6 +447,124 @@ pub struct Floor {
     pub y: f32,
 
     pub idx: usize,
+}
+
+#[derive(Deserialize, Copy, Clone)]
+pub struct Sprite {
+    pub u: f32,
+    pub v: f32,
+    pub w: f32,
+    pub h: f32,
+    pub x_scale: f32,
+    pub y_scale: f32,
+}
+
+#[derive(Deserialize)]
+pub struct SpriteAtlas {
+    pub file_name: String,
+    pub size: [u32; 2],
+    pub sprites: HashMap<String, Vec<Sprite>>,
+
+    #[serde(skip)]
+    pub image: DynamicImage,
+}
+
+impl SpriteAtlas {
+    pub fn new(meta_file_path: &str, image_file_path: &str) -> Self {
+        let meta = fs::read_to_string(meta_file_path).unwrap();
+        let mut atlas: Self = serde_json::from_str(&meta).unwrap();
+
+        let mut image = ImageReader::open(image_file_path)
+            .unwrap()
+            .decode()
+            .unwrap();
+        flip_vertical_in_place(&mut image);
+
+        atlas.image = image;
+
+        atlas
+    }
+}
+
+pub struct AnimatedSprite {
+    pub name: &'static str,
+    pub duration: f32,
+    current_duration: f32,
+
+    frames: Vec<Sprite>,
+}
+
+impl AnimatedSprite {
+    pub fn from_atlas(
+        atlas: &SpriteAtlas,
+        name: &'static str,
+        duration: f32,
+    ) -> Self {
+        let frames = atlas.sprites.get(name).unwrap_or_else(|| {
+            panic!("There is no such sprite in the sprite atlas: {}", name)
+        });
+
+        Self {
+            name,
+            duration,
+            current_duration: 0.0,
+            frames: frames.to_vec(),
+        }
+    }
+
+    pub fn update(&mut self, dt: f32) {
+        self.current_duration += dt;
+    }
+
+    pub fn get_current_frame(&self) -> &Sprite {
+        let mut cycle = self.current_duration / self.duration;
+        cycle -= cycle.floor();
+        let frame_idx = (cycle * self.frames.len() as f32).floor();
+
+        &self.frames[frame_idx as usize]
+    }
+}
+
+pub struct Animator {
+    current_animation: &'static str,
+    animation_to_sprite: HashMap<&'static str, AnimatedSprite>,
+}
+
+impl Animator {
+    pub fn new(default_sprite: AnimatedSprite) -> Self {
+        let mut animation_to_sprite = HashMap::new();
+        animation_to_sprite.insert("default", default_sprite);
+
+        Self {
+            current_animation: "default",
+            animation_to_sprite,
+        }
+    }
+
+    pub fn add(
+        &mut self,
+        animation: &'static str,
+        sprite: AnimatedSprite,
+    ) {
+        self.animation_to_sprite.insert(animation, sprite);
+    }
+
+    pub fn play(&mut self, animation: &'static str) {
+        self.current_animation = animation;
+    }
+
+    pub fn get_current(&self) -> &AnimatedSprite {
+        self.animation_to_sprite
+            .get(self.current_animation)
+            .unwrap()
+    }
+
+    pub fn update(&mut self, dt: f32) {
+        self.animation_to_sprite
+            .get_mut(self.current_animation)
+            .unwrap()
+            .update(dt);
+    }
 }
 
 pub fn window_to_world(

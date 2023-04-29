@@ -2,7 +2,7 @@
 #![allow(unused_variables)]
 
 use crate::vec::Vec2;
-use crate::world::{Camera, Rect, World};
+use crate::world::{Camera, Rect, World, WorldState};
 use glow::HasContext;
 use std::fs;
 use std::mem::size_of;
@@ -71,12 +71,7 @@ impl Renderer {
     }
 
     pub fn render(&mut self, world: &World) {
-        self.primitives.clear();
-        self.push_floors(world);
-        self.push_shaft(world);
-        self.push_lift(world);
-        self.push_player(world);
-        self.push_enemies(world);
+        self.fill_render_queue(world);
 
         self.hdr_resolve_renderer.bind_framebuffer(&self.gl);
 
@@ -97,43 +92,57 @@ impl Renderer {
         self.window.gl_swap_window();
     }
 
+    pub fn fill_render_queue(&mut self, world: &World) {
+        self.primitives.clear();
+
+        self.push_floors(world);
+        self.push_shaft(world);
+        self.push_lift(world);
+        self.push_player(world);
+        self.push_enemies(world);
+
+        if world.state != WorldState::GameOver {
+            self.push_game_over_screen(world);
+        }
+    }
+
     fn push_floors(&mut self, world: &World) {
         let lift_floor_idx = world.get_lift_floor_idx();
         for floor_idx in 0..world.floors.len() {
             let c = 0.5
                 - (0.6 * (floor_idx as f32 - lift_floor_idx).abs())
                     .powf(2.0);
-            self.primitives.push(DrawPrimitive {
-                rect: world.get_floor_world_rect(floor_idx),
-                color: Color::new_gray(c, 1.0),
-                orientation: 0.0,
-            });
+            self.primitives.push(DrawPrimitive::new(
+                world.get_floor_world_rect(floor_idx),
+                Color::new_gray(c, 1.0),
+                0.0,
+            ));
         }
     }
 
     fn push_shaft(&mut self, world: &World) {
-        self.primitives.push(DrawPrimitive {
-            rect: world.get_shaft_world_rect(),
-            color: Color::new_gray(0.0, 1.0),
-            orientation: 0.0,
-        });
+        self.primitives.push(DrawPrimitive::new(
+            world.get_shaft_world_rect(),
+            Color::new_gray(0.0, 1.0),
+            0.0,
+        ));
     }
 
     fn push_lift(&mut self, world: &World) {
-        self.primitives.push(DrawPrimitive {
-            rect: world.get_lift_world_rect(),
-            color: Color::new_gray(0.7, 1.0),
-            orientation: 0.0,
-        });
+        self.primitives.push(DrawPrimitive::new(
+            world.get_lift_world_rect(),
+            Color::new_gray(0.7, 1.0),
+            0.0,
+        ));
     }
 
     fn push_player(&mut self, world: &World) {
         let rect = world.get_player_world_rect();
-        self.primitives.push(DrawPrimitive {
-            rect: rect,
-            color: Color::new(0.2, 0.5, 0.1, 1.0),
-            orientation: 0.0,
-        });
+        self.primitives.push(DrawPrimitive::new(
+            rect,
+            Color::new(0.2, 0.5, 0.1, 1.0),
+            0.0,
+        ));
 
         let ratio = world.player.health / world.player.max_health;
         self.push_healthbar(rect, ratio);
@@ -145,11 +154,11 @@ impl Renderer {
         let n_enemies = world.enemies[floor_idx].len();
         for enemy_idx in 0..n_enemies {
             let rect = world.get_enemy_world_rect(floor_idx, enemy_idx);
-            self.primitives.push(DrawPrimitive {
-                rect: rect,
-                color: Color::new(0.5, 0.2, 0.1, 1.0),
-                orientation: 0.0,
-            });
+            self.primitives.push(DrawPrimitive::new(
+                rect,
+                Color::new(0.5, 0.2, 0.1, 1.0),
+                0.0,
+            ));
             self.push_healthbar(rect, 0.5);
         }
     }
@@ -159,11 +168,11 @@ impl Renderer {
         let center = entity_rect.get_center()
             + Vec2::new(0.0, 0.5 * entity_rect.get_size().y + size.y);
         let rect = Rect::from_center(center, size);
-        self.primitives.push(DrawPrimitive {
-            rect: rect,
-            color: Color::new_gray(0.2, 1.0),
-            orientation: 0.0,
-        });
+        self.primitives.push(DrawPrimitive::new(
+            rect,
+            Color::new_gray(0.2, 1.0),
+            0.0,
+        ));
 
         let size = Vec2::new(0.85, 0.1);
         let mut rect = Rect::from_center(center, size);
@@ -172,11 +181,12 @@ impl Renderer {
         let dead_color = Color::new(1.0, 0.0, 0.0, 1.0);
         let color = alive_color.lerp(&dead_color, ratio);
         rect.top_right.x -= size.x * (1.0 - ratio);
-        self.primitives.push(DrawPrimitive {
-            rect: rect,
-            color: color,
-            orientation: 0.0,
-        });
+        self.primitives.push(DrawPrimitive::new(rect, color, 0.0));
+    }
+
+    fn push_game_over_screen(&mut self, world: &World) {
+        // let rect = world.ui.game_over.rect;
+        // self.primitives.push(DrawPrimitive::new(rect, Color::new_gray(0.1, 1.0), 0.0));
     }
 
     fn bind_screen_framebuffer(&self) {
@@ -186,6 +196,8 @@ impl Renderer {
             self.gl.bind_framebuffer(glow::FRAMEBUFFER, None);
         }
     }
+
+    fn load_sprite_atlas(&mut self, meta_fp: &str, image_fp: &str) {}
 }
 
 pub struct Color {
@@ -228,6 +240,16 @@ struct DrawPrimitive {
     pub rect: Rect,
     pub color: Color,
     pub orientation: f32,
+}
+
+impl DrawPrimitive {
+    pub fn new(rect: Rect, color: Color, orientation: f32) -> Self {
+        Self {
+            rect,
+            color,
+            orientation,
+        }
+    }
 }
 
 struct PrimitiveRenderer {
