@@ -135,27 +135,8 @@ impl Renderer {
             orientation: 0.0,
         });
 
-        // Healthbar
-        let size = Vec2::new(0.9, 0.15);
-        let center = rect.get_center()
-            + Vec2::new(0.0, 0.5 * rect.get_size().y + size.y);
-        let rect = Rect::from_center(center, size);
-        self.primitives.push(DrawPrimitive {
-            rect: rect,
-            color: Color::new_gray(0.2, 1.0),
-            orientation: 0.0,
-        });
-
-        let size = Vec2::new(0.85, 0.1);
-        let mut rect = Rect::from_center(center, size);
-
-        rect.top_right.x -=
-            size.x * (1.0 - world.player.health / world.player.max_health);
-        self.primitives.push(DrawPrimitive {
-            rect: rect,
-            color: Color::new(0.2, 0.6, 0.1, 1.0),
-            orientation: 0.0,
-        });
+        let ratio = world.player.health / world.player.max_health;
+        self.push_healthbar(rect, ratio);
     }
 
     fn push_enemies(&mut self, world: &World) {
@@ -169,7 +150,33 @@ impl Renderer {
                 color: Color::new(0.5, 0.2, 0.1, 1.0),
                 orientation: 0.0,
             });
+            self.push_healthbar(rect, 0.5);
         }
+    }
+
+    fn push_healthbar(&mut self, entity_rect: Rect, ratio: f32) {
+        let size = Vec2::new(0.9, 0.15);
+        let center = entity_rect.get_center()
+            + Vec2::new(0.0, 0.5 * entity_rect.get_size().y + size.y);
+        let rect = Rect::from_center(center, size);
+        self.primitives.push(DrawPrimitive {
+            rect: rect,
+            color: Color::new_gray(0.2, 1.0),
+            orientation: 0.0,
+        });
+
+        let size = Vec2::new(0.85, 0.1);
+        let mut rect = Rect::from_center(center, size);
+
+        let alive_color = Color::new(0.0, 1.0, 0.0, 1.0);
+        let dead_color = Color::new(1.0, 0.0, 0.0, 1.0);
+        let color = alive_color.lerp(&dead_color, ratio);
+        rect.top_right.x -= size.x * (1.0 - ratio);
+        self.primitives.push(DrawPrimitive {
+            rect: rect,
+            color: color,
+            orientation: 0.0,
+        });
     }
 
     fn bind_screen_framebuffer(&self) {
@@ -204,6 +211,16 @@ impl Color {
 
     pub fn to_array(&self) -> [f32; 4] {
         [self.r, self.g, self.b, self.a]
+    }
+
+    pub fn lerp(&self, other: &Self, k: f32) -> Self {
+        let k_other = 1.0 - k;
+        Self {
+            r: k * self.r + k_other * other.r,
+            g: k * self.g + k_other * other.g,
+            b: k * self.b + k_other * other.b,
+            a: k * self.a + k_other * other.a,
+        }
     }
 }
 
