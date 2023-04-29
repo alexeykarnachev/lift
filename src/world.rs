@@ -265,6 +265,7 @@ impl World {
     }
 }
 
+#[derive(Copy, Clone)]
 pub struct Rect {
     pub bot_left: Vec2<f32>,
     pub top_right: Vec2<f32>,

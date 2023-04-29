@@ -104,7 +104,7 @@ impl Renderer {
                 - (0.6 * (floor_idx as f32 - lift_floor_idx).abs())
                     .powf(2.0);
             self.primitives.push(DrawPrimitive {
-                xywh: world.get_floor_world_rect(floor_idx).to_xywh(),
+                rect: world.get_floor_world_rect(floor_idx),
                 color: Color::new_gray(c, 1.0),
                 orientation: 0.0,
             });
@@ -113,7 +113,7 @@ impl Renderer {
 
     fn push_shaft(&mut self, world: &World) {
         self.primitives.push(DrawPrimitive {
-            xywh: world.get_shaft_world_rect().to_xywh(),
+            rect: world.get_shaft_world_rect(),
             color: Color::new_gray(0.0, 1.0),
             orientation: 0.0,
         });
@@ -121,7 +121,7 @@ impl Renderer {
 
     fn push_lift(&mut self, world: &World) {
         self.primitives.push(DrawPrimitive {
-            xywh: world.get_lift_world_rect().to_xywh(),
+            rect: world.get_lift_world_rect(),
             color: Color::new_gray(0.7, 1.0),
             orientation: 0.0,
         });
@@ -130,7 +130,7 @@ impl Renderer {
     fn push_player(&mut self, world: &World) {
         let rect = world.get_player_world_rect();
         self.primitives.push(DrawPrimitive {
-            xywh: rect.to_xywh(),
+            rect: rect,
             color: Color::new(0.2, 0.5, 0.1, 1.0),
             orientation: 0.0,
         });
@@ -141,7 +141,7 @@ impl Renderer {
             + Vec2::new(0.0, 0.5 * rect.get_size().y + size.y);
         let rect = Rect::from_center(center, size);
         self.primitives.push(DrawPrimitive {
-            xywh: rect.to_xywh(),
+            rect: rect,
             color: Color::new_gray(0.2, 1.0),
             orientation: 0.0,
         });
@@ -152,7 +152,7 @@ impl Renderer {
         rect.top_right.x -=
             size.x * (1.0 - world.player.health / world.player.max_health);
         self.primitives.push(DrawPrimitive {
-            xywh: rect.to_xywh(),
+            rect: rect,
             color: Color::new(0.2, 0.6, 0.1, 1.0),
             orientation: 0.0,
         });
@@ -163,10 +163,9 @@ impl Renderer {
         let floor_idx = floor.idx;
         let n_enemies = world.enemies[floor_idx].len();
         for enemy_idx in 0..n_enemies {
-            let xywh =
-                world.get_enemy_world_rect(floor_idx, enemy_idx).to_xywh();
+            let rect = world.get_enemy_world_rect(floor_idx, enemy_idx);
             self.primitives.push(DrawPrimitive {
-                xywh: xywh,
+                rect: rect,
                 color: Color::new(0.5, 0.2, 0.1, 1.0),
                 orientation: 0.0,
             });
@@ -209,7 +208,7 @@ impl Color {
 }
 
 struct DrawPrimitive {
-    pub xywh: [f32; 4],
+    pub rect: Rect,
     pub color: Color,
     pub orientation: f32,
 }
@@ -300,7 +299,7 @@ impl PrimitiveRenderer {
     }
 
     fn push_primitive(&mut self, primitive: &DrawPrimitive) {
-        self.a_xywh.push_data(&primitive.xywh);
+        self.a_xywh.push_data(&primitive.rect.to_xywh());
         self.a_rgba.push_data(&primitive.color.to_array());
         self.a_orientation.push_data(&[primitive.orientation]);
     }
