@@ -167,15 +167,10 @@ impl Renderer {
 
     fn push_enemies(&mut self, world: &World) {
         let floor = world.get_lift_nearest_floor();
-        let floor_idx = floor.idx;
-        let n_enemies = world.enemies[floor_idx].len();
-        for enemy_idx in 0..n_enemies {
-            let collider =
-                world.get_enemy_collider_rect(floor_idx, enemy_idx);
-            let animator = &world.enemies[floor_idx][enemy_idx].animator;
+        for enemy in world.enemies[floor.idx].iter() {
             let primitive = DrawPrimitive::from_sprite(
-                animator.get_sprite(),
-                collider.get_bot_center(),
+                enemy.animator.get_sprite(),
+                enemy.get_collider_rect().get_bot_center(),
             );
             self.primitives.push(primitive);
             // self.push_healthbar(rect, 0.5);

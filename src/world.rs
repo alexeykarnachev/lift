@@ -43,10 +43,10 @@ impl World {
         let mut floors = Vec::with_capacity(n_floors as usize);
         let mut enemies = Vec::with_capacity(n_floors as usize);
         for floor_idx in 0..n_floors {
-            let y = floor_idx as f32 * floor_size.y;
+            let floor_y = floor_idx as f32 * floor_size.y;
             let floor = Floor {
                 size: floor_size,
-                y,
+                y: floor_y,
                 idx: floor_idx,
             };
             floors.push(floor);
@@ -97,10 +97,11 @@ impl World {
 
                 let enemy = Enemy {
                     size: Vec2::new(0.5, 0.8),
-                    position: position,
+                    position,
+                    floor_y,
                     max_speed: 0.5,
-                    weapon: weapon,
-                    animator: animator,
+                    weapon,
+                    animator,
                 };
                 floor_enemies.push(enemy);
             }
@@ -164,18 +165,17 @@ impl World {
         );
 
         if let Some(floor) = self.get_lift_floor() {
-            let n_enemies = self.enemies[floor.idx].len();
             let shaft_width = self.get_shaft_world_rect().get_size().x;
-            let is_enemy_in_lift = (0..n_enemies).any(|enemy_idx| {
-                let collider =
-                    self.get_enemy_collider_rect(floor.idx, enemy_idx);
-                let x = collider
-                    .bot_left
-                    .x
-                    .abs()
-                    .min(collider.top_right.x.abs());
-                x <= 0.5 * shaft_width
-            });
+            let is_enemy_in_lift =
+                self.enemies[floor.idx].iter().any(|enemy| {
+                    let collider = enemy.get_collider_rect();
+                    let x = collider
+                        .bot_left
+                        .x
+                        .abs()
+                        .min(collider.top_right.x.abs());
+                    x <= 0.5 * shaft_width
+                });
 
             if !is_enemy_in_lift {
                 let mut idx = floor.idx as i32;
@@ -325,23 +325,6 @@ impl World {
             top_right: center + self.player.size.scale(0.5),
         }
     }
-
-    pub fn get_enemy_collider_rect(
-        &self,
-        floor_idx: usize,
-        enemy_idx: usize,
-    ) -> Rect {
-        let enemy = &self.enemies[floor_idx][enemy_idx];
-        let x = 0.0 + enemy.position.x;
-        let local_y = enemy.position.y + 0.5 * enemy.size.y;
-        let y = self.floors[floor_idx].y + local_y;
-        let center = Vec2::new(x, y);
-
-        Rect {
-            bot_left: center - enemy.size.scale(0.5),
-            top_right: center + enemy.size.scale(0.5),
-        }
-    }
 }
 
 #[derive(Copy, Clone)]
@@ -454,11 +437,20 @@ pub struct Player {
 pub struct Enemy {
     pub size: Vec2<f32>,
     pub position: Vec2<f32>,
+    pub floor_y: f32,
 
     pub max_speed: f32,
     pub weapon: Weapon,
 
     pub animator: Animator,
+}
+
+impl Enemy {
+    pub fn get_collider_rect(&self) -> Rect {
+        let position = self.position + Vec2::new(0.0, self.floor_y);
+
+        Rect::from_bot_center(position, self.size)
+    }
 }
 
 pub struct Weapon {
