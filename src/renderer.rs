@@ -2,7 +2,7 @@
 #![allow(unused_variables)]
 
 use crate::vec::Vec2;
-use crate::world::{Camera, Rect, Sprite, World, WorldState};
+use crate::world::*;
 use glow::HasContext;
 use std::fs;
 use std::mem::size_of;
@@ -170,18 +170,20 @@ impl Renderer {
         let floor_idx = floor.idx;
         let n_enemies = world.enemies[floor_idx].len();
         for enemy_idx in 0..n_enemies {
-            let rect = world.get_enemy_world_rect(floor_idx, enemy_idx);
-            let sprite = world.get_enemy_sprite(floor_idx, enemy_idx);
-            self.primitives
-                .push(DrawPrimitive::with_sprite(rect, sprite, 0.0));
-            self.push_healthbar(rect, 0.5);
+            self.primitives.push(
+                world.get_enemy_draw_primitive(floor_idx, enemy_idx),
+            );
+            // self.push_healthbar(rect, 0.5);
         }
     }
 
     fn push_healthbar(&mut self, entity_rect: Rect, ratio: f32) {
         let size = Vec2::new(0.9, 0.15);
         let center = entity_rect.get_center()
-            + Vec2::new(0.0, 0.5 * entity_rect.get_size().y + size.y);
+            + Vec2::new(
+                0.0,
+                0.5 * entity_rect.get_size().y + size.y * 2.0,
+            );
         let rect = Rect::from_center(center, size);
         self.primitives.push(DrawPrimitive::with_color(
             rect,
@@ -214,73 +216,6 @@ impl Renderer {
     }
 
     fn load_sprite_atlas(&mut self, meta_fp: &str, image_fp: &str) {}
-}
-
-pub struct Color {
-    r: f32,
-    g: f32,
-    b: f32,
-    a: f32,
-}
-
-impl Color {
-    pub fn new(r: f32, g: f32, b: f32, a: f32) -> Self {
-        Self { r, g, b, a }
-    }
-
-    pub fn new_gray(c: f32, a: f32) -> Self {
-        Self {
-            r: c,
-            g: c,
-            b: c,
-            a: a,
-        }
-    }
-
-    pub fn to_array(&self) -> [f32; 4] {
-        [self.r, self.g, self.b, self.a]
-    }
-
-    pub fn lerp(&self, other: &Self, k: f32) -> Self {
-        let k_other = 1.0 - k;
-        Self {
-            r: k * self.r + k_other * other.r,
-            g: k * self.g + k_other * other.g,
-            b: k * self.b + k_other * other.b,
-            a: k * self.a + k_other * other.a,
-        }
-    }
-}
-
-struct DrawPrimitive {
-    pub rect: Rect,
-    pub color: Option<Color>,
-    pub sprite: Option<Sprite>,
-    pub orientation: f32,
-}
-
-impl DrawPrimitive {
-    pub fn with_color(rect: Rect, color: Color, orientation: f32) -> Self {
-        Self {
-            rect,
-            color: Some(color),
-            sprite: None,
-            orientation,
-        }
-    }
-
-    pub fn with_sprite(
-        rect: Rect,
-        sprite: Sprite,
-        orientation: f32,
-    ) -> Self {
-        Self {
-            rect,
-            color: None,
-            sprite: Some(sprite),
-            orientation,
-        }
-    }
 }
 
 struct PrimitiveRenderer {
@@ -402,8 +337,8 @@ impl PrimitiveRenderer {
     }
 
     fn push_primitive(&mut self, primitive: &DrawPrimitive) {
-        self.a_xywh.push_data(&primitive.rect.to_xywh());
         self.a_orientation.push_data(&[primitive.orientation]);
+        self.a_xywh.push_data(&primitive.rect.to_xywh());
 
         if let Some(sprite) = &primitive.sprite {
             self.a_uvwh.push_data(&sprite.to_uvwh());

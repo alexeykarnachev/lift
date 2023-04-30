@@ -1,3 +1,4 @@
+#![allow(unused_mut)]
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
@@ -74,7 +75,7 @@ impl World {
                     AnimatedSprite::from_atlas(
                         &sprite_atlas,
                         "knight_idle",
-                        2.0,
+                        0.5,
                     ),
                 );
                 animator.add(
@@ -82,7 +83,7 @@ impl World {
                     AnimatedSprite::from_atlas(
                         &sprite_atlas,
                         "knight_attack",
-                        2.0,
+                        0.35,
                     ),
                 );
                 animator.add(
@@ -90,14 +91,14 @@ impl World {
                     AnimatedSprite::from_atlas(
                         &sprite_atlas,
                         "knight_run",
-                        2.0,
+                        0.5,
                     ),
                 );
 
                 let enemy = Enemy {
                     size: Vec2::new(0.5, 0.8),
                     position: position,
-                    max_speed: 2.0,
+                    max_speed: 0.5,
                     weapon: weapon,
                     animator: animator,
                 };
@@ -160,8 +161,13 @@ impl World {
             let n_enemies = self.enemies[floor.idx].len();
             let shaft_width = self.get_shaft_world_rect().get_size().x;
             let is_enemy_in_lift = (0..n_enemies).any(|enemy_idx| {
-                let rect = self.get_enemy_world_rect(floor.idx, enemy_idx);
-                let x = rect.bot_left.x.abs().min(rect.top_right.x.abs());
+                let collider =
+                    self.get_enemy_collider(floor.idx, enemy_idx);
+                let x = collider
+                    .bot_left
+                    .x
+                    .abs()
+                    .min(collider.top_right.x.abs());
                 x <= 0.5 * shaft_width
             });
 
@@ -199,22 +205,21 @@ impl World {
         let player_width = self.player.size.x;
         let mut damage = 0.0;
         for enemy in self.enemies[floor_idx].iter_mut() {
-            // let dist = player_position.x - enemy.position.x;
-            // let attack_dist =
-            //     enemy.weapon.range + 0.5 * (player_width + enemy.size.x);
-            // if dist.abs() > attack_dist {
-            //     let step = dt * enemy.max_speed * dist.signum();
-            //     enemy.position.x += step;
-            //     enemy.animator.play("run");
-            // } else if enemy.weapon.cooldown >= 1.0 / enemy.weapon.speed {
-            //     enemy.weapon.cooldown = 0.0;
-            //     damage += enemy.weapon.damage;
-            //     enemy.animator.play("attack");
-            // } else {
-            //     enemy.animator.play("idle");
-            // }
+            let dist = player_position.x - enemy.position.x;
+            let attack_dist =
+                enemy.weapon.range + 0.5 * (player_width + enemy.size.x);
+            if dist.abs() > attack_dist {
+                let step = dt * enemy.max_speed * dist.signum();
+                enemy.position.x += step;
+                enemy.animator.play("run");
+            } else if enemy.weapon.cooldown >= 1.0 / enemy.weapon.speed {
+                enemy.weapon.cooldown = 0.0;
+                damage += enemy.weapon.damage;
+                enemy.animator.play("attack");
+            } else {
+                enemy.animator.play("idle");
+            }
 
-            enemy.animator.play("attack");
             enemy.animator.update(dt);
             enemy.weapon.cooldown += dt;
         }
@@ -317,7 +322,7 @@ impl World {
         }
     }
 
-    pub fn get_enemy_world_rect(
+    pub fn get_enemy_collider(
         &self,
         floor_idx: usize,
         enemy_idx: usize,
@@ -334,14 +339,25 @@ impl World {
         }
     }
 
-    pub fn get_enemy_sprite(
+    pub fn get_enemy_draw_primitive(
         &self,
         floor_idx: usize,
         enemy_idx: usize,
-    ) -> Sprite {
+    ) -> DrawPrimitive {
         let enemy = &self.enemies[floor_idx][enemy_idx];
+        let sprite = *enemy.animator.get_sprite();
+        let collider = self.get_enemy_collider(floor_idx, enemy_idx);
 
-        *enemy.animator.get_sprite()
+        let width = sprite.w;
+        let height = sprite.h;
+        let size = Vec2::new(width, height).scale(0.025);
+        let center = Vec2::new(
+            collider.get_center().x,
+            collider.bot_left.y + size.y * 0.5,
+        );
+        let rect = Rect::from_center(center, size);
+
+        DrawPrimitive::with_sprite(rect, sprite, 0.0)
     }
 }
 
@@ -466,8 +482,6 @@ pub struct Sprite {
     pub v: f32,
     pub w: f32,
     pub h: f32,
-    pub x_scale: f32,
-    pub y_scale: f32,
 }
 
 impl Sprite {
@@ -582,6 +596,73 @@ impl Animator {
             .get_mut(self.current_animation)
             .unwrap()
             .update(dt);
+    }
+}
+
+pub struct Color {
+    r: f32,
+    g: f32,
+    b: f32,
+    a: f32,
+}
+
+impl Color {
+    pub fn new(r: f32, g: f32, b: f32, a: f32) -> Self {
+        Self { r, g, b, a }
+    }
+
+    pub fn new_gray(c: f32, a: f32) -> Self {
+        Self {
+            r: c,
+            g: c,
+            b: c,
+            a: a,
+        }
+    }
+
+    pub fn to_array(&self) -> [f32; 4] {
+        [self.r, self.g, self.b, self.a]
+    }
+
+    pub fn lerp(&self, other: &Self, k: f32) -> Self {
+        let k_other = 1.0 - k;
+        Self {
+            r: k * self.r + k_other * other.r,
+            g: k * self.g + k_other * other.g,
+            b: k * self.b + k_other * other.b,
+            a: k * self.a + k_other * other.a,
+        }
+    }
+}
+
+pub struct DrawPrimitive {
+    pub rect: Rect,
+    pub color: Option<Color>,
+    pub sprite: Option<Sprite>,
+    pub orientation: f32,
+}
+
+impl DrawPrimitive {
+    pub fn with_color(rect: Rect, color: Color, orientation: f32) -> Self {
+        Self {
+            rect,
+            color: Some(color),
+            sprite: None,
+            orientation,
+        }
+    }
+
+    pub fn with_sprite(
+        rect: Rect,
+        sprite: Sprite,
+        orientation: f32,
+    ) -> Self {
+        Self {
+            rect,
+            color: None,
+            sprite: Some(sprite),
+            orientation,
+        }
     }
 }
 

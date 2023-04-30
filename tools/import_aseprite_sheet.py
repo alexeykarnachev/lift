@@ -59,21 +59,21 @@ if __name__ == "__main__":
             source_size = frame["sourceSize"]
             frame = frame["frame"]
 
-            frame["y"] += cursor
+            frame["x"] += 1
+            frame["y"] += 1 + cursor
+            frame["w"] -= 2
+            frame["h"] -= 2
 
-            u = frame["x"] / atlas_width
-            v = 1.0 - frame["y"] / atlas_height
-            w = frame["w"] / atlas_width
-            h = frame["h"] / atlas_height
-            x_scale = frame["w"] / source_size["w"]
-            y_scale = frame["h"] / source_size["h"]
+            u = frame["x"]
+            v = atlas_height - frame["y"]
+            w = frame["w"]
+            h = frame["h"]
+
             sprite = {
                 "u": u,
                 "v": v,
                 "w": w,
                 "h": h,
-                "x_scale": x_scale,
-                "y_scale": y_scale,
             }
 
             atlas_meta[sprite_name].append(sprite)
