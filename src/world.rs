@@ -199,21 +199,22 @@ impl World {
         let player_width = self.player.size.x;
         let mut damage = 0.0;
         for enemy in self.enemies[floor_idx].iter_mut() {
-            let dist = player_position.x - enemy.position.x;
-            let attack_dist =
-                enemy.weapon.range + 0.5 * (player_width + enemy.size.x);
-            if dist.abs() > attack_dist {
-                let step = dt * enemy.max_speed * dist.signum();
-                enemy.position.x += step;
-                enemy.animator.play("run");
-            } else if enemy.weapon.cooldown >= 1.0 / enemy.weapon.speed {
-                enemy.weapon.cooldown = 0.0;
-                damage += enemy.weapon.damage;
-                enemy.animator.play("attack");
-            } else {
-                enemy.animator.play("idle");
-            }
+            // let dist = player_position.x - enemy.position.x;
+            // let attack_dist =
+            //     enemy.weapon.range + 0.5 * (player_width + enemy.size.x);
+            // if dist.abs() > attack_dist {
+            //     let step = dt * enemy.max_speed * dist.signum();
+            //     enemy.position.x += step;
+            //     enemy.animator.play("run");
+            // } else if enemy.weapon.cooldown >= 1.0 / enemy.weapon.speed {
+            //     enemy.weapon.cooldown = 0.0;
+            //     damage += enemy.weapon.damage;
+            //     enemy.animator.play("attack");
+            // } else {
+            //     enemy.animator.play("idle");
+            // }
 
+            enemy.animator.play("attack");
             enemy.animator.update(dt);
             enemy.weapon.cooldown += dt;
         }
@@ -331,6 +332,16 @@ impl World {
             bot_left: center - enemy.size.scale(0.5),
             top_right: center + enemy.size.scale(0.5),
         }
+    }
+
+    pub fn get_enemy_sprite(
+        &self,
+        floor_idx: usize,
+        enemy_idx: usize,
+    ) -> Sprite {
+        let enemy = &self.enemies[floor_idx][enemy_idx];
+
+        *enemy.animator.get_sprite()
     }
 }
 
@@ -459,6 +470,12 @@ pub struct Sprite {
     pub y_scale: f32,
 }
 
+impl Sprite {
+    pub fn to_uvwh(&self) -> [f32; 4] {
+        [self.u, self.v, self.w, self.h]
+    }
+}
+
 #[derive(Deserialize)]
 pub struct SpriteAtlas {
     pub file_name: String,
@@ -553,10 +570,11 @@ impl Animator {
         self.current_animation = animation;
     }
 
-    pub fn get_current(&self) -> &AnimatedSprite {
+    pub fn get_sprite(&self) -> &Sprite {
         self.animation_to_sprite
             .get(self.current_animation)
             .unwrap()
+            .get_current_frame()
     }
 
     pub fn update(&mut self, dt: f32) {

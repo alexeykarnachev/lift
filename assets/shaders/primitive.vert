@@ -6,10 +6,14 @@ struct Camera {
 uniform Camera camera;
 
 layout (location = 0) in vec4 a_xywh;
-layout (location = 1) in vec4 a_rgba;
-layout (location = 2) in float a_orientation;
+layout (location = 1) in vec4 a_uvwh;
+layout (location = 2) in vec4 a_rgba;
+layout (location = 3) in int a_use_tex;
+layout (location = 4) in float a_orientation;
 
+flat out uint vs_use_tex;
 out vec4 vs_rgba;
+out vec2 vs_uv;
 
 vec2 rotate2d(vec2 point, vec2 center, float angle) {
     vec2 p0 = point - center;
@@ -30,13 +34,18 @@ vec2 world2proj(vec2 world_pos, Camera camera) {
 }
 
 void main(void) {
-    vec2 size = a_xywh.zw;
     vec2 pos = a_xywh.xy;
+    vec2 size = a_xywh.zw;
 
     vec2 proj_pos = pos + 0.5 * RECT_IDX_TO_NDC[gl_VertexID] * size;
     proj_pos = rotate2d(proj_pos, pos, a_orientation);
     proj_pos = world2proj(proj_pos, camera);
 
+    vec2 local_uv = RECT_IDX_TO_UV[gl_VertexID];
+    local_uv.y = 1.0 - local_uv.y;
+    vs_uv = a_uvwh.xy + local_uv * vec2(a_uvwh.z, -a_uvwh.w);
+
+    vs_use_tex = a_use_tex;
     vs_rgba = a_rgba;
     gl_Position = vec4(proj_pos, 0.0, 1.0);
 }

@@ -2,7 +2,7 @@
 #![allow(unused_variables)]
 
 use crate::vec::Vec2;
-use crate::world::{Camera, Rect, World, WorldState};
+use crate::world::{Camera, Rect, Sprite, World, WorldState};
 use glow::HasContext;
 use std::fs;
 use std::mem::size_of;
@@ -71,6 +71,7 @@ impl Renderer {
     }
 
     pub fn render(&mut self, world: &World) {
+        self.load_resources(world);
         self.fill_render_queue(world);
 
         self.hdr_resolve_renderer.bind_framebuffer(&self.gl);
@@ -90,6 +91,22 @@ impl Renderer {
         self.hdr_resolve_renderer.render(&self.gl);
 
         self.window.gl_swap_window();
+    }
+
+    pub fn load_resources(&mut self, world: &World) {
+        if self.primitive_renderer.sprite_atlas_tex.is_none() {
+            let tex = create_texture(
+                &self.gl,
+                glow::RGBA as i32,
+                world.sprite_atlas.size[0] as i32,
+                world.sprite_atlas.size[1] as i32,
+                glow::RGBA,
+                glow::UNSIGNED_BYTE,
+                Some(world.sprite_atlas.image.as_bytes()),
+                glow::LINEAR,
+            );
+            self.primitive_renderer.sprite_atlas_tex = Some(tex);
+        }
     }
 
     pub fn fill_render_queue(&mut self, world: &World) {
@@ -112,7 +129,7 @@ impl Renderer {
             let c = 0.5
                 - (0.6 * (floor_idx as f32 - lift_floor_idx).abs())
                     .powf(2.0);
-            self.primitives.push(DrawPrimitive::new(
+            self.primitives.push(DrawPrimitive::with_color(
                 world.get_floor_world_rect(floor_idx),
                 Color::new_gray(c, 1.0),
                 0.0,
@@ -121,7 +138,7 @@ impl Renderer {
     }
 
     fn push_shaft(&mut self, world: &World) {
-        self.primitives.push(DrawPrimitive::new(
+        self.primitives.push(DrawPrimitive::with_color(
             world.get_shaft_world_rect(),
             Color::new_gray(0.0, 1.0),
             0.0,
@@ -129,7 +146,7 @@ impl Renderer {
     }
 
     fn push_lift(&mut self, world: &World) {
-        self.primitives.push(DrawPrimitive::new(
+        self.primitives.push(DrawPrimitive::with_color(
             world.get_lift_world_rect(),
             Color::new_gray(0.7, 1.0),
             0.0,
@@ -138,7 +155,7 @@ impl Renderer {
 
     fn push_player(&mut self, world: &World) {
         let rect = world.get_player_world_rect();
-        self.primitives.push(DrawPrimitive::new(
+        self.primitives.push(DrawPrimitive::with_color(
             rect,
             Color::new(0.2, 0.5, 0.1, 1.0),
             0.0,
@@ -154,11 +171,9 @@ impl Renderer {
         let n_enemies = world.enemies[floor_idx].len();
         for enemy_idx in 0..n_enemies {
             let rect = world.get_enemy_world_rect(floor_idx, enemy_idx);
-            self.primitives.push(DrawPrimitive::new(
-                rect,
-                Color::new(0.5, 0.2, 0.1, 1.0),
-                0.0,
-            ));
+            let sprite = world.get_enemy_sprite(floor_idx, enemy_idx);
+            self.primitives
+                .push(DrawPrimitive::with_sprite(rect, sprite, 0.0));
             self.push_healthbar(rect, 0.5);
         }
     }
@@ -168,7 +183,7 @@ impl Renderer {
         let center = entity_rect.get_center()
             + Vec2::new(0.0, 0.5 * entity_rect.get_size().y + size.y);
         let rect = Rect::from_center(center, size);
-        self.primitives.push(DrawPrimitive::new(
+        self.primitives.push(DrawPrimitive::with_color(
             rect,
             Color::new_gray(0.2, 1.0),
             0.0,
@@ -181,12 +196,13 @@ impl Renderer {
         let dead_color = Color::new(1.0, 0.0, 0.0, 1.0);
         let color = alive_color.lerp(&dead_color, ratio);
         rect.top_right.x -= size.x * (1.0 - ratio);
-        self.primitives.push(DrawPrimitive::new(rect, color, 0.0));
+        self.primitives
+            .push(DrawPrimitive::with_color(rect, color, 0.0));
     }
 
     fn push_game_over_screen(&mut self, world: &World) {
         // let rect = world.ui.game_over.rect;
-        // self.primitives.push(DrawPrimitive::new(rect, Color::new_gray(0.1, 1.0), 0.0));
+        // self.primitives.push(DrawPrimitive::with_color(rect, Color::new_gray(0.1, 1.0), 0.0));
     }
 
     fn bind_screen_framebuffer(&self) {
@@ -238,15 +254,30 @@ impl Color {
 
 struct DrawPrimitive {
     pub rect: Rect,
-    pub color: Color,
+    pub color: Option<Color>,
+    pub sprite: Option<Sprite>,
     pub orientation: f32,
 }
 
 impl DrawPrimitive {
-    pub fn new(rect: Rect, color: Color, orientation: f32) -> Self {
+    pub fn with_color(rect: Rect, color: Color, orientation: f32) -> Self {
         Self {
             rect,
-            color,
+            color: Some(color),
+            sprite: None,
+            orientation,
+        }
+    }
+
+    pub fn with_sprite(
+        rect: Rect,
+        sprite: Sprite,
+        orientation: f32,
+    ) -> Self {
+        Self {
+            rect,
+            color: None,
+            sprite: Some(sprite),
             orientation,
         }
     }
@@ -255,9 +286,13 @@ impl DrawPrimitive {
 struct PrimitiveRenderer {
     program: glow::NativeProgram,
 
+    sprite_atlas_tex: Option<glow::Texture>,
+
     vao: glow::NativeVertexArray,
     a_xywh: Attribute,
+    a_uvwh: Attribute,
     a_rgba: Attribute,
+    a_use_tex: Attribute,
     a_orientation: Attribute,
 }
 
@@ -284,11 +319,29 @@ impl PrimitiveRenderer {
             MAX_N_INSTANCED_PRIMITIVES,
             1,
         );
+        let a_uvwh = Attribute::new(
+            gl,
+            program,
+            4,
+            "a_uvwh",
+            glow::FLOAT,
+            MAX_N_INSTANCED_PRIMITIVES,
+            1,
+        );
         let a_rgba = Attribute::new(
             gl,
             program,
             4,
             "a_rgba",
+            glow::FLOAT,
+            MAX_N_INSTANCED_PRIMITIVES,
+            1,
+        );
+        let a_use_tex = Attribute::new(
+            gl,
+            program,
+            1,
+            "a_use_tex",
             glow::FLOAT,
             MAX_N_INSTANCED_PRIMITIVES,
             1,
@@ -305,9 +358,12 @@ impl PrimitiveRenderer {
 
         Self {
             program,
+            sprite_atlas_tex: None,
             vao,
             a_xywh,
+            a_uvwh,
             a_rgba,
+            a_use_tex,
             a_orientation,
         }
     }
@@ -322,6 +378,14 @@ impl PrimitiveRenderer {
 
         unsafe {
             gl.use_program(Some(self.program));
+            gl.enable(glow::BLEND);
+            gl.blend_func(glow::SRC_ALPHA, glow::ONE_MINUS_SRC_ALPHA);
+
+            if let Some(tex) = self.sprite_atlas_tex {
+                set_uniform_1_i32(gl, self.program, "tex", 0);
+                gl.active_texture(glow::TEXTURE0 + 0);
+                gl.bind_texture(glow::TEXTURE_2D, Some(tex));
+            }
         }
 
         self.sync_data(gl);
@@ -339,8 +403,21 @@ impl PrimitiveRenderer {
 
     fn push_primitive(&mut self, primitive: &DrawPrimitive) {
         self.a_xywh.push_data(&primitive.rect.to_xywh());
-        self.a_rgba.push_data(&primitive.color.to_array());
         self.a_orientation.push_data(&[primitive.orientation]);
+
+        if let Some(sprite) = &primitive.sprite {
+            self.a_uvwh.push_data(&sprite.to_uvwh());
+            self.a_use_tex.push_data(&[1.0]);
+        } else {
+            self.a_uvwh.push_data(&[0.0; 4]);
+            self.a_use_tex.push_data(&[0.0]);
+        }
+
+        if let Some(color) = &primitive.color {
+            self.a_rgba.push_data(&color.to_array());
+        } else {
+            self.a_rgba.push_data(&[0.0; 4]);
+        }
     }
 
     fn sync_data(&mut self, gl: &glow::Context) {
@@ -349,6 +426,8 @@ impl PrimitiveRenderer {
         }
         self.a_xywh.sync_data(gl);
         self.a_rgba.sync_data(gl);
+        self.a_uvwh.sync_data(gl);
+        self.a_use_tex.sync_data(gl);
         self.a_orientation.sync_data(gl);
     }
 }
