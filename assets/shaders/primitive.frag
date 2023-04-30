@@ -1,6 +1,6 @@
 in vec4 vs_rgba;
 in vec2 vs_uv;
-flat in uint vs_use_tex;
+flat in float vs_use_tex;
 
 uniform sampler2D tex;
 

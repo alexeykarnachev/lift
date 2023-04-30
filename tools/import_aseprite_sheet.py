@@ -64,14 +64,14 @@ if __name__ == "__main__":
             frame["w"] -= 2
             frame["h"] -= 2
 
-            u = frame["x"]
-            v = atlas_height - frame["y"]
+            x = frame["x"]
+            y = atlas_height - frame["y"]
             w = frame["w"]
             h = frame["h"]
 
             sprite = {
-                "u": u,
-                "v": v,
+                "x": x,
+                "y": y,
                 "w": w,
                 "h": h,
             }

@@ -154,27 +154,18 @@ impl Renderer {
     }
 
     fn push_player(&mut self, world: &World) {
-        let collider = world.get_player_collider_rect();
-        let primitive = DrawPrimitive::from_sprite(
-            world.player.animator.get_sprite(),
-            collider.get_bot_center(),
-        );
-        self.primitives.push(primitive);
+        self.primitives.push(world.get_player_draw_primitive());
 
         let ratio = world.player.health / world.player.max_health;
-        self.push_healthbar(collider, ratio);
+        self.push_healthbar(world.get_player_collider_rect(), ratio);
     }
 
     fn push_enemies(&mut self, world: &World) {
         let floor = world.get_lift_nearest_floor();
         for enemy in world.enemies[floor.idx].iter() {
-            let collider = enemy.get_collider_rect();
-            let primitive = DrawPrimitive::from_sprite(
-                enemy.animator.get_sprite(),
-                collider.get_bot_center(),
-            );
-            self.primitives.push(primitive);
-            self.push_healthbar(collider, 0.5);
+            self.primitives.push(enemy.get_draw_primitive());
+
+            self.push_healthbar(enemy.get_collider_rect(), 0.5);
         }
     }
 
@@ -227,6 +218,7 @@ struct PrimitiveRenderer {
     a_rgba: Attribute,
     a_use_tex: Attribute,
     a_orientation: Attribute,
+    a_flip: Attribute,
 }
 
 impl PrimitiveRenderer {
@@ -288,6 +280,15 @@ impl PrimitiveRenderer {
             MAX_N_INSTANCED_PRIMITIVES,
             1,
         );
+        let a_flip = Attribute::new(
+            gl,
+            program,
+            1,
+            "a_flip",
+            glow::FLOAT,
+            MAX_N_INSTANCED_PRIMITIVES,
+            1,
+        );
 
         Self {
             program,
@@ -298,6 +299,7 @@ impl PrimitiveRenderer {
             a_rgba,
             a_use_tex,
             a_orientation,
+            a_flip,
         }
     }
 
@@ -336,10 +338,11 @@ impl PrimitiveRenderer {
 
     fn push_primitive(&mut self, primitive: &DrawPrimitive) {
         self.a_orientation.push_data(&[primitive.orientation]);
+        self.a_flip.push_data(&[(primitive.flip as i32) as f32]);
         self.a_world_xywh.push_data(&primitive.rect.to_world_xywh());
 
         if let Some(sprite) = &primitive.sprite {
-            self.a_tex_uvwh.push_data(&sprite.to_tex_uvwh());
+            self.a_tex_uvwh.push_data(&sprite.to_tex_xywh());
             self.a_use_tex.push_data(&[1.0]);
         } else {
             self.a_tex_uvwh.push_data(&[0.0; 4]);
@@ -362,6 +365,7 @@ impl PrimitiveRenderer {
         self.a_tex_uvwh.sync_data(gl);
         self.a_use_tex.sync_data(gl);
         self.a_orientation.sync_data(gl);
+        self.a_flip.sync_data(gl);
     }
 }
 

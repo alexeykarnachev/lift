@@ -227,6 +227,7 @@ impl World {
                 enemy.animator.play("attack");
             }
 
+            enemy.flip = dist < 0.0;
             enemy.animator.update(dt);
             enemy.weapon.cooldown += dt;
         }
@@ -327,6 +328,14 @@ impl World {
             bot_left: center - self.player.size.scale(0.5),
             top_right: center + self.player.size.scale(0.5),
         }
+    }
+
+    pub fn get_player_draw_primitive(&self) -> DrawPrimitive {
+        DrawPrimitive::from_sprite(
+            self.player.animator.get_sprite(),
+            self.get_player_collider_rect().get_bot_center(),
+            false,
+        )
     }
 }
 
@@ -440,6 +449,7 @@ pub struct Player {
 pub struct Enemy {
     pub size: Vec2<f32>,
     pub position: Vec2<f32>,
+    pub flip: bool,
     floor_y: f32,
 
     pub max_speed: f32,
@@ -460,6 +470,7 @@ impl Enemy {
         Self {
             size,
             position: Vec2::new(x, 0.0),
+            flip: false,
             floor_y,
             max_speed,
             weapon,
@@ -471,6 +482,14 @@ impl Enemy {
         let position = self.position + Vec2::new(0.0, self.floor_y);
 
         Rect::from_bot_center(position, self.size)
+    }
+
+    pub fn get_draw_primitive(&self) -> DrawPrimitive {
+        DrawPrimitive::from_sprite(
+            self.animator.get_sprite(),
+            self.get_collider_rect().get_bot_center(),
+            self.flip,
+        )
     }
 }
 
@@ -490,8 +509,8 @@ pub struct Floor {
 
 #[derive(Deserialize, Copy, Clone)]
 pub struct Sprite {
-    pub u: f32,
-    pub v: f32,
+    pub x: f32,
+    pub y: f32,
     pub w: f32,
     pub h: f32,
 
@@ -500,8 +519,8 @@ pub struct Sprite {
 }
 
 impl Sprite {
-    pub fn to_tex_uvwh(&self) -> [f32; 4] {
-        [self.u, self.v, self.w, self.h]
+    pub fn to_tex_xywh(&self) -> [f32; 4] {
+        [self.x, self.y, self.w, self.h]
     }
 }
 
@@ -661,6 +680,7 @@ pub struct DrawPrimitive {
     pub color: Option<Color>,
     pub sprite: Option<Sprite>,
     pub orientation: f32,
+    pub flip: bool,
 }
 
 impl DrawPrimitive {
@@ -670,10 +690,15 @@ impl DrawPrimitive {
             color: Some(color),
             sprite: None,
             orientation,
+            flip: false,
         }
     }
 
-    pub fn from_sprite(sprite: Sprite, position: Vec2<f32>) -> Self {
+    pub fn from_sprite(
+        sprite: Sprite,
+        position: Vec2<f32>,
+        flip: bool,
+    ) -> Self {
         let size = Vec2::new(sprite.w, sprite.h).scale(sprite.scale);
         let rect = Rect::from_bot_center(position, size);
 
@@ -682,6 +707,7 @@ impl DrawPrimitive {
             color: None,
             sprite: Some(sprite),
             orientation: 0.0,
+            flip,
         }
     }
 }

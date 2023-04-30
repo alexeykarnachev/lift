@@ -8,10 +8,11 @@ uniform Camera camera;
 layout (location = 0) in vec4 a_world_xywh;
 layout (location = 1) in vec4 a_tex_uvwh;
 layout (location = 2) in vec4 a_rgba;
-layout (location = 3) in int a_use_tex;
+layout (location = 3) in float a_use_tex;
 layout (location = 4) in float a_orientation;
+layout (location = 5) in float a_flip;
 
-flat out uint vs_use_tex;
+flat out float vs_use_tex;
 out vec4 vs_rgba;
 out vec2 vs_uv;
 
@@ -43,6 +44,9 @@ void main(void) {
 
     vec2 local_uv = RECT_IDX_TO_UV[gl_VertexID];
     local_uv.y = 1.0 - local_uv.y;
+    if (a_flip > 0.0) {
+        local_uv.x = 1.0 - local_uv.x;
+    }
     vs_uv = a_tex_uvwh.xy + local_uv * vec2(a_tex_uvwh.z, -a_tex_uvwh.w);
 
     vs_use_tex = a_use_tex;
