@@ -55,9 +55,7 @@ impl World {
             let mut floor_enemies = Vec::with_capacity(n_enemies);
             for enemy_idx in 0..n_enemies {
                 let side = if enemy_idx % 2 == 1 { -1.0 } else { 1.0 };
-                let position =
-                    Vec2::new(2.0 + 2.0 * enemy_idx as f32, 0.0)
-                        .scale(side);
+                let x = (2.0 + 2.0 * enemy_idx as f32) * side;
                 let weapon = Weapon {
                     range: 0.2,
                     speed: 1.0,
@@ -69,6 +67,7 @@ impl World {
                         &sprite_atlas,
                         "knight_idle",
                         2.0,
+                        0.025,
                     ));
                 animator.add(
                     "idle",
@@ -76,6 +75,7 @@ impl World {
                         &sprite_atlas,
                         "knight_idle",
                         0.5,
+                        0.025,
                     ),
                 );
                 animator.add(
@@ -83,7 +83,8 @@ impl World {
                     AnimatedSprite::from_atlas(
                         &sprite_atlas,
                         "knight_attack",
-                        weapon.speed,
+                        0.5,
+                        0.025,
                     ),
                 );
                 animator.add(
@@ -92,17 +93,18 @@ impl World {
                         &sprite_atlas,
                         "knight_run",
                         0.5,
+                        0.025,
                     ),
                 );
 
-                let enemy = Enemy {
-                    size: Vec2::new(0.5, 0.8),
-                    position,
+                let enemy = Enemy::new(
+                    Vec2::new(0.5, 0.8),
+                    x,
                     floor_y,
-                    max_speed: 0.5,
+                    1.8,
                     weapon,
                     animator,
-                };
+                );
                 floor_enemies.push(enemy);
             }
 
@@ -119,9 +121,10 @@ impl World {
             &sprite_atlas,
             "knight_idle",
             2.0,
+            0.035,
         ));
         let player = Player {
-            size: lift.size * Vec2::new(0.25, 0.4),
+            size: lift.size * Vec2::new(0.25, 0.5),
             position: Vec2::new(0.0, 0.0),
             max_health: 1000.0,
             health: 1000.0,
@@ -437,7 +440,7 @@ pub struct Player {
 pub struct Enemy {
     pub size: Vec2<f32>,
     pub position: Vec2<f32>,
-    pub floor_y: f32,
+    floor_y: f32,
 
     pub max_speed: f32,
     pub weapon: Weapon,
@@ -446,6 +449,24 @@ pub struct Enemy {
 }
 
 impl Enemy {
+    pub fn new(
+        size: Vec2<f32>,
+        x: f32,
+        floor_y: f32,
+        max_speed: f32,
+        weapon: Weapon,
+        animator: Animator,
+    ) -> Self {
+        Self {
+            size,
+            position: Vec2::new(x, 0.0),
+            floor_y,
+            max_speed,
+            weapon,
+            animator,
+        }
+    }
+
     pub fn get_collider_rect(&self) -> Rect {
         let position = self.position + Vec2::new(0.0, self.floor_y);
 
@@ -473,6 +494,9 @@ pub struct Sprite {
     pub v: f32,
     pub w: f32,
     pub h: f32,
+
+    #[serde(skip)]
+    pub scale: f32,
 }
 
 impl Sprite {
@@ -511,6 +535,7 @@ impl SpriteAtlas {
 pub struct AnimatedSprite {
     pub name: &'static str,
     pub duration: f32,
+    pub scale: f32,
     current_duration: f32,
 
     frames: Vec<Sprite>,
@@ -521,6 +546,7 @@ impl AnimatedSprite {
         atlas: &SpriteAtlas,
         name: &'static str,
         duration: f32,
+        scale: f32,
     ) -> Self {
         let frames = atlas.sprites.get(name).unwrap_or_else(|| {
             panic!("There is no such sprite in the sprite atlas: {}", name)
@@ -529,6 +555,7 @@ impl AnimatedSprite {
         Self {
             name,
             duration,
+            scale,
             current_duration: 0.0,
             frames: frames.to_vec(),
         }
@@ -538,12 +565,15 @@ impl AnimatedSprite {
         self.current_duration += dt;
     }
 
-    pub fn get_current_frame(&self) -> &Sprite {
+    pub fn get_current_frame(&self) -> Sprite {
         let mut cycle = self.current_duration / self.duration;
         cycle -= cycle.floor();
         let frame_idx = (cycle * self.frames.len() as f32).floor();
 
-        &self.frames[frame_idx as usize]
+        let mut frame = self.frames[frame_idx as usize];
+        frame.scale = self.scale;
+
+        frame
     }
 }
 
@@ -575,7 +605,7 @@ impl Animator {
         self.current_animation = animation;
     }
 
-    pub fn get_sprite(&self) -> &Sprite {
+    pub fn get_sprite(&self) -> Sprite {
         self.animation_to_sprite
             .get(self.current_animation)
             .unwrap()
@@ -643,14 +673,14 @@ impl DrawPrimitive {
         }
     }
 
-    pub fn from_sprite(sprite: &Sprite, position: Vec2<f32>) -> Self {
-        let size = Vec2::new(sprite.w, sprite.h).scale(0.025);
+    pub fn from_sprite(sprite: Sprite, position: Vec2<f32>) -> Self {
+        let size = Vec2::new(sprite.w, sprite.h).scale(sprite.scale);
         let rect = Rect::from_bot_center(position, size);
 
         Self {
             rect,
             color: None,
-            sprite: Some(*sprite),
+            sprite: Some(sprite),
             orientation: 0.0,
         }
     }

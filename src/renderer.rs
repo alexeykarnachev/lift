@@ -161,19 +161,20 @@ impl Renderer {
         );
         self.primitives.push(primitive);
 
-        // let ratio = world.player.health / world.player.max_health;
-        // self.push_healthbar(collider, ratio);
+        let ratio = world.player.health / world.player.max_health;
+        self.push_healthbar(collider, ratio);
     }
 
     fn push_enemies(&mut self, world: &World) {
         let floor = world.get_lift_nearest_floor();
         for enemy in world.enemies[floor.idx].iter() {
+            let collider = enemy.get_collider_rect();
             let primitive = DrawPrimitive::from_sprite(
                 enemy.animator.get_sprite(),
-                enemy.get_collider_rect().get_bot_center(),
+                collider.get_bot_center(),
             );
             self.primitives.push(primitive);
-            // self.push_healthbar(rect, 0.5);
+            self.push_healthbar(collider, 0.5);
         }
     }
 
