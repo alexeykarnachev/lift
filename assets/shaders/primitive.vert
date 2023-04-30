@@ -1,12 +1,12 @@
 struct Camera {
-    vec4 xywh;
+    vec4 world_xywh;
     float orientation;
 };
 
 uniform Camera camera;
 
-layout (location = 0) in vec4 a_xywh;
-layout (location = 1) in vec4 a_uvwh;
+layout (location = 0) in vec4 a_world_xywh;
+layout (location = 1) in vec4 a_tex_uvwh;
 layout (location = 2) in vec4 a_rgba;
 layout (location = 3) in int a_use_tex;
 layout (location = 4) in float a_orientation;
@@ -25,17 +25,17 @@ vec2 rotate2d(vec2 point, vec2 center, float angle) {
 }
 
 vec2 world2proj(vec2 world_pos, Camera camera) {
-    vec2 half_size = vec2(0.5 * camera.xywh.zw);
+    vec2 half_size = vec2(0.5 * camera.world_xywh.zw);
 
-    vec2 view_pos = rotate2d(world_pos, camera.xywh.xy, -camera.orientation);
-    view_pos -= camera.xywh.xy;
+    vec2 view_pos = rotate2d(world_pos, camera.world_xywh.xy, -camera.orientation);
+    view_pos -= camera.world_xywh.xy;
 
     return view_pos / half_size;
 }
 
 void main(void) {
-    vec2 pos = a_xywh.xy;
-    vec2 size = a_xywh.zw;
+    vec2 pos = a_world_xywh.xy;
+    vec2 size = a_world_xywh.zw;
 
     vec2 proj_pos = pos + 0.5 * RECT_IDX_TO_NDC[gl_VertexID] * size;
     proj_pos = rotate2d(proj_pos, pos, a_orientation);
@@ -43,7 +43,7 @@ void main(void) {
 
     vec2 local_uv = RECT_IDX_TO_UV[gl_VertexID];
     local_uv.y = 1.0 - local_uv.y;
-    vs_uv = a_uvwh.xy + local_uv * vec2(a_uvwh.z, -a_uvwh.w);
+    vs_uv = a_tex_uvwh.xy + local_uv * vec2(a_tex_uvwh.z, -a_tex_uvwh.w);
 
     vs_use_tex = a_use_tex;
     vs_rgba = a_rgba;

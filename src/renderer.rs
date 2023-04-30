@@ -154,15 +154,15 @@ impl Renderer {
     }
 
     fn push_player(&mut self, world: &World) {
-        let rect = world.get_player_world_rect();
-        self.primitives.push(DrawPrimitive::with_color(
-            rect,
-            Color::new(0.2, 0.5, 0.1, 1.0),
-            0.0,
-        ));
+        let collider = world.get_player_collider_rect();
+        let primitive = DrawPrimitive::from_sprite(
+            world.player.animator.get_sprite(),
+            collider.get_bot_center(),
+        );
+        self.primitives.push(primitive);
 
-        let ratio = world.player.health / world.player.max_health;
-        self.push_healthbar(rect, ratio);
+        // let ratio = world.player.health / world.player.max_health;
+        // self.push_healthbar(collider, ratio);
     }
 
     fn push_enemies(&mut self, world: &World) {
@@ -170,20 +170,22 @@ impl Renderer {
         let floor_idx = floor.idx;
         let n_enemies = world.enemies[floor_idx].len();
         for enemy_idx in 0..n_enemies {
-            self.primitives.push(
-                world.get_enemy_draw_primitive(floor_idx, enemy_idx),
+            let collider =
+                world.get_enemy_collider_rect(floor_idx, enemy_idx);
+            let animator = &world.enemies[floor_idx][enemy_idx].animator;
+            let primitive = DrawPrimitive::from_sprite(
+                animator.get_sprite(),
+                collider.get_bot_center(),
             );
+            self.primitives.push(primitive);
             // self.push_healthbar(rect, 0.5);
         }
     }
 
-    fn push_healthbar(&mut self, entity_rect: Rect, ratio: f32) {
+    fn push_healthbar(&mut self, collider: Rect, ratio: f32) {
         let size = Vec2::new(0.9, 0.15);
-        let center = entity_rect.get_center()
-            + Vec2::new(
-                0.0,
-                0.5 * entity_rect.get_size().y + size.y * 2.0,
-            );
+        let center = collider.get_center()
+            + Vec2::new(0.0, 0.5 * collider.get_size().y + size.y * 2.0);
         let rect = Rect::from_center(center, size);
         self.primitives.push(DrawPrimitive::with_color(
             rect,
@@ -224,8 +226,8 @@ struct PrimitiveRenderer {
     sprite_atlas_tex: Option<glow::Texture>,
 
     vao: glow::NativeVertexArray,
-    a_xywh: Attribute,
-    a_uvwh: Attribute,
+    a_world_xywh: Attribute,
+    a_tex_uvwh: Attribute,
     a_rgba: Attribute,
     a_use_tex: Attribute,
     a_orientation: Attribute,
@@ -245,20 +247,20 @@ impl PrimitiveRenderer {
             gl.bind_vertex_array(Some(vao));
         }
 
-        let a_xywh = Attribute::new(
+        let a_world_xywh = Attribute::new(
             gl,
             program,
             4,
-            "a_xywh",
+            "a_world_xywh",
             glow::FLOAT,
             MAX_N_INSTANCED_PRIMITIVES,
             1,
         );
-        let a_uvwh = Attribute::new(
+        let a_tex_uvwh = Attribute::new(
             gl,
             program,
             4,
-            "a_uvwh",
+            "a_tex_uvwh",
             glow::FLOAT,
             MAX_N_INSTANCED_PRIMITIVES,
             1,
@@ -295,8 +297,8 @@ impl PrimitiveRenderer {
             program,
             sprite_atlas_tex: None,
             vao,
-            a_xywh,
-            a_uvwh,
+            a_world_xywh,
+            a_tex_uvwh,
             a_rgba,
             a_use_tex,
             a_orientation,
@@ -338,13 +340,13 @@ impl PrimitiveRenderer {
 
     fn push_primitive(&mut self, primitive: &DrawPrimitive) {
         self.a_orientation.push_data(&[primitive.orientation]);
-        self.a_xywh.push_data(&primitive.rect.to_xywh());
+        self.a_world_xywh.push_data(&primitive.rect.to_world_xywh());
 
         if let Some(sprite) = &primitive.sprite {
-            self.a_uvwh.push_data(&sprite.to_uvwh());
+            self.a_tex_uvwh.push_data(&sprite.to_tex_uvwh());
             self.a_use_tex.push_data(&[1.0]);
         } else {
-            self.a_uvwh.push_data(&[0.0; 4]);
+            self.a_tex_uvwh.push_data(&[0.0; 4]);
             self.a_use_tex.push_data(&[0.0]);
         }
 
@@ -359,9 +361,9 @@ impl PrimitiveRenderer {
         unsafe {
             gl.bind_vertex_array(Some(self.vao));
         }
-        self.a_xywh.sync_data(gl);
+        self.a_world_xywh.sync_data(gl);
         self.a_rgba.sync_data(gl);
-        self.a_uvwh.sync_data(gl);
+        self.a_tex_uvwh.sync_data(gl);
         self.a_use_tex.sync_data(gl);
         self.a_orientation.sync_data(gl);
     }
@@ -671,9 +673,10 @@ fn set_uniform_camera(
     camera: &Camera,
 ) {
     let view_size = camera.get_view_size();
-    let xywh = [camera.position.to_array(), view_size.to_array()].concat();
+    let world_xywh =
+        [camera.position.to_array(), view_size.to_array()].concat();
 
-    set_uniform_4_f32(gl, program, "camera.xywh", &xywh);
+    set_uniform_4_f32(gl, program, "camera.world_xywh", &world_xywh);
     set_uniform_1_f32(
         gl,
         program,

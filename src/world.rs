@@ -83,7 +83,7 @@ impl World {
                     AnimatedSprite::from_atlas(
                         &sprite_atlas,
                         "knight_attack",
-                        0.35,
+                        weapon.speed,
                     ),
                 );
                 animator.add(
@@ -114,11 +114,17 @@ impl World {
         let lift = Lift::from_floor(floor, max_speed);
         let shaft_width = lift.size.x * 1.2;
 
+        let animator = Animator::new(AnimatedSprite::from_atlas(
+            &sprite_atlas,
+            "knight_idle",
+            2.0,
+        ));
         let player = Player {
             size: lift.size * Vec2::new(0.25, 0.4),
             position: Vec2::new(0.0, 0.0),
             max_health: 1000.0,
             health: 1000.0,
+            animator: animator,
         };
 
         let state = WorldState::Play;
@@ -162,7 +168,7 @@ impl World {
             let shaft_width = self.get_shaft_world_rect().get_size().x;
             let is_enemy_in_lift = (0..n_enemies).any(|enemy_idx| {
                 let collider =
-                    self.get_enemy_collider(floor.idx, enemy_idx);
+                    self.get_enemy_collider_rect(floor.idx, enemy_idx);
                 let x = collider
                     .bot_left
                     .x
@@ -216,8 +222,6 @@ impl World {
                 enemy.weapon.cooldown = 0.0;
                 damage += enemy.weapon.damage;
                 enemy.animator.play("attack");
-            } else {
-                enemy.animator.play("idle");
             }
 
             enemy.animator.update(dt);
@@ -310,7 +314,7 @@ impl World {
         }
     }
 
-    pub fn get_player_world_rect(&self) -> Rect {
+    pub fn get_player_collider_rect(&self) -> Rect {
         let x = 0.0 + self.player.position.x;
         let local_y = self.player.position.y + 0.5 * self.player.size.y;
         let y = self.lift.y + local_y;
@@ -322,7 +326,7 @@ impl World {
         }
     }
 
-    pub fn get_enemy_collider(
+    pub fn get_enemy_collider_rect(
         &self,
         floor_idx: usize,
         enemy_idx: usize,
@@ -338,27 +342,6 @@ impl World {
             top_right: center + enemy.size.scale(0.5),
         }
     }
-
-    pub fn get_enemy_draw_primitive(
-        &self,
-        floor_idx: usize,
-        enemy_idx: usize,
-    ) -> DrawPrimitive {
-        let enemy = &self.enemies[floor_idx][enemy_idx];
-        let sprite = *enemy.animator.get_sprite();
-        let collider = self.get_enemy_collider(floor_idx, enemy_idx);
-
-        let width = sprite.w;
-        let height = sprite.h;
-        let size = Vec2::new(width, height).scale(0.025);
-        let center = Vec2::new(
-            collider.get_center().x,
-            collider.bot_left.y + size.y * 0.5,
-        );
-        let rect = Rect::from_center(center, size);
-
-        DrawPrimitive::with_sprite(rect, sprite, 0.0)
-    }
 }
 
 #[derive(Copy, Clone)]
@@ -368,24 +351,38 @@ pub struct Rect {
 }
 
 impl Rect {
-    pub fn from_center(center: Vec2<f32>, size: Vec2<f32>) -> Self {
+    pub fn from_center(position: Vec2<f32>, size: Vec2<f32>) -> Self {
         let half_size = size.scale(0.5);
 
         Self {
-            bot_left: center - half_size,
-            top_right: center + half_size,
+            bot_left: position - half_size,
+            top_right: position + half_size,
         }
+    }
+
+    pub fn from_bot_center(position: Vec2<f32>, size: Vec2<f32>) -> Self {
+        let mut center = position;
+        center.y += size.y * 0.5;
+
+        Self::from_center(center, size)
     }
 
     pub fn get_center(&self) -> Vec2<f32> {
         (self.top_right + self.bot_left).scale(0.5)
     }
 
+    pub fn get_bot_center(&self) -> Vec2<f32> {
+        let mut center = self.get_center();
+        center.y -= 0.5 * self.get_size().y;
+
+        center
+    }
+
     pub fn get_size(&self) -> Vec2<f32> {
         self.top_right - self.bot_left
     }
 
-    pub fn to_xywh(&self) -> [f32; 4] {
+    pub fn to_world_xywh(&self) -> [f32; 4] {
         let center = self.get_center();
         let size = self.get_size();
 
@@ -450,6 +447,8 @@ pub struct Player {
 
     pub max_health: f32,
     pub health: f32,
+
+    pub animator: Animator,
 }
 
 pub struct Enemy {
@@ -485,7 +484,7 @@ pub struct Sprite {
 }
 
 impl Sprite {
-    pub fn to_uvwh(&self) -> [f32; 4] {
+    pub fn to_tex_uvwh(&self) -> [f32; 4] {
         [self.u, self.v, self.w, self.h]
     }
 }
@@ -652,16 +651,15 @@ impl DrawPrimitive {
         }
     }
 
-    pub fn with_sprite(
-        rect: Rect,
-        sprite: Sprite,
-        orientation: f32,
-    ) -> Self {
+    pub fn from_sprite(sprite: &Sprite, position: Vec2<f32>) -> Self {
+        let size = Vec2::new(sprite.w, sprite.h).scale(0.025);
+        let rect = Rect::from_bot_center(position, size);
+
         Self {
             rect,
             color: None,
-            sprite: Some(sprite),
-            orientation,
+            sprite: Some(*sprite),
+            orientation: 0.0,
         }
     }
 }
