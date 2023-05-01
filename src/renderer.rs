@@ -154,41 +154,14 @@ impl Renderer {
     }
 
     fn push_player(&mut self, world: &World) {
-        self.primitives.push(world.get_player_draw_primitive());
-
-        let ratio = world.player.health / world.player.max_health;
-        self.push_healthbar(world.get_player_collider_rect(), ratio);
+        self.primitives.extend(world.get_player_draw_primitives());
     }
 
     fn push_enemies(&mut self, world: &World) {
         let floor = world.get_lift_nearest_floor();
         for enemy in world.enemies[floor.idx].iter() {
-            self.primitives.push(enemy.get_draw_primitive());
-
-            self.push_healthbar(enemy.get_collider_rect(), 0.5);
+            self.primitives.extend(enemy.get_draw_primitives());
         }
-    }
-
-    fn push_healthbar(&mut self, collider: Rect, ratio: f32) {
-        let size = Vec2::new(0.9, 0.15);
-        let center = collider.get_center()
-            + Vec2::new(0.0, 0.5 * collider.get_size().y + size.y * 2.0);
-        let rect = Rect::from_center(center, size);
-        self.primitives.push(DrawPrimitive::with_color(
-            rect,
-            Color::new_gray(0.2, 1.0),
-            0.0,
-        ));
-
-        let size = Vec2::new(0.85, 0.1);
-        let mut rect = Rect::from_center(center, size);
-
-        let alive_color = Color::new(0.0, 1.0, 0.0, 1.0);
-        let dead_color = Color::new(1.0, 0.0, 0.0, 1.0);
-        let color = alive_color.lerp(&dead_color, ratio);
-        rect.top_right.x -= size.x * (1.0 - ratio);
-        self.primitives
-            .push(DrawPrimitive::with_color(rect, color, 0.0));
     }
 
     fn push_game_over_screen(&mut self, world: &World) {

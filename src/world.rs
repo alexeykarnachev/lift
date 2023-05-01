@@ -97,11 +97,14 @@ impl World {
                     ),
                 );
 
+                let max_speed = 1.8;
+                let health = Health::new(100.0);
                 let enemy = Enemy::new(
-                    Vec2::new(0.5, 0.8),
+                    Vec2::new(0.6, 0.8),
                     x,
                     floor_y,
-                    1.8,
+                    max_speed,
+                    health,
                     weapon,
                     animator,
                 );
@@ -123,11 +126,11 @@ impl World {
             2.0,
             0.035,
         ));
+        let health = Health::new(1000.0);
         let player = Player {
-            size: lift.size * Vec2::new(0.25, 0.5),
+            size: lift.size * Vec2::new(0.5, 0.5),
             position: Vec2::new(0.0, 0.0),
-            max_health: 1000.0,
-            health: 1000.0,
+            health,
             animator: animator,
         };
 
@@ -232,8 +235,8 @@ impl World {
             enemy.weapon.cooldown += dt;
         }
 
-        self.player.health = (self.player.health - damage).max(0.0);
-        if self.player.health <= 0.0 {
+        self.player.health.receive_damage(damage);
+        if self.player.health.is_dead() {
             self.state = WorldState::GameOver;
         }
     }
@@ -330,12 +333,17 @@ impl World {
         }
     }
 
-    pub fn get_player_draw_primitive(&self) -> DrawPrimitive {
-        DrawPrimitive::from_sprite(
+    pub fn get_player_draw_primitives(&self) -> [DrawPrimitive; 3] {
+        let entity_rect = self.get_player_collider_rect();
+        let sprite_primitive = DrawPrimitive::from_sprite(
             self.player.animator.get_sprite(),
-            self.get_player_collider_rect().get_bot_center(),
+            entity_rect.get_bot_center(),
             false,
-        )
+        );
+        let health_primitives =
+            self.player.health.get_draw_primitives(entity_rect);
+
+        [sprite_primitive, health_primitives[0], health_primitives[1]]
     }
 }
 
@@ -362,6 +370,12 @@ impl Rect {
         Self::from_center(center, size)
     }
 
+    pub fn from_bot_left(position: Vec2<f32>, size: Vec2<f32>) -> Self {
+        let center = position + size.scale(0.5);
+
+        Self::from_center(center, size)
+    }
+
     pub fn get_center(&self) -> Vec2<f32> {
         (self.top_right + self.bot_left).scale(0.5)
     }
@@ -371,6 +385,13 @@ impl Rect {
         center.y -= 0.5 * self.get_size().y;
 
         center
+    }
+
+    pub fn get_top_left(&self) -> Vec2<f32> {
+        let mut top_left = self.top_right;
+        top_left.x -= self.get_size().x;
+
+        top_left
     }
 
     pub fn get_size(&self) -> Vec2<f32> {
@@ -439,10 +460,7 @@ impl Lift {
 pub struct Player {
     pub size: Vec2<f32>,
     pub position: Vec2<f32>,
-
-    pub max_health: f32,
-    pub health: f32,
-
+    pub health: Health,
     pub animator: Animator,
 }
 
@@ -453,6 +471,8 @@ pub struct Enemy {
     floor_y: f32,
 
     pub max_speed: f32,
+    pub health: Health,
+
     pub weapon: Weapon,
 
     pub animator: Animator,
@@ -464,6 +484,7 @@ impl Enemy {
         x: f32,
         floor_y: f32,
         max_speed: f32,
+        health: Health,
         weapon: Weapon,
         animator: Animator,
     ) -> Self {
@@ -473,6 +494,7 @@ impl Enemy {
             flip: false,
             floor_y,
             max_speed,
+            health,
             weapon,
             animator,
         }
@@ -484,12 +506,17 @@ impl Enemy {
         Rect::from_bot_center(position, self.size)
     }
 
-    pub fn get_draw_primitive(&self) -> DrawPrimitive {
-        DrawPrimitive::from_sprite(
+    pub fn get_draw_primitives(&self) -> [DrawPrimitive; 3] {
+        let entity_rect = self.get_collider_rect();
+        let sprite_primitive = DrawPrimitive::from_sprite(
             self.animator.get_sprite(),
-            self.get_collider_rect().get_bot_center(),
+            entity_rect.get_bot_center(),
             self.flip,
-        )
+        );
+        let health_primitives =
+            self.health.get_draw_primitives(entity_rect);
+
+        [sprite_primitive, health_primitives[0], health_primitives[1]]
     }
 }
 
@@ -498,6 +525,64 @@ pub struct Weapon {
     pub speed: f32,
     pub damage: f32,
     pub cooldown: f32,
+}
+
+pub struct Health {
+    max: f32,
+    current: f32,
+}
+
+impl Health {
+    pub fn new(current: f32) -> Self {
+        Self {
+            max: current,
+            current,
+        }
+    }
+
+    pub fn get_ratio(&self) -> f32 {
+        self.current / self.max
+    }
+
+    pub fn receive_damage(&mut self, damage: f32) {
+        self.current -= damage;
+        self.current = self.current.max(0.0);
+    }
+
+    pub fn is_dead(&self) -> bool {
+        self.current <= 0.0
+    }
+
+    pub fn get_draw_primitives(
+        &self,
+        entity_rect: Rect,
+    ) -> [DrawPrimitive; 2] {
+        let alive_color = Color::new(0.0, 1.0, 0.0, 1.0);
+        let dead_color = Color::new(1.0, 0.0, 0.0, 1.0);
+        let ratio = self.get_ratio();
+        let color = alive_color.lerp(&dead_color, ratio);
+        let gap_height = 0.2;
+        let bar_height = 0.13;
+        let border_size = Vec2::new(0.03, 0.03);
+
+        let bot_left = entity_rect.get_top_left().add_y(gap_height);
+        let size = entity_rect.get_size().with_y(bar_height);
+        let background_rect = Rect::from_bot_left(bot_left, size);
+        let background_primitive = DrawPrimitive::with_color(
+            background_rect,
+            Color::new_gray(0.2, 1.0),
+            0.0,
+        );
+
+        let bot_left = bot_left + border_size;
+        let mut size = size - border_size.scale(2.0);
+        size.x *= ratio;
+        let health_rect = Rect::from_bot_left(bot_left, size);
+        let health_primitive =
+            DrawPrimitive::with_color(health_rect, color, 0.0);
+
+        [background_primitive, health_primitive]
+    }
 }
 
 pub struct Floor {
@@ -639,6 +724,7 @@ impl Animator {
     }
 }
 
+#[derive(Copy, Clone)]
 pub struct Color {
     r: f32,
     g: f32,
@@ -675,6 +761,7 @@ impl Color {
     }
 }
 
+#[derive(Copy, Clone)]
 pub struct DrawPrimitive {
     pub rect: Rect,
     pub color: Option<Color>,

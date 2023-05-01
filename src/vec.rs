@@ -17,6 +17,30 @@ impl<T: Copy> Vec2<T> {
     pub fn to_array(&self) -> [T; 2] {
         [self.x, self.y]
     }
+
+    pub fn with_y(&self, y: T) -> Self {
+        Self { x: self.x, y }
+    }
+
+    pub fn with_x(&self, x: T) -> Self {
+        Self { x, y: self.y }
+    }
+}
+
+impl<T: Copy + Add<Output = T>> Vec2<T> {
+    pub fn add_y(self, y: T) -> Self {
+        Self {
+            x: self.x,
+            y: self.y + y,
+        }
+    }
+
+    pub fn add_x(self, x: T) -> Self {
+        Self {
+            x: self.x + x,
+            y: self.y,
+        }
+    }
 }
 
 impl Vec2<f32> {
