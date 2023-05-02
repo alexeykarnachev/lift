@@ -87,57 +87,69 @@ impl World {
     }
 
     fn update_lift(&mut self, dt: f32, input: &Input) {
-        // let kinematic = self.lift.kinematic.as_ref().unwrap();
-        // let mut target = kinematic.target;
+        let cursor_world_pos = window_to_world(
+            &self.camera,
+            input.window_size,
+            input.cursor_pos,
+        );
 
-        // let cursor_world_pos = window_to_world(
-        //     &self.camera,
-        //     input.window_size,
-        //     input.cursor_pos,
-        // );
+        let mut target = None;
+        if let Some(floor) = self.get_lift_floor() {
+            let shaft_width = self
+                .shaft
+                .draw_primitive
+                .as_ref()
+                .unwrap()
+                .rect
+                .get_size()
+                .x;
+            let floor_height =
+                floor.draw_primitive.unwrap().rect.get_size().y;
+            let floor_idx =
+                (floor.position.y / floor_height).floor() as usize;
+            let is_enemy_in_lift =
+                self.enemies[floor_idx].iter().any(|enemy| {
+                    let collider = enemy
+                        .collider
+                        .unwrap()
+                        .with_bot_center(enemy.position);
+                    let x = collider
+                        .bot_left
+                        .x
+                        .abs()
+                        .min(collider.top_right.x.abs());
+                    x <= 0.5 * shaft_width
+                });
 
-        // if let Some(floor) = self.get_lift_floor() {
-        //     let shaft_width = self.get_shaft_world_rect().get_size().x;
-        //     let floor_height =
-        //         floor.draw_primitive.unwrap().rect.get_size().y;
-        //     let floor_idx =
-        //         (floor.position.y / floor_height).floor() as usize;
-        //     let is_enemy_in_lift =
-        //         self.enemies[floor_idx].iter().any(|enemy| {
-        //             let collider = enemy.collider.unwrap();
-        //             let x = collider
-        //                 .bot_left
-        //                 .x
-        //                 .abs()
-        //                 .min(collider.top_right.x.abs());
-        //             x <= 0.5 * shaft_width
-        //         });
+            if !is_enemy_in_lift {
+                let mut idx = floor_idx as i32;
+                if let Some(_) = input.lmb_press_pos {
+                    idx += 1;
+                } else if let Some(_) = input.rmb_press_pos {
+                    idx -= 1;
+                }
 
-        //     if !is_enemy_in_lift {
-        //         let mut idx = floor_idx as i32;
-        //         if let Some(_) = input.lmb_press_pos {
-        //             idx += 1;
-        //         } else if let Some(_) = input.rmb_press_pos {
-        //             idx -= 1;
-        //         }
+                idx = idx.clamp(0, self.floors.len() as i32 - 1);
+                let target_y = idx as f32 * floor_height;
+                target = Some(Vec2::new(0.0, target_y));
+            }
+        }
 
-        //         idx = idx.clamp(0, self.floors.len() as i32 - 1);
-        //         let target_y = idx as f32 * floor_height;
-        //         target = Some(Vec2::new(0.0, target_y));
-        //     }
-        // }
+        let kinematic = self.lift.kinematic.as_mut().unwrap();
+        if let Some(target) = target {
+            kinematic.target = Some(target);
+        }
 
-        // self.lift.kinematic.as_mut().unwrap().target = target;
-        // let position = &mut self.lift.position;
-        // if let Some(target) = kinematic.target {
-        //     let diff = target.y - position.y;
-        //     let step = dt * kinematic.max_speed;
-        //     if step >= diff.abs() {
-        //         position.y = target.y;
-        //     } else {
-        //         position.y += step * diff.signum();
-        //     }
-        // }
+        let position = &mut self.lift.position;
+        if let Some(target) = kinematic.target {
+            let diff = target.y - position.y;
+            let step = dt * kinematic.max_speed;
+            if step >= diff.abs() {
+                position.y = target.y;
+            } else {
+                position.y += step * diff.signum();
+            }
+        }
     }
 
     pub fn update_enemies(&mut self, dt: f32) {
@@ -188,7 +200,9 @@ impl World {
         }
     }
 
-    pub fn update_player(&mut self, dt: f32) {}
+    pub fn update_player(&mut self, dt: f32) {
+        self.player.position.y = self.lift.position.y;
+    }
 
     fn update_free_camera(&mut self, input: &Input) {
         self.camera.aspect =
