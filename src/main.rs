@@ -7,7 +7,10 @@ use std::time::Instant;
 use vec::Vec2;
 use world::World;
 
+mod entity;
+mod graphics;
 mod input;
+mod prefabs;
 mod renderer;
 mod vec;
 mod world;
@@ -20,8 +23,7 @@ fn main() {
 
     // ------------------------------------------------------------------
     let n_floors = 16;
-    let floor_size = Vec2::new(100.0, 2.5);
-    let mut world = World::new(n_floors, floor_size);
+    let mut world = World::new(n_floors);
 
     // ------------------------------------------------------------------
     let mut event_pump = sdl.event_pump().unwrap();

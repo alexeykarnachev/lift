@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
+use crate::graphics::*;
 use crate::vec::Vec2;
 use crate::world::*;
 use glow::HasContext;
@@ -115,12 +116,16 @@ impl Renderer {
         self.push_floors(world);
         self.push_shaft(world);
         self.push_lift(world);
-        self.push_player(world);
-        self.push_enemies(world);
+        draw_entity(&world.player, &mut self.primitives);
 
-        if world.state != WorldState::GameOver {
-            self.push_game_over_screen(world);
+        let floor = world.get_lift_nearest_floor();
+        let floor_height = floor.collider.as_ref().unwrap().get_size().y;
+        let floor_idx = (floor.position.y / floor_height).floor() as usize;
+        for enemy in world.enemies[floor_idx].iter() {
+            draw_entity(enemy, &mut self.primitives);
         }
+
+        if world.state != WorldState::GameOver {}
     }
 
     fn push_floors(&mut self, world: &World) {
@@ -151,22 +156,6 @@ impl Renderer {
             Color::new_gray(0.7, 1.0),
             0.0,
         ));
-    }
-
-    fn push_player(&mut self, world: &World) {
-        self.primitives.extend(world.get_player_draw_primitives());
-    }
-
-    fn push_enemies(&mut self, world: &World) {
-        let floor = world.get_lift_nearest_floor();
-        for enemy in world.enemies[floor.idx].iter() {
-            self.primitives.extend(enemy.get_draw_primitives());
-        }
-    }
-
-    fn push_game_over_screen(&mut self, world: &World) {
-        // let rect = world.ui.game_over.rect;
-        // self.primitives.push(DrawPrimitive::with_color(rect, Color::new_gray(0.1, 1.0), 0.0));
     }
 
     fn bind_screen_framebuffer(&self) {
@@ -311,15 +300,16 @@ impl PrimitiveRenderer {
 
     fn push_primitive(&mut self, primitive: &DrawPrimitive) {
         self.a_orientation.push_data(&[primitive.orientation]);
-        self.a_flip.push_data(&[(primitive.flip as i32) as f32]);
         self.a_world_xywh.push_data(&primitive.rect.to_world_xywh());
 
         if let Some(sprite) = &primitive.sprite {
             self.a_tex_uvwh.push_data(&sprite.to_tex_xywh());
             self.a_use_tex.push_data(&[1.0]);
+            self.a_flip.push_data(&[(sprite.flip as i32) as f32]);
         } else {
             self.a_tex_uvwh.push_data(&[0.0; 4]);
             self.a_use_tex.push_data(&[0.0]);
+            self.a_flip.push_data(&[0.0]);
         }
 
         if let Some(color) = &primitive.color {

@@ -2,14 +2,11 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
+use crate::entity::*;
+use crate::graphics::*;
 use crate::input::Input;
-use crate::vec::Vec2;
-use image::imageops::flip_vertical_in_place;
-use image::io::Reader as ImageReader;
-use image::DynamicImage;
-use serde::Deserialize;
-use std::collections::HashMap;
-use std::fs;
+use crate::prefabs::*;
+use crate::vec::{Rect, Vec2};
 
 #[derive(PartialEq)]
 pub enum WorldState {
@@ -22,33 +19,24 @@ pub struct World {
 
     pub camera: Camera,
     pub lift: Lift,
-    pub player: Player,
-    pub enemies: Vec<Vec<Enemy>>,
+    pub player: Entity,
+    pub enemies: Vec<Vec<Entity>>,
 
     pub shaft_width: f32,
 
-    pub floors: Vec<Floor>,
-    pub floor_size: Vec2<f32>,
+    pub floors: Vec<Entity>,
 
     pub sprite_atlas: SpriteAtlas,
 }
 
 impl World {
-    pub fn new(n_floors: usize, floor_size: Vec2<f32>) -> Self {
-        let sprite_atlas = SpriteAtlas::new(
-            "./assets/sprites/atlas.json",
-            "./assets/sprites/atlas.png",
-        );
-
+    pub fn new(n_floors: usize) -> Self {
+        let sprite_atlas = create_default_sprite_atlas();
         let mut floors = Vec::with_capacity(n_floors as usize);
         let mut enemies = Vec::with_capacity(n_floors as usize);
         for floor_idx in 0..n_floors {
-            let floor_y = floor_idx as f32 * floor_size.y;
-            let floor = Floor {
-                size: floor_size,
-                y: floor_y,
-                idx: floor_idx,
-            };
+            let floor = create_floor_entity(floor_idx);
+            let floor_y = floor.position.y;
             floors.push(floor);
 
             let n_enemies = 4;
@@ -56,59 +44,9 @@ impl World {
             for enemy_idx in 0..n_enemies {
                 let side = if enemy_idx % 2 == 1 { -1.0 } else { 1.0 };
                 let x = (2.0 + 2.0 * enemy_idx as f32) * side;
-                let weapon = Weapon {
-                    range: 0.2,
-                    speed: 1.0,
-                    damage: 100.0,
-                    cooldown: 0.0,
-                };
-                let mut animator =
-                    Animator::new(AnimatedSprite::from_atlas(
-                        &sprite_atlas,
-                        "knight_idle",
-                        2.0,
-                        0.025,
-                    ));
-                animator.add(
-                    "idle",
-                    AnimatedSprite::from_atlas(
-                        &sprite_atlas,
-                        "knight_idle",
-                        0.5,
-                        0.025,
-                    ),
-                );
-                animator.add(
-                    "attack",
-                    AnimatedSprite::from_atlas(
-                        &sprite_atlas,
-                        "knight_attack",
-                        0.5,
-                        0.025,
-                    ),
-                );
-                animator.add(
-                    "run",
-                    AnimatedSprite::from_atlas(
-                        &sprite_atlas,
-                        "knight_run",
-                        0.5,
-                        0.025,
-                    ),
-                );
-
-                let max_speed = 1.8;
-                let health = Health::new(100.0);
-                let enemy = Enemy::new(
-                    Vec2::new(0.6, 0.8),
-                    x,
-                    floor_y,
-                    max_speed,
-                    health,
-                    weapon,
-                    animator,
-                );
-                floor_enemies.push(enemy);
+                let position = Vec2::new(x, floor_y);
+                let knight = create_knight_entity(position, &sprite_atlas);
+                floor_enemies.push(knight);
             }
 
             enemies.push(floor_enemies);
@@ -120,22 +58,11 @@ impl World {
         let lift = Lift::from_floor(floor, max_speed);
         let shaft_width = lift.size.x * 1.2;
 
-        let animator = Animator::new(AnimatedSprite::from_atlas(
-            &sprite_atlas,
-            "knight_idle",
-            2.0,
-            0.035,
-        ));
-        let health = Health::new(1000.0);
-        let player = Player {
-            size: lift.size * Vec2::new(0.5, 0.5),
-            position: Vec2::new(0.0, 0.0),
-            health,
-            animator: animator,
-        };
+        let position = Vec2::new(0.0, floor.position.y);
+        let player = create_knight_entity(position, &sprite_atlas);
 
         let state = WorldState::Play;
-        let camera = Camera::new(Vec2::new(0.0, floor.y));
+        let camera = Camera::new(Vec2::new(0.0, floor.position.y));
 
         Self {
             state,
@@ -145,7 +72,6 @@ impl World {
             enemies,
             shaft_width,
             floors,
-            floor_size,
             sprite_atlas,
         }
     }
@@ -172,9 +98,13 @@ impl World {
 
         if let Some(floor) = self.get_lift_floor() {
             let shaft_width = self.get_shaft_world_rect().get_size().x;
+            let floor_height =
+                floor.collider.as_ref().unwrap().get_size().y;
+            let floor_idx =
+                (floor.position.y / floor_height).floor() as usize;
             let is_enemy_in_lift =
-                self.enemies[floor.idx].iter().any(|enemy| {
-                    let collider = enemy.get_collider_rect();
+                self.enemies[floor_idx].iter().any(|enemy| {
+                    let collider = enemy.collider.unwrap();
                     let x = collider
                         .bot_left
                         .x
@@ -184,7 +114,7 @@ impl World {
                 });
 
             if !is_enemy_in_lift {
-                let mut idx = floor.idx as i32;
+                let mut idx = floor_idx as i32;
                 if let Some(_) = input.lmb_press_pos {
                     idx += 1;
                 } else if let Some(_) = input.rmb_press_pos {
@@ -192,7 +122,7 @@ impl World {
                 }
 
                 idx = idx.clamp(0, self.floors.len() as i32 - 1);
-                self.lift.target_y = idx as f32 * self.floor_size.y;
+                self.lift.target_y = idx as f32 * floor_height;
             }
         }
 
@@ -208,35 +138,46 @@ impl World {
     pub fn update_enemies(&mut self, dt: f32) {
         let floor_idx;
         if let Some(floor) = self.get_lift_floor() {
-            floor_idx = floor.idx;
+            let floor_height = floor.collider.unwrap().get_size().y;
+            floor_idx = (floor.position.y / floor_height).floor() as usize;
         } else {
             return;
         };
 
-        let player_position = self.player.position;
-        let player_width = self.player.size.x;
+        let player_position = &self.player.position;
+        let player_collider = self.player.collider.as_ref().unwrap();
+        let player_width = player_collider.get_width();
+        let player_health = self.player.health.as_mut().unwrap();
+
         let mut damage = 0.0;
         for enemy in self.enemies[floor_idx].iter_mut() {
-            let dist = player_position.x - enemy.position.x;
-            let attack_dist =
-                enemy.weapon.range + 0.5 * (player_width + enemy.size.x);
+            let mut position = &mut enemy.position;
+            let weapon = enemy.weapon.as_mut().unwrap();
+            let collider = enemy.collider.as_ref().unwrap();
+            let width = collider.get_width();
+            let kinematic = enemy.kinematic.as_mut().unwrap();
+            let animator = enemy.animator.as_mut().unwrap();
+
+            let dist = player_position.x - position.x;
+            animator.flip = dist < 0.0;
+            let attack_dist = weapon.range + 0.5 * (player_width + width);
             if dist.abs() > attack_dist {
-                let step = dt * enemy.max_speed * dist.signum();
-                enemy.position.x += step;
-                enemy.animator.play("run");
-            } else if enemy.weapon.cooldown >= 1.0 / enemy.weapon.speed {
-                enemy.weapon.cooldown = 0.0;
-                damage += enemy.weapon.damage;
-                enemy.animator.play("attack");
+                kinematic.speed = kinematic.max_speed * dist.signum();
+                let step = dt * kinematic.speed;
+                position.x += step;
+                animator.play("run");
+            } else if weapon.cooldown >= 1.0 / weapon.speed {
+                weapon.cooldown = 0.0;
+                damage += weapon.damage;
+                animator.play("attack");
             }
 
-            enemy.flip = dist < 0.0;
-            enemy.animator.update(dt);
-            enemy.weapon.cooldown += dt;
+            animator.update(dt);
+            weapon.cooldown += dt;
         }
 
-        self.player.health.receive_damage(damage);
-        if self.player.health.is_dead() {
+        player_health.current -= damage;
+        if player_health.current <= 0.0 {
             self.state = WorldState::GameOver;
         }
     }
@@ -269,16 +210,17 @@ impl World {
     }
 
     pub fn get_lift_floor_idx(&self) -> f32 {
-        self.lift.y / self.floor_size.y
+        let floor_height = self.floors[0].collider.unwrap().get_size().y;
+        self.lift.y / floor_height
     }
 
-    pub fn get_lift_nearest_floor(&self) -> &Floor {
+    pub fn get_lift_nearest_floor(&self) -> &Entity {
         let idx = self.get_lift_floor_idx().round() as usize;
 
         &self.floors[idx]
     }
 
-    pub fn get_lift_floor(&self) -> Option<&Floor> {
+    pub fn get_lift_floor(&self) -> Option<&Entity> {
         let idx = self.get_lift_floor_idx();
         if (idx.floor() - idx).abs() < 1.0e-5 {
             return Some(&self.floors[idx as usize]);
@@ -288,7 +230,8 @@ impl World {
     }
 
     pub fn get_shaft_world_rect(&self) -> Rect {
-        let height = self.floors.len() as f32 * self.floor_size.y;
+        let floor_height = self.floors[0].collider.unwrap().get_size().y;
+        let height = self.floors.len() as f32 * floor_height;
         let size = Vec2::new(self.shaft_width, height);
 
         Rect {
@@ -298,16 +241,18 @@ impl World {
     }
 
     pub fn get_floor_world_rect(&self, floor_idx: usize) -> Rect {
-        let y = self.floor_size.y * (floor_idx as f32 + 0.5);
+        let floor = &self.floors[floor_idx];
+        let floor_size = floor.collider.unwrap().get_size();
+        let y = floor_size.y * (floor_idx as f32 + 0.5);
         let center = Vec2::new(0.0, y);
         let rect = Rect {
-            bot_left: center - self.floor_size.scale(0.5),
-            top_right: center + self.floor_size.scale(0.5),
+            bot_left: center - floor_size.scale(0.5),
+            top_right: center + floor_size.scale(0.5),
         };
 
         Rect {
-            bot_left: center - self.floor_size.scale(0.5),
-            top_right: center + self.floor_size.scale(0.5),
+            bot_left: center - floor_size.scale(0.5),
+            top_right: center + floor_size.scale(0.5),
         }
     }
 
@@ -319,90 +264,6 @@ impl World {
             bot_left: center - self.lift.size.scale(0.5),
             top_right: center + self.lift.size.scale(0.5),
         }
-    }
-
-    pub fn get_player_collider_rect(&self) -> Rect {
-        let x = 0.0 + self.player.position.x;
-        let local_y = self.player.position.y + 0.5 * self.player.size.y;
-        let y = self.lift.y + local_y;
-        let center = Vec2::new(x, y);
-
-        Rect {
-            bot_left: center - self.player.size.scale(0.5),
-            top_right: center + self.player.size.scale(0.5),
-        }
-    }
-
-    pub fn get_player_draw_primitives(&self) -> [DrawPrimitive; 3] {
-        let entity_rect = self.get_player_collider_rect();
-        let sprite_primitive = DrawPrimitive::from_sprite(
-            self.player.animator.get_sprite(),
-            entity_rect.get_bot_center(),
-            false,
-        );
-        let health_primitives =
-            self.player.health.get_draw_primitives(entity_rect);
-
-        [sprite_primitive, health_primitives[0], health_primitives[1]]
-    }
-}
-
-#[derive(Copy, Clone)]
-pub struct Rect {
-    pub bot_left: Vec2<f32>,
-    pub top_right: Vec2<f32>,
-}
-
-impl Rect {
-    pub fn from_center(position: Vec2<f32>, size: Vec2<f32>) -> Self {
-        let half_size = size.scale(0.5);
-
-        Self {
-            bot_left: position - half_size,
-            top_right: position + half_size,
-        }
-    }
-
-    pub fn from_bot_center(position: Vec2<f32>, size: Vec2<f32>) -> Self {
-        let mut center = position;
-        center.y += size.y * 0.5;
-
-        Self::from_center(center, size)
-    }
-
-    pub fn from_bot_left(position: Vec2<f32>, size: Vec2<f32>) -> Self {
-        let center = position + size.scale(0.5);
-
-        Self::from_center(center, size)
-    }
-
-    pub fn get_center(&self) -> Vec2<f32> {
-        (self.top_right + self.bot_left).scale(0.5)
-    }
-
-    pub fn get_bot_center(&self) -> Vec2<f32> {
-        let mut center = self.get_center();
-        center.y -= 0.5 * self.get_size().y;
-
-        center
-    }
-
-    pub fn get_top_left(&self) -> Vec2<f32> {
-        let mut top_left = self.top_right;
-        top_left.x -= self.get_size().x;
-
-        top_left
-    }
-
-    pub fn get_size(&self) -> Vec2<f32> {
-        self.top_right - self.bot_left
-    }
-
-    pub fn to_world_xywh(&self) -> [f32; 4] {
-        let center = self.get_center();
-        let size = self.get_size();
-
-        [center.x, center.y, size.x, size.y]
     }
 }
 
@@ -450,352 +311,14 @@ impl Lift {
         }
     }
 
-    pub fn from_floor(floor: &Floor, max_speed: f32) -> Self {
-        let lift_size = Vec2::new(floor.size.y * 0.6, floor.size.y);
+    pub fn from_floor(floor: &Entity, max_speed: f32) -> Self {
+        let floor_height = floor.collider.unwrap().get_size().y;
+        let height = floor_height * 0.6;
+        let width = floor_height;
+        let lift_size = Vec2::new(height, width);
+        let y = floor.position.y;
 
-        Lift::new(lift_size, floor.y, max_speed)
-    }
-}
-
-pub struct Player {
-    pub size: Vec2<f32>,
-    pub position: Vec2<f32>,
-    pub health: Health,
-    pub animator: Animator,
-}
-
-pub struct Enemy {
-    pub size: Vec2<f32>,
-    pub position: Vec2<f32>,
-    pub flip: bool,
-    floor_y: f32,
-
-    pub max_speed: f32,
-    pub health: Health,
-
-    pub weapon: Weapon,
-
-    pub animator: Animator,
-}
-
-impl Enemy {
-    pub fn new(
-        size: Vec2<f32>,
-        x: f32,
-        floor_y: f32,
-        max_speed: f32,
-        health: Health,
-        weapon: Weapon,
-        animator: Animator,
-    ) -> Self {
-        Self {
-            size,
-            position: Vec2::new(x, 0.0),
-            flip: false,
-            floor_y,
-            max_speed,
-            health,
-            weapon,
-            animator,
-        }
-    }
-
-    pub fn get_collider_rect(&self) -> Rect {
-        let position = self.position + Vec2::new(0.0, self.floor_y);
-
-        Rect::from_bot_center(position, self.size)
-    }
-
-    pub fn get_draw_primitives(&self) -> [DrawPrimitive; 3] {
-        let entity_rect = self.get_collider_rect();
-        let sprite_primitive = DrawPrimitive::from_sprite(
-            self.animator.get_sprite(),
-            entity_rect.get_bot_center(),
-            self.flip,
-        );
-        let health_primitives =
-            self.health.get_draw_primitives(entity_rect);
-
-        [sprite_primitive, health_primitives[0], health_primitives[1]]
-    }
-}
-
-pub struct Weapon {
-    pub range: f32,
-    pub speed: f32,
-    pub damage: f32,
-    pub cooldown: f32,
-}
-
-pub struct Health {
-    max: f32,
-    current: f32,
-}
-
-impl Health {
-    pub fn new(current: f32) -> Self {
-        Self {
-            max: current,
-            current,
-        }
-    }
-
-    pub fn get_ratio(&self) -> f32 {
-        self.current / self.max
-    }
-
-    pub fn receive_damage(&mut self, damage: f32) {
-        self.current -= damage;
-        self.current = self.current.max(0.0);
-    }
-
-    pub fn is_dead(&self) -> bool {
-        self.current <= 0.0
-    }
-
-    pub fn get_draw_primitives(
-        &self,
-        entity_rect: Rect,
-    ) -> [DrawPrimitive; 2] {
-        let alive_color = Color::new(0.0, 1.0, 0.0, 1.0);
-        let dead_color = Color::new(1.0, 0.0, 0.0, 1.0);
-        let ratio = self.get_ratio();
-        let color = alive_color.lerp(&dead_color, ratio);
-        let gap_height = 0.2;
-        let bar_height = 0.13;
-        let border_size = Vec2::new(0.03, 0.03);
-
-        let bot_left = entity_rect.get_top_left().add_y(gap_height);
-        let size = entity_rect.get_size().with_y(bar_height);
-        let background_rect = Rect::from_bot_left(bot_left, size);
-        let background_primitive = DrawPrimitive::with_color(
-            background_rect,
-            Color::new_gray(0.2, 1.0),
-            0.0,
-        );
-
-        let bot_left = bot_left + border_size;
-        let mut size = size - border_size.scale(2.0);
-        size.x *= ratio;
-        let health_rect = Rect::from_bot_left(bot_left, size);
-        let health_primitive =
-            DrawPrimitive::with_color(health_rect, color, 0.0);
-
-        [background_primitive, health_primitive]
-    }
-}
-
-pub struct Floor {
-    pub size: Vec2<f32>,
-    pub y: f32,
-
-    pub idx: usize,
-}
-
-#[derive(Deserialize, Copy, Clone)]
-pub struct Sprite {
-    pub x: f32,
-    pub y: f32,
-    pub w: f32,
-    pub h: f32,
-
-    #[serde(skip)]
-    pub scale: f32,
-}
-
-impl Sprite {
-    pub fn to_tex_xywh(&self) -> [f32; 4] {
-        [self.x, self.y, self.w, self.h]
-    }
-}
-
-#[derive(Deserialize)]
-pub struct SpriteAtlas {
-    pub file_name: String,
-    pub size: [u32; 2],
-    pub sprites: HashMap<String, Vec<Sprite>>,
-
-    #[serde(skip)]
-    pub image: DynamicImage,
-}
-
-impl SpriteAtlas {
-    pub fn new(meta_file_path: &str, image_file_path: &str) -> Self {
-        let meta = fs::read_to_string(meta_file_path).unwrap();
-        let mut atlas: Self = serde_json::from_str(&meta).unwrap();
-
-        let mut image = ImageReader::open(image_file_path)
-            .unwrap()
-            .decode()
-            .unwrap();
-        flip_vertical_in_place(&mut image);
-
-        atlas.image = image;
-
-        atlas
-    }
-}
-
-pub struct AnimatedSprite {
-    pub name: &'static str,
-    pub duration: f32,
-    pub scale: f32,
-    current_duration: f32,
-
-    frames: Vec<Sprite>,
-}
-
-impl AnimatedSprite {
-    pub fn from_atlas(
-        atlas: &SpriteAtlas,
-        name: &'static str,
-        duration: f32,
-        scale: f32,
-    ) -> Self {
-        let frames = atlas.sprites.get(name).unwrap_or_else(|| {
-            panic!("There is no such sprite in the sprite atlas: {}", name)
-        });
-
-        Self {
-            name,
-            duration,
-            scale,
-            current_duration: 0.0,
-            frames: frames.to_vec(),
-        }
-    }
-
-    pub fn update(&mut self, dt: f32) {
-        self.current_duration += dt;
-    }
-
-    pub fn get_current_frame(&self) -> Sprite {
-        let mut cycle = self.current_duration / self.duration;
-        cycle -= cycle.floor();
-        let frame_idx = (cycle * self.frames.len() as f32).floor();
-
-        let mut frame = self.frames[frame_idx as usize];
-        frame.scale = self.scale;
-
-        frame
-    }
-}
-
-pub struct Animator {
-    current_animation: &'static str,
-    animation_to_sprite: HashMap<&'static str, AnimatedSprite>,
-}
-
-impl Animator {
-    pub fn new(default_sprite: AnimatedSprite) -> Self {
-        let mut animation_to_sprite = HashMap::new();
-        animation_to_sprite.insert("default", default_sprite);
-
-        Self {
-            current_animation: "default",
-            animation_to_sprite,
-        }
-    }
-
-    pub fn add(
-        &mut self,
-        animation: &'static str,
-        sprite: AnimatedSprite,
-    ) {
-        self.animation_to_sprite.insert(animation, sprite);
-    }
-
-    pub fn play(&mut self, animation: &'static str) {
-        self.current_animation = animation;
-    }
-
-    pub fn get_sprite(&self) -> Sprite {
-        self.animation_to_sprite
-            .get(self.current_animation)
-            .unwrap()
-            .get_current_frame()
-    }
-
-    pub fn update(&mut self, dt: f32) {
-        self.animation_to_sprite
-            .get_mut(self.current_animation)
-            .unwrap()
-            .update(dt);
-    }
-}
-
-#[derive(Copy, Clone)]
-pub struct Color {
-    r: f32,
-    g: f32,
-    b: f32,
-    a: f32,
-}
-
-impl Color {
-    pub fn new(r: f32, g: f32, b: f32, a: f32) -> Self {
-        Self { r, g, b, a }
-    }
-
-    pub fn new_gray(c: f32, a: f32) -> Self {
-        Self {
-            r: c,
-            g: c,
-            b: c,
-            a: a,
-        }
-    }
-
-    pub fn to_array(&self) -> [f32; 4] {
-        [self.r, self.g, self.b, self.a]
-    }
-
-    pub fn lerp(&self, other: &Self, k: f32) -> Self {
-        let k_other = 1.0 - k;
-        Self {
-            r: k * self.r + k_other * other.r,
-            g: k * self.g + k_other * other.g,
-            b: k * self.b + k_other * other.b,
-            a: k * self.a + k_other * other.a,
-        }
-    }
-}
-
-#[derive(Copy, Clone)]
-pub struct DrawPrimitive {
-    pub rect: Rect,
-    pub color: Option<Color>,
-    pub sprite: Option<Sprite>,
-    pub orientation: f32,
-    pub flip: bool,
-}
-
-impl DrawPrimitive {
-    pub fn with_color(rect: Rect, color: Color, orientation: f32) -> Self {
-        Self {
-            rect,
-            color: Some(color),
-            sprite: None,
-            orientation,
-            flip: false,
-        }
-    }
-
-    pub fn from_sprite(
-        sprite: Sprite,
-        position: Vec2<f32>,
-        flip: bool,
-    ) -> Self {
-        let size = Vec2::new(sprite.w, sprite.h).scale(sprite.scale);
-        let rect = Rect::from_bot_center(position, size);
-
-        Self {
-            rect,
-            color: None,
-            sprite: Some(sprite),
-            orientation: 0.0,
-            flip,
-        }
+        Lift::new(lift_size, y, max_speed)
     }
 }
 

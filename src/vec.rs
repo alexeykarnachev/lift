@@ -195,3 +195,74 @@ impl<T: Float> Vec2<T> {
         self.norm().scale(len)
     }
 }
+
+#[derive(Copy, Clone)]
+pub struct Rect {
+    pub bot_left: Vec2<f32>,
+    pub top_right: Vec2<f32>,
+}
+
+impl Rect {
+    pub fn from_center(position: Vec2<f32>, size: Vec2<f32>) -> Self {
+        let half_size = size.scale(0.5);
+
+        Self {
+            bot_left: position - half_size,
+            top_right: position + half_size,
+        }
+    }
+
+    pub fn from_bot_center(position: Vec2<f32>, size: Vec2<f32>) -> Self {
+        let mut center = position;
+        center.y += size.y * 0.5;
+
+        Self::from_center(center, size)
+    }
+
+    pub fn from_bot_left(position: Vec2<f32>, size: Vec2<f32>) -> Self {
+        let center = position + size.scale(0.5);
+
+        Self::from_center(center, size)
+    }
+
+    pub fn with_center(&self, position: Vec2<f32>) -> Self {
+        Self::from_center(position, self.get_size())
+    }
+
+    pub fn with_bot_center(&self, position: Vec2<f32>) -> Self {
+        Self::from_bot_center(position, self.get_size())
+    }
+
+    pub fn get_width(&self) -> f32 {
+        self.get_size().x
+    }
+
+    pub fn get_center(&self) -> Vec2<f32> {
+        (self.top_right + self.bot_left).scale(0.5)
+    }
+
+    pub fn get_bot_center(&self) -> Vec2<f32> {
+        let mut center = self.get_center();
+        center.y -= 0.5 * self.get_size().y;
+
+        center
+    }
+
+    pub fn get_top_left(&self) -> Vec2<f32> {
+        let mut top_left = self.top_right;
+        top_left.x -= self.get_size().x;
+
+        top_left
+    }
+
+    pub fn get_size(&self) -> Vec2<f32> {
+        self.top_right - self.bot_left
+    }
+
+    pub fn to_world_xywh(&self) -> [f32; 4] {
+        let center = self.get_center();
+        let size = self.get_size();
+
+        [center.x, center.y, size.x, size.y]
+    }
+}
