@@ -20,8 +20,6 @@ pub struct Sprite {
 
     #[serde(skip)]
     pub scale: f32,
-    #[serde(skip)]
-    pub flip: bool,
 }
 
 impl Sprite {
@@ -145,6 +143,7 @@ pub struct DrawPrimitive {
     pub color: Option<Color>,
     pub sprite: Option<Sprite>,
     pub orientation: f32,
+    pub flip: bool,
 }
 
 impl DrawPrimitive {
@@ -154,10 +153,15 @@ impl DrawPrimitive {
             color: Some(color),
             sprite: None,
             orientation,
+            flip: false,
         }
     }
 
-    pub fn from_sprite(sprite: Sprite, position: Vec2<f32>) -> Self {
+    pub fn from_sprite(
+        sprite: Sprite,
+        position: Vec2<f32>,
+        flip: bool,
+    ) -> Self {
         let size = Vec2::new(sprite.w, sprite.h).scale(sprite.scale);
         let rect = Rect::from_bot_center(position, size);
 
@@ -166,6 +170,7 @@ impl DrawPrimitive {
             color: None,
             sprite: Some(sprite),
             orientation: 0.0,
+            flip,
         }
     }
 }
@@ -173,41 +178,44 @@ impl DrawPrimitive {
 pub fn draw_entity(entity: &Entity, draw_queue: &mut Vec<DrawPrimitive>) {
     let position = entity.position;
 
-    let collider = entity.collider.as_ref();
     let animator = entity.animator.as_ref();
-    if let (Some(collider), Some(animator)) = (collider, animator) {
-        let collider = collider.with_bot_center(position);
-        let sprite = animator.get_sprite();
-        let position = collider.get_bot_center();
-        let primitive = DrawPrimitive::from_sprite(sprite, position);
+    let health = entity.health.as_ref();
 
+    let mut primitive = None;
+    if let Some(animator) = animator {
+        primitive = Some(animator.get_draw_primitive(position));
+    } else if let Some(mut _primitive) = entity.draw_primitive {
+        _primitive.rect = _primitive.rect.with_bot_center(position);
+        primitive = Some(_primitive);
+    }
+
+    if let Some(primitive) = primitive {
         draw_queue.push(primitive);
     }
 
-    let health = entity.health.as_ref();
-    if let (Some(collider), Some(health)) = (collider, health) {
-        let collider = collider.with_bot_center(position);
+    if let (Some(primitive), Some(health)) = (primitive, health) {
         let alive_color = Color::new(0.0, 1.0, 0.0, 1.0);
         let dead_color = Color::new(1.0, 0.0, 0.0, 1.0);
         let ratio = health.current / health.max;
         let color = alive_color.lerp(&dead_color, ratio);
         let gap_height = 0.2;
-        let bar_height = 0.13;
+        let bar_size = Vec2::new(1.0, 0.13);
         let border_size = Vec2::new(0.03, 0.03);
 
-        let bot_left = collider.get_top_left().add_y(gap_height);
-        let size = collider.get_size().with_y(bar_height);
-        let background_rect = Rect::from_bot_left(bot_left, size);
+        let x = position.x;
+        let y = primitive.rect.get_top_left().y + gap_height;
+        let bot_center = Vec2::new(x, y);
+        let background_rect = Rect::from_bot_center(bot_center, bar_size);
         let background_primitive = DrawPrimitive::with_color(
             background_rect,
             Color::new_gray(0.2, 1.0),
             0.0,
         );
 
-        let bot_left = bot_left + border_size;
-        let mut size = size - border_size.scale(2.0);
-        size.x *= ratio;
-        let health_rect = Rect::from_bot_left(bot_left, size);
+        let bot_left = background_rect.bot_left + border_size;
+        let mut bar_size = bar_size - border_size.scale(2.0);
+        bar_size.x *= ratio;
+        let health_rect = Rect::from_bot_left(bot_left, bar_size);
         let health_primitive =
             DrawPrimitive::with_color(health_rect, color, 0.0);
 

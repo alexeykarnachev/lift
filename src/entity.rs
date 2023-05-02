@@ -15,6 +15,7 @@ pub struct Entity {
     pub kinematic: Option<Kinematic>,
     pub health: Option<Health>,
     pub weapon: Option<Weapon>,
+    pub draw_primitive: Option<DrawPrimitive>,
     pub animator: Option<Animator>,
 }
 
@@ -36,17 +37,19 @@ pub struct Weapon {
 }
 
 pub struct Animator {
+    pub rect: Rect,
     pub flip: bool,
     current_animation: &'static str,
     animation_to_sprite: HashMap<&'static str, AnimatedSprite>,
 }
 
 impl Animator {
-    pub fn new(default_sprite: AnimatedSprite) -> Self {
+    pub fn new(rect: Rect, default_sprite: AnimatedSprite) -> Self {
         let mut animation_to_sprite = HashMap::new();
         animation_to_sprite.insert("default", default_sprite);
 
         Self {
+            rect: rect,
             flip: false,
             current_animation: "default",
             animation_to_sprite,
@@ -65,16 +68,17 @@ impl Animator {
         self.current_animation = animation;
     }
 
-    pub fn get_sprite(&self) -> Sprite {
+    pub fn get_draw_primitive(
+        &self,
+        position: Vec2<f32>,
+    ) -> DrawPrimitive {
         let mut sprite = self
             .animation_to_sprite
             .get(self.current_animation)
             .unwrap()
             .get_current_frame();
 
-        sprite.flip = self.flip;
-
-        sprite
+        DrawPrimitive::from_sprite(sprite, position, self.flip)
     }
 
     pub fn update(&mut self, dt: f32) {

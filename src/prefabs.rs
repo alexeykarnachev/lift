@@ -13,14 +13,17 @@ pub fn create_floor_entity(idx: usize) -> Entity {
     let size = Vec2::new(100.0, 2.5);
     let y = idx as f32 * size.y;
     let position = Vec2::new(0.0, y);
-    let collider = Rect::from_bot_center(Vec2::zeros(), size);
+    let rect = Rect::from_bot_center(Vec2::zeros(), size);
+    let primitive =
+        DrawPrimitive::with_color(rect, Color::new_gray(0.3, 1.0), 0.0);
 
     Entity {
         position,
-        collider: Some(collider),
+        collider: None,
         kinematic: None,
         health: None,
         weapon: None,
+        draw_primitive: Some(primitive),
         animator: None,
     }
 }
@@ -46,12 +49,16 @@ pub fn create_knight_entity(
         cooldown: 0.0,
     };
 
-    let mut animator = Animator::new(AnimatedSprite::from_atlas(
-        sprite_atlas,
-        "knight_idle",
-        2.0,
-        0.025,
-    ));
+    let rect = collider;
+    let mut animator = Animator::new(
+        rect,
+        AnimatedSprite::from_atlas(
+            sprite_atlas,
+            "knight_idle",
+            2.0,
+            0.025,
+        ),
+    );
 
     animator.add(
         "idle",
@@ -82,6 +89,7 @@ pub fn create_knight_entity(
         kinematic: Some(kinematic),
         health: Some(health),
         weapon: Some(weapon),
+        draw_primitive: None,
         animator: Some(animator),
     }
 }

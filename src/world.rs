@@ -99,7 +99,7 @@ impl World {
         if let Some(floor) = self.get_lift_floor() {
             let shaft_width = self.get_shaft_world_rect().get_size().x;
             let floor_height =
-                floor.collider.as_ref().unwrap().get_size().y;
+                floor.draw_primitive.unwrap().rect.get_size().y;
             let floor_idx =
                 (floor.position.y / floor_height).floor() as usize;
             let is_enemy_in_lift =
@@ -138,7 +138,8 @@ impl World {
     pub fn update_enemies(&mut self, dt: f32) {
         let floor_idx;
         if let Some(floor) = self.get_lift_floor() {
-            let floor_height = floor.collider.unwrap().get_size().y;
+            let floor_height =
+                floor.draw_primitive.unwrap().rect.get_size().y;
             floor_idx = (floor.position.y / floor_height).floor() as usize;
         } else {
             return;
@@ -210,7 +211,8 @@ impl World {
     }
 
     pub fn get_lift_floor_idx(&self) -> f32 {
-        let floor_height = self.floors[0].collider.unwrap().get_size().y;
+        let floor_height =
+            self.floors[0].draw_primitive.unwrap().rect.get_size().y;
         self.lift.y / floor_height
     }
 
@@ -230,7 +232,8 @@ impl World {
     }
 
     pub fn get_shaft_world_rect(&self) -> Rect {
-        let floor_height = self.floors[0].collider.unwrap().get_size().y;
+        let floor_height =
+            self.floors[0].draw_primitive.unwrap().rect.get_size().y;
         let height = self.floors.len() as f32 * floor_height;
         let size = Vec2::new(self.shaft_width, height);
 
@@ -242,7 +245,7 @@ impl World {
 
     pub fn get_floor_world_rect(&self, floor_idx: usize) -> Rect {
         let floor = &self.floors[floor_idx];
-        let floor_size = floor.collider.unwrap().get_size();
+        let floor_size = floor.draw_primitive.unwrap().rect.get_size();
         let y = floor_size.y * (floor_idx as f32 + 0.5);
         let center = Vec2::new(0.0, y);
         let rect = Rect {
@@ -312,7 +315,7 @@ impl Lift {
     }
 
     pub fn from_floor(floor: &Entity, max_speed: f32) -> Self {
-        let floor_height = floor.collider.unwrap().get_size().y;
+        let floor_height = floor.draw_primitive.unwrap().rect.get_size().y;
         let height = floor_height * 0.6;
         let width = floor_height;
         let lift_size = Vec2::new(height, width);
