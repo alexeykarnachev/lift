@@ -78,6 +78,7 @@ impl World {
         match self.state {
             Play => {
                 self.update_lift(dt, input);
+                self.update_floors();
                 self.update_enemies(dt);
                 self.update_player(dt);
                 self.update_free_camera(input);
@@ -149,6 +150,16 @@ impl World {
             } else {
                 position.y += step * diff.signum();
             }
+        }
+    }
+
+    pub fn update_floors(&mut self) {
+        let lift_floor_idx = self.get_lift_floor_idx();
+        for (idx, floor) in self.floors.iter_mut().enumerate() {
+            let gray = 0.5
+                - (0.6 * (idx as f32 - lift_floor_idx).abs()).powf(2.0);
+            floor.draw_primitive.as_mut().unwrap().color =
+                Some(Color::new_gray(gray, 1.0));
         }
     }
 
