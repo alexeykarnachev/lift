@@ -6,7 +6,7 @@ use crate::entity::*;
 use crate::graphics::*;
 use crate::input::Input;
 use crate::prefabs::*;
-use crate::vec::{Rect, Vec2};
+use crate::vec::Vec2;
 
 #[derive(PartialEq)]
 pub enum WorldState {
@@ -18,11 +18,10 @@ pub struct World {
     pub state: WorldState,
 
     pub camera: Camera,
-    pub lift: Lift,
+    pub shaft: Entity,
+    pub lift: Entity,
     pub player: Entity,
     pub enemies: Vec<Vec<Entity>>,
-
-    pub shaft_width: f32,
 
     pub floors: Vec<Entity>,
 
@@ -53,24 +52,22 @@ impl World {
         }
 
         let idx = (n_floors / 2) as usize;
-        let max_speed = 4.0;
-        let floor = &floors[idx];
-        let lift = Lift::from_floor(floor, max_speed);
-        let shaft_width = lift.size.x * 1.2;
+        let lift = create_lift_entity(idx);
+        let shaft = create_shaft_entity(n_floors);
 
-        let position = Vec2::new(0.0, floor.position.y);
+        let position = Vec2::new(0.0, lift.position.y);
         let player = create_knight_entity(position, &sprite_atlas);
 
         let state = WorldState::Play;
-        let camera = Camera::new(Vec2::new(0.0, floor.position.y));
+        let camera = Camera::new(Vec2::new(0.0, lift.position.y));
 
         Self {
             state,
             camera,
+            shaft,
             lift,
             player,
             enemies,
-            shaft_width,
             floors,
             sprite_atlas,
         }
@@ -90,49 +87,57 @@ impl World {
     }
 
     fn update_lift(&mut self, dt: f32, input: &Input) {
-        let cursor_world_pos = window_to_world(
-            &self.camera,
-            input.window_size,
-            input.cursor_pos,
-        );
+        // let kinematic = self.lift.kinematic.as_ref().unwrap();
+        // let mut target = kinematic.target;
 
-        if let Some(floor) = self.get_lift_floor() {
-            let shaft_width = self.get_shaft_world_rect().get_size().x;
-            let floor_height =
-                floor.draw_primitive.unwrap().rect.get_size().y;
-            let floor_idx =
-                (floor.position.y / floor_height).floor() as usize;
-            let is_enemy_in_lift =
-                self.enemies[floor_idx].iter().any(|enemy| {
-                    let collider = enemy.collider.unwrap();
-                    let x = collider
-                        .bot_left
-                        .x
-                        .abs()
-                        .min(collider.top_right.x.abs());
-                    x <= 0.5 * shaft_width
-                });
+        // let cursor_world_pos = window_to_world(
+        //     &self.camera,
+        //     input.window_size,
+        //     input.cursor_pos,
+        // );
 
-            if !is_enemy_in_lift {
-                let mut idx = floor_idx as i32;
-                if let Some(_) = input.lmb_press_pos {
-                    idx += 1;
-                } else if let Some(_) = input.rmb_press_pos {
-                    idx -= 1;
-                }
+        // if let Some(floor) = self.get_lift_floor() {
+        //     let shaft_width = self.get_shaft_world_rect().get_size().x;
+        //     let floor_height =
+        //         floor.draw_primitive.unwrap().rect.get_size().y;
+        //     let floor_idx =
+        //         (floor.position.y / floor_height).floor() as usize;
+        //     let is_enemy_in_lift =
+        //         self.enemies[floor_idx].iter().any(|enemy| {
+        //             let collider = enemy.collider.unwrap();
+        //             let x = collider
+        //                 .bot_left
+        //                 .x
+        //                 .abs()
+        //                 .min(collider.top_right.x.abs());
+        //             x <= 0.5 * shaft_width
+        //         });
 
-                idx = idx.clamp(0, self.floors.len() as i32 - 1);
-                self.lift.target_y = idx as f32 * floor_height;
-            }
-        }
+        //     if !is_enemy_in_lift {
+        //         let mut idx = floor_idx as i32;
+        //         if let Some(_) = input.lmb_press_pos {
+        //             idx += 1;
+        //         } else if let Some(_) = input.rmb_press_pos {
+        //             idx -= 1;
+        //         }
 
-        let diff = self.lift.target_y - self.lift.y;
-        let step = dt * self.lift.max_speed;
-        if step >= diff.abs() {
-            self.lift.y = self.lift.target_y;
-        } else {
-            self.lift.y += step * diff.signum();
-        }
+        //         idx = idx.clamp(0, self.floors.len() as i32 - 1);
+        //         let target_y = idx as f32 * floor_height;
+        //         target = Some(Vec2::new(0.0, target_y));
+        //     }
+        // }
+
+        // self.lift.kinematic.as_mut().unwrap().target = target;
+        // let position = &mut self.lift.position;
+        // if let Some(target) = kinematic.target {
+        //     let diff = target.y - position.y;
+        //     let step = dt * kinematic.max_speed;
+        //     if step >= diff.abs() {
+        //         position.y = target.y;
+        //     } else {
+        //         position.y += step * diff.signum();
+        //     }
+        // }
     }
 
     pub fn update_enemies(&mut self, dt: f32) {
@@ -213,7 +218,7 @@ impl World {
     pub fn get_lift_floor_idx(&self) -> f32 {
         let floor_height =
             self.floors[0].draw_primitive.unwrap().rect.get_size().y;
-        self.lift.y / floor_height
+        self.lift.position.y / floor_height
     }
 
     pub fn get_lift_nearest_floor(&self) -> &Entity {
@@ -229,44 +234,6 @@ impl World {
         }
 
         None
-    }
-
-    pub fn get_shaft_world_rect(&self) -> Rect {
-        let floor_height =
-            self.floors[0].draw_primitive.unwrap().rect.get_size().y;
-        let height = self.floors.len() as f32 * floor_height;
-        let size = Vec2::new(self.shaft_width, height);
-
-        Rect {
-            bot_left: Vec2::new(-size.x * 0.5, 0.0),
-            top_right: Vec2::new(size.x * 0.5, size.y),
-        }
-    }
-
-    pub fn get_floor_world_rect(&self, floor_idx: usize) -> Rect {
-        let floor = &self.floors[floor_idx];
-        let floor_size = floor.draw_primitive.unwrap().rect.get_size();
-        let y = floor_size.y * (floor_idx as f32 + 0.5);
-        let center = Vec2::new(0.0, y);
-        let rect = Rect {
-            bot_left: center - floor_size.scale(0.5),
-            top_right: center + floor_size.scale(0.5),
-        };
-
-        Rect {
-            bot_left: center - floor_size.scale(0.5),
-            top_right: center + floor_size.scale(0.5),
-        }
-    }
-
-    pub fn get_lift_world_rect(&self) -> Rect {
-        let y = self.lift.y + 0.5 * self.lift.size.y;
-        let center = Vec2::new(0.0, y);
-
-        Rect {
-            bot_left: center - self.lift.size.scale(0.5),
-            top_right: center + self.lift.size.scale(0.5),
-        }
     }
 }
 
@@ -292,36 +259,6 @@ impl Camera {
         let view_height = self.view_width / self.aspect;
 
         Vec2::new(self.view_width, view_height)
-    }
-}
-
-pub struct Lift {
-    pub size: Vec2<f32>,
-    pub y: f32,
-    pub target_y: f32,
-    pub max_speed: f32,
-    speed: f32,
-}
-
-impl Lift {
-    pub fn new(size: Vec2<f32>, y: f32, max_speed: f32) -> Self {
-        Self {
-            size: size,
-            y: y,
-            target_y: y,
-            max_speed: max_speed,
-            speed: 0.0,
-        }
-    }
-
-    pub fn from_floor(floor: &Entity, max_speed: f32) -> Self {
-        let floor_height = floor.draw_primitive.unwrap().rect.get_size().y;
-        let height = floor_height * 0.6;
-        let width = floor_height;
-        let lift_size = Vec2::new(height, width);
-        let y = floor.position.y;
-
-        Lift::new(lift_size, y, max_speed)
     }
 }
 

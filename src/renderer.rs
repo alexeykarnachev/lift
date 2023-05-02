@@ -113,9 +113,11 @@ impl Renderer {
     pub fn fill_render_queue(&mut self, world: &World) {
         self.primitives.clear();
 
-        self.push_floors(world);
-        self.push_shaft(world);
-        self.push_lift(world);
+        world.floors.iter().for_each(|floor| {
+            draw_entity(floor, &mut self.primitives);
+        });
+        draw_entity(&world.shaft, &mut self.primitives);
+        draw_entity(&world.lift, &mut self.primitives);
         draw_entity(&world.player, &mut self.primitives);
 
         let floor = world.get_lift_nearest_floor();
@@ -126,36 +128,6 @@ impl Renderer {
         }
 
         if world.state != WorldState::GameOver {}
-    }
-
-    fn push_floors(&mut self, world: &World) {
-        let lift_floor_idx = world.get_lift_floor_idx();
-        for floor_idx in 0..world.floors.len() {
-            let c = 0.5
-                - (0.6 * (floor_idx as f32 - lift_floor_idx).abs())
-                    .powf(2.0);
-            self.primitives.push(DrawPrimitive::with_color(
-                world.get_floor_world_rect(floor_idx),
-                Color::new_gray(c, 1.0),
-                0.0,
-            ));
-        }
-    }
-
-    fn push_shaft(&mut self, world: &World) {
-        self.primitives.push(DrawPrimitive::with_color(
-            world.get_shaft_world_rect(),
-            Color::new_gray(0.0, 1.0),
-            0.0,
-        ));
-    }
-
-    fn push_lift(&mut self, world: &World) {
-        self.primitives.push(DrawPrimitive::with_color(
-            world.get_lift_world_rect(),
-            Color::new_gray(0.7, 1.0),
-            0.0,
-        ));
     }
 
     fn bind_screen_framebuffer(&self) {

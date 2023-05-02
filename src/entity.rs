@@ -22,6 +22,7 @@ pub struct Entity {
 pub struct Kinematic {
     pub max_speed: f32,
     pub speed: f32,
+    pub target: Option<Vec2<f32>>,
 }
 
 pub struct Health {
