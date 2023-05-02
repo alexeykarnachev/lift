@@ -96,17 +96,9 @@ impl World {
 
         let mut target = None;
         if let Some(floor) = self.get_lift_floor() {
-            let shaft_width = self
-                .shaft
-                .draw_primitive
-                .as_ref()
-                .unwrap()
-                .rect
-                .get_size()
-                .x;
-            let floor_height =
-                floor.draw_primitive.unwrap().rect.get_size().y;
-            let floor_idx =
+            let shaft_width = self.shaft.get_draw_primitive_size().x;
+            let floor_height = floor.get_draw_primitive_size().y;
+            let floor_idx = 
                 (floor.position.y / floor_height).floor() as usize;
             let is_enemy_in_lift =
                 self.enemies[floor_idx].iter().any(|enemy| {
@@ -166,8 +158,7 @@ impl World {
     pub fn update_enemies(&mut self, dt: f32) {
         let floor_idx;
         if let Some(floor) = self.get_lift_floor() {
-            let floor_height =
-                floor.draw_primitive.unwrap().rect.get_size().y;
+            let floor_height = floor.get_draw_primitive_size().y;
             floor_idx = (floor.position.y / floor_height).floor() as usize;
         } else {
             return;
@@ -200,9 +191,9 @@ impl World {
                 damage += weapon.damage;
                 animator.play("attack");
             }
+            weapon.cooldown += dt;
 
             animator.update(dt);
-            weapon.cooldown += dt;
         }
 
         player_health.current -= damage;
@@ -241,15 +232,17 @@ impl World {
     }
 
     pub fn get_lift_floor_idx(&self) -> f32 {
-        let floor_height =
-            self.floors[0].draw_primitive.unwrap().rect.get_size().y;
+        let floor_height = self.floors[0].get_draw_primitive_size().y;
+
         self.lift.position.y / floor_height
     }
 
-    pub fn get_lift_nearest_floor(&self) -> &Entity {
+    pub fn get_lift_nearest_floor_idx(&self) -> usize {
         let idx = self.get_lift_floor_idx().round() as usize;
+        let floor = &self.floors[idx];
+        let floor_height = floor.get_draw_primitive_size().y;
 
-        &self.floors[idx]
+        (floor.position.y / floor_height).floor() as usize
     }
 
     pub fn get_lift_floor(&self) -> Option<&Entity> {

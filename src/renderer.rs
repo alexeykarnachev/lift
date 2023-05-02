@@ -120,9 +120,7 @@ impl Renderer {
         draw_entity(&world.lift, &mut self.primitives);
         draw_entity(&world.player, &mut self.primitives);
 
-        let floor = world.get_lift_nearest_floor();
-        let floor_height = floor.draw_primitive.unwrap().rect.get_size().y;
-        let floor_idx = (floor.position.y / floor_height).floor() as usize;
+        let floor_idx = world.get_lift_nearest_floor_idx();
         for enemy in world.enemies[floor_idx].iter() {
             draw_entity(enemy, &mut self.primitives);
         }
@@ -137,8 +135,6 @@ impl Renderer {
             self.gl.bind_framebuffer(glow::FRAMEBUFFER, None);
         }
     }
-
-    fn load_sprite_atlas(&mut self, meta_fp: &str, image_fp: &str) {}
 }
 
 struct PrimitiveRenderer {

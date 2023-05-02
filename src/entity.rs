@@ -19,6 +19,20 @@ pub struct Entity {
     pub animator: Option<Animator>,
 }
 
+impl Entity {
+    pub fn new(position: Vec2<f32>) -> Self {
+        Self { position, collider: None, kinematic: None, health: None, weapon: None, draw_primitive: None, animator: None}
+    }
+
+    pub fn get_draw_primitive_size(&self) -> Vec2<f32> {
+        self.draw_primitive
+        .as_ref()
+        .unwrap()
+        .rect
+        .get_size()
+    }
+}
+
 pub struct Kinematic {
     pub max_speed: f32,
     pub speed: f32,

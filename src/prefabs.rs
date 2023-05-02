@@ -23,15 +23,10 @@ pub fn create_shaft_entity(n_floors: usize) -> Entity {
     let primitive =
         DrawPrimitive::with_color(rect, Color::new_gray(0.05, 1.0), 0.0);
 
-    Entity {
-        position,
-        collider: None,
-        kinematic: None,
-        health: None,
-        weapon: None,
-        draw_primitive: Some(primitive),
-        animator: None,
-    }
+    let mut entity = Entity::new(position);
+    entity.draw_primitive = Some(primitive);
+
+    entity
 }
 
 pub fn create_floor_entity(idx: usize) -> Entity {
@@ -42,15 +37,10 @@ pub fn create_floor_entity(idx: usize) -> Entity {
     let primitive =
         DrawPrimitive::with_color(rect, Color::new_gray(0.3, 1.0), 0.0);
 
-    Entity {
-        position,
-        collider: None,
-        kinematic: None,
-        health: None,
-        weapon: None,
-        draw_primitive: Some(primitive),
-        animator: None,
-    }
+    let mut entity = Entity::new(position);
+    entity.draw_primitive = Some(primitive);
+
+    entity
 }
 
 pub fn create_lift_entity(floor_idx: usize) -> Entity {
@@ -66,15 +56,11 @@ pub fn create_lift_entity(floor_idx: usize) -> Entity {
         target: None,
     };
 
-    Entity {
-        position,
-        collider: None,
-        kinematic: Some(kinematic),
-        health: None,
-        weapon: None,
-        draw_primitive: Some(primitive),
-        animator: None,
-    }
+    let mut entity = Entity::new(position);
+    entity.kinematic = Some(kinematic);
+    entity.draw_primitive = Some(primitive);
+
+    entity
 }
 
 pub fn create_knight_entity(
@@ -133,13 +119,12 @@ pub fn create_knight_entity(
         AnimatedSprite::from_atlas(sprite_atlas, "knight_run", 0.5, 0.025),
     );
 
-    Entity {
-        position,
-        collider: Some(collider),
-        kinematic: Some(kinematic),
-        health: Some(health),
-        weapon: Some(weapon),
-        draw_primitive: None,
-        animator: Some(animator),
-    }
+    let mut entity = Entity::new(position);
+    entity.collider = Some(collider);
+    entity.kinematic = Some(kinematic);
+    entity.health = Some(health);
+    entity.weapon = Some(weapon);
+    entity.animator = Some(animator);
+
+    entity
 }
