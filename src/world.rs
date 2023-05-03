@@ -56,7 +56,8 @@ impl World {
         let shaft = create_shaft_entity(n_floors);
 
         let position = Vec2::new(0.0, lift.position.y);
-        let player = create_knight_entity(position, &sprite_atlas);
+        let mut player = create_knight_entity(position, &sprite_atlas);
+        player.kinematic = None;
 
         let state = WorldState::Play;
         let camera = Camera::new(Vec2::new(0.0, lift.position.y));
@@ -95,22 +96,13 @@ impl World {
         );
 
         let mut target = None;
-        if let Some(floor) = self.get_lift_floor() {
+        if let Some(floor_idx) = self.get_lift_floor_idx() {
             let shaft_width = self.shaft.get_draw_primitive_size().x;
-            let floor_height = floor.get_draw_primitive_size().y;
-            let floor_idx = 
-                (floor.position.y / floor_height).floor() as usize;
             let is_enemy_in_lift =
                 self.enemies[floor_idx].iter().any(|enemy| {
-                    let collider = enemy
-                        .collider
-                        .unwrap()
-                        .with_bot_center(enemy.position);
-                    let x = collider
-                        .bot_left
-                        .x
-                        .abs()
-                        .min(collider.top_right.x.abs());
+                    let collider = enemy.get_collider();
+                    let x = collider.get_x_dist_to(0.0);
+
                     x <= 0.5 * shaft_width
                 });
 
@@ -123,7 +115,7 @@ impl World {
                 }
 
                 idx = idx.clamp(0, self.floors.len() as i32 - 1);
-                let target_y = idx as f32 * floor_height;
+                let target_y = idx as f32 * self.get_floor_height();
                 target = Some(Vec2::new(0.0, target_y));
             }
         }
@@ -146,64 +138,56 @@ impl World {
     }
 
     pub fn update_floors(&mut self) {
-        let lift_floor_idx = self.get_lift_floor_idx();
+        let lift_floor_idx = self.get_lift_floor_idx_f();
         for (idx, floor) in self.floors.iter_mut().enumerate() {
             let gray = 0.5
                 - (0.6 * (idx as f32 - lift_floor_idx).abs()).powf(2.0);
-            floor.draw_primitive.as_mut().unwrap().color =
-                Some(Color::new_gray(gray, 1.0));
+            floor.set_draw_primitive_color(Color::new_gray(gray, 1.0));
         }
     }
 
     pub fn update_enemies(&mut self, dt: f32) {
-        let floor_idx;
-        if let Some(floor) = self.get_lift_floor() {
-            let floor_height = floor.get_draw_primitive_size().y;
-            floor_idx = (floor.position.y / floor_height).floor() as usize;
+        let floor_idx = if let Some(idx) = self.get_lift_floor_idx() {
+            idx
         } else {
             return;
         };
 
-        let player_position = &self.player.position;
-        let player_collider = self.player.collider.as_ref().unwrap();
-        let player_width = player_collider.get_width();
-        let player_health = self.player.health.as_mut().unwrap();
-
-        let mut damage = 0.0;
         for enemy in self.enemies[floor_idx].iter_mut() {
-            let mut position = &mut enemy.position;
-            let weapon = enemy.weapon.as_mut().unwrap();
-            let collider = enemy.collider.as_ref().unwrap();
-            let width = collider.get_width();
-            let kinematic = enemy.kinematic.as_mut().unwrap();
-            let animator = enemy.animator.as_mut().unwrap();
-
-            let dist = player_position.x - position.x;
-            animator.flip = dist < 0.0;
-            let attack_dist = weapon.range + 0.5 * (player_width + width);
-            if dist.abs() > attack_dist {
-                kinematic.speed = kinematic.max_speed * dist.signum();
-                let step = dt * kinematic.speed;
-                position.x += step;
-                animator.play("run");
-            } else if weapon.cooldown >= 1.0 / weapon.speed {
-                weapon.cooldown = 0.0;
-                damage += weapon.damage;
-                animator.play("attack");
-            }
-            weapon.cooldown += dt;
-
-            animator.update(dt);
-        }
-
-        player_health.current -= damage;
-        if player_health.current <= 0.0 {
-            self.state = WorldState::GameOver;
+            attack(enemy, &mut self.player, dt);
+            enemy.update_animator(dt);
         }
     }
 
     pub fn update_player(&mut self, dt: f32) {
         self.player.position.y = self.lift.position.y;
+
+        let floor_idx = if let Some(idx) = self.get_lift_floor_idx() {
+            idx
+        } else {
+            return;
+        };
+
+        let collider = self.player.get_collider();
+        let mut nearest_enemy = None;
+        let mut nearest_dist = f32::INFINITY;
+        for (idx, enemy) in self.enemies[floor_idx].iter_mut().enumerate()
+        {
+            let dist = collider.get_x_dist_to(enemy.position.x);
+            if dist < nearest_dist {
+                nearest_dist = dist;
+                nearest_enemy = Some(enemy);
+            }
+        }
+
+        if let Some(enemy) = nearest_enemy {
+            attack(&mut self.player, enemy, dt);
+            self.player.update_animator(dt);
+        }
+
+        if self.player.health.as_ref().unwrap().current <= 0.0 {
+            self.state = WorldState::GameOver;
+        }
     }
 
     fn update_free_camera(&mut self, input: &Input) {
@@ -231,24 +215,33 @@ impl World {
         }
     }
 
-    pub fn get_lift_floor_idx(&self) -> f32 {
-        let floor_height = self.floors[0].get_draw_primitive_size().y;
+    pub fn get_floor_height(&self) -> f32 {
+        self.floors[0].get_draw_primitive_size().y
+    }
 
-        self.lift.position.y / floor_height
+    pub fn get_lift_floor_idx_f(&self) -> f32 {
+        self.lift.position.y / self.get_floor_height()
+    }
+
+    pub fn get_lift_floor_idx(&self) -> Option<usize> {
+        let idx = self.get_lift_floor_idx_f();
+        if (idx.floor() - idx).abs() < 1.0e-5 {
+            return Some(idx as usize);
+        }
+
+        None
     }
 
     pub fn get_lift_nearest_floor_idx(&self) -> usize {
-        let idx = self.get_lift_floor_idx().round() as usize;
+        let idx = self.get_lift_floor_idx_f().round() as usize;
         let floor = &self.floors[idx];
-        let floor_height = floor.get_draw_primitive_size().y;
 
-        (floor.position.y / floor_height).floor() as usize
+        (floor.position.y / self.get_floor_height()).floor() as usize
     }
 
     pub fn get_lift_floor(&self) -> Option<&Entity> {
-        let idx = self.get_lift_floor_idx();
-        if (idx.floor() - idx).abs() < 1.0e-5 {
-            return Some(&self.floors[idx as usize]);
+        if let Some(idx) = self.get_lift_floor_idx() {
+            return Some(&self.floors[idx]);
         }
 
         None
@@ -321,4 +314,38 @@ pub fn world_to_screen(
     );
 
     window_pos
+}
+
+fn attack(entity: &mut Entity, target: &mut Entity, dt: f32) {
+    let target_position = &target.position;
+    let target_collider = target.collider.as_ref().unwrap();
+    let target_width = target_collider.get_width();
+    let target_health = target.health.as_mut().unwrap();
+
+    let mut position = &mut entity.position;
+    let weapon = entity.weapon.as_mut().unwrap();
+    let collider = entity.collider.as_ref().unwrap();
+    let width = collider.get_width();
+    let animator = entity.animator.as_mut().unwrap();
+
+    let dist = target_position.x - position.x;
+    let attack_dist = weapon.range + 0.5 * (target_width + width);
+    let can_reach = dist.abs() < attack_dist;
+    let mut damage = 0.0;
+    if let (Some(kinematic), false) =
+        (entity.kinematic.as_mut(), can_reach)
+    {
+        kinematic.speed = kinematic.max_speed * dist.signum();
+        let step = dt * kinematic.speed;
+        position.x += step;
+        animator.play("run");
+    } else if weapon.is_ready() && can_reach {
+        weapon.cooldown = 0.0;
+        damage += weapon.damage;
+        animator.play("attack");
+    }
+
+    weapon.cooldown += dt;
+    animator.flip = dist < 0.0;
+    target_health.current -= damage;
 }

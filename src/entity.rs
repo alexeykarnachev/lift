@@ -21,15 +21,34 @@ pub struct Entity {
 
 impl Entity {
     pub fn new(position: Vec2<f32>) -> Self {
-        Self { position, collider: None, kinematic: None, health: None, weapon: None, draw_primitive: None, animator: None}
+        Self {
+            position,
+            collider: None,
+            kinematic: None,
+            health: None,
+            weapon: None,
+            draw_primitive: None,
+            animator: None,
+        }
+    }
+
+    pub fn get_collider(&self) -> Rect {
+        self.collider
+            .as_ref()
+            .unwrap()
+            .with_bot_center(self.position)
     }
 
     pub fn get_draw_primitive_size(&self) -> Vec2<f32> {
-        self.draw_primitive
-        .as_ref()
-        .unwrap()
-        .rect
-        .get_size()
+        self.draw_primitive.as_ref().unwrap().rect.get_size()
+    }
+
+    pub fn set_draw_primitive_color(&mut self, color: Color) {
+        self.draw_primitive.as_mut().unwrap().color = Some(color);
+    }
+
+    pub fn update_animator(&mut self, dt: f32) {
+        self.animator.as_mut().unwrap().update(dt);
     }
 }
 
@@ -49,6 +68,12 @@ pub struct Weapon {
     pub speed: f32,
     pub damage: f32,
     pub cooldown: f32,
+}
+
+impl Weapon {
+    pub fn is_ready(&self) -> bool {
+        self.cooldown >= 1.0 / self.speed
+    }
 }
 
 pub struct Animator {

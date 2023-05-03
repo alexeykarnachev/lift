@@ -259,6 +259,13 @@ impl Rect {
         self.top_right - self.bot_left
     }
 
+    pub fn get_x_dist_to(&self, x: f32) -> f32 {
+        let left_dist = (x - self.bot_left.x).abs();
+        let right_dist = (x - self.top_right.x).abs();
+
+        left_dist.min(right_dist)
+    }
+
     pub fn to_world_xywh(&self) -> [f32; 4] {
         let center = self.get_center();
         let size = self.get_size();
