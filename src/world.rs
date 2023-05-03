@@ -83,6 +83,9 @@ impl World {
                 self.update_enemies(dt);
                 self.update_player(dt);
                 self.update_free_camera(input);
+                if self.player.is_dead() {
+                    self.state = WorldState::GameOver;
+                }
             }
             GameOver => {}
         }
@@ -183,10 +186,6 @@ impl World {
         if let Some(enemy) = nearest_enemy {
             attack(&mut self.player, enemy, dt);
             self.player.update_animator(dt);
-        }
-
-        if self.player.health.as_ref().unwrap().current <= 0.0 {
-            self.state = WorldState::GameOver;
         }
     }
 

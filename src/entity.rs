@@ -50,6 +50,10 @@ impl Entity {
     pub fn update_animator(&mut self, dt: f32) {
         self.animator.as_mut().unwrap().update(dt);
     }
+
+    pub fn is_dead(&self) -> bool {
+        self.health.as_ref().unwrap().current <= 0.0
+    }
 }
 
 pub struct Kinematic {
