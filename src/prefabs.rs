@@ -23,7 +23,7 @@ pub fn create_shaft_entity(n_floors: usize) -> Entity {
     let height = n_floors as f32 * FLOOR_HEIGHT;
     let size = Vec2::new(SHAFT_WIDTH, height);
     let position = Vec2::new(0.0, 0.0);
-    let rect = Rect::from_center(position, size);
+    let rect = Rect::from_bot_center(position, size);
     let primitive =
         DrawPrimitive::with_color(rect, Color::new_gray(0.05, 1.0), 0.0);
 

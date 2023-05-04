@@ -114,17 +114,14 @@ impl Animator {
         self.current_animation = animation;
     }
 
-    pub fn get_draw_primitive(
-        &self,
-        position: Vec2<f32>,
-    ) -> DrawPrimitive {
+    pub fn get_draw_primitive(&self) -> DrawPrimitive {
         let mut sprite = self
             .animation_to_sprite
             .get(self.current_animation)
             .unwrap()
             .get_current_frame();
 
-        DrawPrimitive::from_sprite(sprite, position, self.flip)
+        DrawPrimitive::from_sprite(sprite, self.flip)
     }
 
     pub fn update(&mut self, dt: f32) {
@@ -156,9 +153,8 @@ impl Text {
                 h: glyph.h,
                 scale,
             };
-            let primitive =
-                DrawPrimitive::from_sprite(sprite, position, false);
-            draw_primitives.push(primitive);
+            let mut primitive = DrawPrimitive::from_sprite(sprite, false);
+            draw_primitives.push(primitive.translate(position));
             position.x += glyph.w_advance;
             position.y += glyph.h_advance;
         }

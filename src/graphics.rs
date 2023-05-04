@@ -180,13 +180,9 @@ impl DrawPrimitive {
         }
     }
 
-    pub fn from_sprite(
-        sprite: Sprite,
-        position: Vec2<f32>,
-        flip: bool,
-    ) -> Self {
+    pub fn from_sprite(sprite: Sprite, flip: bool) -> Self {
         let size = Vec2::new(sprite.w, sprite.h).scale(sprite.scale);
-        let rect = Rect::from_bot_center(position, size);
+        let rect = Rect::from_bot_center(Vec2::zeros(), size);
 
         Self {
             rect,
@@ -304,16 +300,15 @@ pub fn draw_entity(entity: &Entity, draw_queue: &mut Vec<DrawPrimitive>) {
     let text = entity.text.as_ref();
     let health = entity.health.as_ref();
 
-    let mut primitive = None;
+    let mut primitive;
     if let Some(animator) = animator {
-        primitive = Some(animator.get_draw_primitive(position));
-    } else if let Some(mut _primitive) = entity.draw_primitive {
-        _primitive.rect = _primitive.rect.with_bot_center(position);
-        primitive = Some(_primitive);
+        primitive = Some(animator.get_draw_primitive());
+    } else {
+        primitive = entity.draw_primitive;
     }
 
     if let Some(primitive) = primitive {
-        draw_queue.push(primitive);
+        draw_queue.push(primitive.translate(position));
     }
 
     if let (Some(primitive), Some(health)) = (primitive, health) {
@@ -325,9 +320,8 @@ pub fn draw_entity(entity: &Entity, draw_queue: &mut Vec<DrawPrimitive>) {
         let bar_size = Vec2::new(1.0, 0.13);
         let border_size = Vec2::new(0.03, 0.03);
 
-        let x = position.x;
         let y = primitive.rect.get_top_left().y + gap_height;
-        let bot_center = Vec2::new(x, y);
+        let bot_center = Vec2::new(0.0, y);
         let background_rect = Rect::from_bot_center(bot_center, bar_size);
         let background_primitive = DrawPrimitive::with_color(
             background_rect,
@@ -342,8 +336,8 @@ pub fn draw_entity(entity: &Entity, draw_queue: &mut Vec<DrawPrimitive>) {
         let health_primitive =
             DrawPrimitive::with_color(health_rect, color, 0.0);
 
-        draw_queue.push(background_primitive);
-        draw_queue.push(health_primitive);
+        draw_queue.push(background_primitive.translate(position));
+        draw_queue.push(health_primitive.translate(position));
     }
 
     if let Some(text) = text {
