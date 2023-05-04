@@ -17,6 +17,7 @@ pub struct Entity {
     pub weapon: Option<Weapon>,
     pub draw_primitive: Option<DrawPrimitive>,
     pub animator: Option<Animator>,
+    pub text: Option<Text>,
 }
 
 impl Entity {
@@ -29,6 +30,7 @@ impl Entity {
             weapon: None,
             draw_primitive: None,
             animator: None,
+            text: None,
         }
     }
 
@@ -130,5 +132,37 @@ impl Animator {
             .get_mut(self.current_animation)
             .unwrap()
             .update(dt);
+    }
+}
+
+pub struct Text {
+    pub draw_primitives: Vec<DrawPrimitive>,
+}
+
+impl Text {
+    pub fn from_glyph_atlas(
+        glyph_atlas: &GlyphAtlas,
+        string: String,
+        scale: f32,
+    ) -> Self {
+        let mut draw_primitives = Vec::new();
+        let mut position = Vec2::zeros();
+        for (_, c) in string.char_indices() {
+            let glyph = glyph_atlas.get_glyph(c);
+            let sprite = Sprite {
+                x: glyph.x,
+                y: glyph.y,
+                w: glyph.w,
+                h: glyph.h,
+                scale,
+            };
+            let primitive =
+                DrawPrimitive::from_sprite(sprite, position, false);
+            draw_primitives.push(primitive);
+            position.x += glyph.w_advance;
+            position.y += glyph.h_advance;
+        }
+
+        Self { draw_primitives }
     }
 }

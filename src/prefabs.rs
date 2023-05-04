@@ -9,10 +9,14 @@ const LIFT_HEIGHT: f32 = FLOOR_HEIGHT;
 const SHAFT_WIDTH: f32 = LIFT_WIDTH * 1.2;
 
 pub fn create_default_sprite_atlas() -> SpriteAtlas {
-    SpriteAtlas::new(
+    SpriteAtlas::from_image(
         "./assets/sprites/atlas.json",
         "./assets/sprites/atlas.png",
     )
+}
+
+pub fn create_default_glyph_atlas() -> GlyphAtlas {
+    GlyphAtlas::from_ttf("./assets/fonts/Montserrat-Bold.ttf", 32.0)
 }
 
 pub fn create_shaft_entity(n_floors: usize) -> Entity {
@@ -88,7 +92,7 @@ pub fn create_knight_entity(
     let rect = collider;
     let mut animator = Animator::new(
         rect,
-        AnimatedSprite::from_atlas(
+        AnimatedSprite::from_sprite_atlas(
             sprite_atlas,
             "knight_idle",
             2.0,
@@ -98,7 +102,7 @@ pub fn create_knight_entity(
 
     animator.add(
         "idle",
-        AnimatedSprite::from_atlas(
+        AnimatedSprite::from_sprite_atlas(
             sprite_atlas,
             "knight_idle",
             0.5,
@@ -107,7 +111,7 @@ pub fn create_knight_entity(
     );
     animator.add(
         "attack",
-        AnimatedSprite::from_atlas(
+        AnimatedSprite::from_sprite_atlas(
             sprite_atlas,
             "knight_attack",
             0.5,
@@ -116,7 +120,12 @@ pub fn create_knight_entity(
     );
     animator.add(
         "run",
-        AnimatedSprite::from_atlas(sprite_atlas, "knight_run", 0.5, 0.025),
+        AnimatedSprite::from_sprite_atlas(
+            sprite_atlas,
+            "knight_run",
+            0.5,
+            0.025,
+        ),
     );
 
     let mut entity = Entity::new(position);

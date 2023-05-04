@@ -4,14 +4,14 @@
 
 use crate::entity::*;
 use crate::vec::{Rect, Vec2};
+use fontdue::Font;
 use image::imageops::flip_vertical_in_place;
 use image::io::Reader as ImageReader;
-use image::DynamicImage;
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer};
 use std::collections::HashMap;
 use std::fs;
 
-#[derive(Deserialize, Copy, Clone)]
+#[derive(Deserialize, Debug, Copy, Clone)]
 pub struct Sprite {
     pub x: f32,
     pub y: f32,
@@ -28,18 +28,41 @@ impl Sprite {
     }
 }
 
+pub enum ImageFormat {
+    RGBA8888,
+    R8,
+}
+
+impl<'de> Deserialize<'de> for ImageFormat {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        Ok(match s.as_str() {
+            "RGBA8888" => ImageFormat::RGBA8888,
+            "R8" => ImageFormat::R8,
+            _ => panic!("Unknown image format"),
+        })
+    }
+}
+
 #[derive(Deserialize)]
 pub struct SpriteAtlas {
     pub file_name: String,
+    pub format: ImageFormat,
     pub size: [u32; 2],
     pub sprites: HashMap<String, Vec<Sprite>>,
 
     #[serde(skip)]
-    pub image: DynamicImage,
+    pub image: Vec<u8>,
 }
 
 impl SpriteAtlas {
-    pub fn new(meta_file_path: &str, image_file_path: &str) -> Self {
+    pub fn from_image(
+        meta_file_path: &str,
+        image_file_path: &str,
+    ) -> Self {
         let meta = fs::read_to_string(meta_file_path).unwrap();
         let mut atlas: Self = serde_json::from_str(&meta).unwrap();
 
@@ -49,7 +72,7 @@ impl SpriteAtlas {
             .unwrap();
         flip_vertical_in_place(&mut image);
 
-        atlas.image = image;
+        atlas.image = image.as_bytes().to_vec();
 
         atlas
     }
@@ -65,13 +88,13 @@ pub struct AnimatedSprite {
 }
 
 impl AnimatedSprite {
-    pub fn from_atlas(
-        atlas: &SpriteAtlas,
+    pub fn from_sprite_atlas(
+        sprite_atlas: &SpriteAtlas,
         name: &'static str,
         duration: f32,
         scale: f32,
     ) -> Self {
-        let frames = atlas.sprites.get(name).unwrap_or_else(|| {
+        let frames = sprite_atlas.sprites.get(name).unwrap_or_else(|| {
             panic!("There is no such sprite in the sprite atlas: {}", name)
         });
 
@@ -173,12 +196,112 @@ impl DrawPrimitive {
             flip,
         }
     }
+
+    pub fn translate(&self, translation: Vec2<f32>) -> Self {
+        let mut primitive = *self;
+        primitive.rect = primitive.rect.translate(translation);
+
+        primitive
+    }
+}
+
+#[derive(Copy, Clone)]
+pub struct Glyph {
+    pub x: f32,
+    pub y: f32,
+    pub w: f32,
+    pub h: f32,
+    pub w_advance: f32,
+    pub h_advance: f32,
+}
+
+pub struct GlyphAtlas {
+    pub font: Font,
+    pub size: [u32; 2],
+    pub image: Vec<u8>,
+
+    glyphs: Vec<Glyph>,
+}
+
+impl GlyphAtlas {
+    pub fn from_ttf(file_path: &str, font_size: f32) -> Self {
+        let font_bytes = fs::read(file_path).unwrap();
+        let font =
+            Font::from_bytes(font_bytes, fontdue::FontSettings::default())
+                .unwrap();
+
+        let mut metrics = Vec::new();
+        let mut bitmaps = Vec::new();
+        let mut image_width = 0;
+        let mut image_height = 0;
+        for u in 32..127 {
+            let ch = char::from_u32(u).unwrap();
+            let (metric, bitmap) = font.rasterize(ch, font_size);
+            assert!(bitmap.len() == metric.width * metric.height);
+
+            metrics.push(metric);
+            bitmaps.push(bitmap);
+
+            image_width = image_width.max(metric.width);
+            image_height += metric.height;
+        }
+
+        let n_bytes = image_width * image_height;
+        let mut image: Vec<u8> = vec![0; n_bytes];
+        let mut glyphs = Vec::new();
+        let mut cursor = 0;
+        let mut y = 0.0;
+        for i_glyph in 0..metrics.len() {
+            let metric = &metrics[i_glyph];
+
+            let name =
+                char::from_u32(i_glyph as u32 + 32).unwrap().to_string();
+            let glyph = Glyph {
+                x: 0.0,
+                y,
+                w: metric.width as f32,
+                h: metric.height as f32,
+                w_advance: metric.advance_width,
+                h_advance: metric.advance_height,
+            };
+            glyphs.push(glyph);
+
+            let bitmap = &bitmaps[i_glyph];
+            let n_bytes = bitmap.len();
+            for i_glyph_row in 0..metric.height {
+                let glyph_cursor = i_glyph_row * metric.width;
+                let glyph_row =
+                    &bitmap[glyph_cursor..glyph_cursor + metric.width];
+                image[cursor..cursor + metric.width]
+                    .copy_from_slice(glyph_row);
+                cursor += image_width;
+                y += 1.0;
+            }
+        }
+
+        Self {
+            font,
+            size: [image_width as u32, image_height as u32],
+            image,
+            glyphs,
+        }
+    }
+
+    pub fn get_glyph(&self, c: char) -> Glyph {
+        let mut idx = c as usize;
+        if idx < 32 || idx > 126 {
+            idx = 63; // Question mark
+        }
+
+        self.glyphs[idx - 32]
+    }
 }
 
 pub fn draw_entity(entity: &Entity, draw_queue: &mut Vec<DrawPrimitive>) {
     let position = entity.position;
 
     let animator = entity.animator.as_ref();
+    let text = entity.text.as_ref();
     let health = entity.health.as_ref();
 
     let mut primitive = None;
@@ -221,5 +344,11 @@ pub fn draw_entity(entity: &Entity, draw_queue: &mut Vec<DrawPrimitive>) {
 
         draw_queue.push(background_primitive);
         draw_queue.push(health_primitive);
+    }
+
+    if let Some(text) = text {
+        for primitive in text.draw_primitives.iter() {
+            draw_queue.push(primitive.translate(position));
+        }
     }
 }

@@ -233,6 +233,13 @@ impl Rect {
         Self::from_bot_center(position, self.get_size())
     }
 
+    pub fn translate(&self, translation: Vec2<f32>) -> Self {
+        Self {
+            bot_left: self.bot_left + translation,
+            top_right: self.top_right + translation,
+        }
+    }
+
     pub fn get_width(&self) -> f32 {
         self.get_size().x
     }

@@ -41,11 +41,17 @@ if __name__ == "__main__":
 
     atlas_width = 0
     atlas_height = 0
+    image_format = None
     for meta in metas:
         w = meta["meta"]["size"]["w"]
         h = meta["meta"]["size"]["h"]
         atlas_width = max(w, atlas_width)
         atlas_height += h
+
+        if image_format == None:
+            image_format = meta["meta"]["format"]
+        elif image_format != meta["meta"]["format"]:
+            raise ValueError("Can combine only sheets with the same image format")
 
     atlas_sheet = np.zeros((atlas_height, atlas_width, 4), dtype=np.uint8)
     atlas_meta = defaultdict(list)
@@ -82,6 +88,7 @@ if __name__ == "__main__":
 
     result = {
         "file_name": "atlas.png",
+        "format": image_format,
         "size": [atlas_width, atlas_height],
         "sprites": atlas_meta,
     }

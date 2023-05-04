@@ -26,11 +26,13 @@ pub struct World {
     pub floors: Vec<Entity>,
 
     pub sprite_atlas: SpriteAtlas,
+    pub glyph_atlas: GlyphAtlas,
 }
 
 impl World {
     pub fn new(n_floors: usize) -> Self {
         let sprite_atlas = create_default_sprite_atlas();
+        let glyph_atlas = create_default_glyph_atlas();
         let mut floors = Vec::with_capacity(n_floors as usize);
         let mut enemies = Vec::with_capacity(n_floors as usize);
         for floor_idx in 0..n_floors {
@@ -44,7 +46,15 @@ impl World {
                 let side = if enemy_idx % 2 == 1 { -1.0 } else { 1.0 };
                 let x = (2.0 + 2.0 * enemy_idx as f32) * side;
                 let position = Vec2::new(x, floor_y);
-                let knight = create_knight_entity(position, &sprite_atlas);
+
+                let mut knight =
+                    create_knight_entity(position, &sprite_atlas);
+                knight.text = Some(Text::from_glyph_atlas(
+                    &glyph_atlas,
+                    "Knight! Yes!".to_string(),
+                    0.1,
+                ));
+
                 floor_enemies.push(knight);
             }
 
@@ -71,6 +81,7 @@ impl World {
             enemies,
             floors,
             sprite_atlas,
+            glyph_atlas,
         }
     }
 

@@ -103,7 +103,7 @@ impl Renderer {
                 world.sprite_atlas.size[1] as i32,
                 glow::RGBA,
                 glow::UNSIGNED_BYTE,
-                Some(world.sprite_atlas.image.as_bytes()),
+                Some(&world.sprite_atlas.image),
                 glow::LINEAR,
             );
             self.primitive_renderer.sprite_atlas_tex = Some(tex);
