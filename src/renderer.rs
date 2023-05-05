@@ -108,6 +108,20 @@ impl Renderer {
             );
             self.primitive_renderer.sprite_atlas_tex = Some(tex);
         }
+
+        if self.primitive_renderer.glyph_atlas_tex.is_none() {
+            let tex = create_texture(
+                &self.gl,
+                glow::RED as i32,
+                world.glyph_atlas.size[0] as i32,
+                world.glyph_atlas.size[1] as i32,
+                glow::RED,
+                glow::UNSIGNED_BYTE,
+                Some(&world.glyph_atlas.image),
+                glow::LINEAR,
+            );
+            self.primitive_renderer.glyph_atlas_tex = Some(tex);
+        }
     }
 
     pub fn fill_render_queue(&mut self, world: &World) {
@@ -141,14 +155,15 @@ struct PrimitiveRenderer {
     program: glow::NativeProgram,
 
     sprite_atlas_tex: Option<glow::Texture>,
+    glyph_atlas_tex: Option<glow::Texture>,
 
     vao: glow::NativeVertexArray,
-    a_world_xywh: Attribute,
-    a_tex_uvwh: Attribute,
-    a_rgba: Attribute,
-    a_use_tex: Attribute,
-    a_orientation: Attribute,
-    a_flip: Attribute,
+    a_world_xywh: Attribute<f32>,
+    a_tex_uvwh: Attribute<f32>,
+    a_rgba: Attribute<f32>,
+    a_use_tex: Attribute<u32>,
+    a_orientation: Attribute<f32>,
+    a_flip: Attribute<f32>,
 }
 
 impl PrimitiveRenderer {
@@ -197,7 +212,7 @@ impl PrimitiveRenderer {
             program,
             1,
             "a_use_tex",
-            glow::FLOAT,
+            glow::UNSIGNED_INT,
             MAX_N_INSTANCED_PRIMITIVES,
             1,
         );
@@ -223,6 +238,7 @@ impl PrimitiveRenderer {
         Self {
             program,
             sprite_atlas_tex: None,
+            glyph_atlas_tex: None,
             vao,
             a_world_xywh,
             a_tex_uvwh,
@@ -246,10 +262,16 @@ impl PrimitiveRenderer {
             gl.enable(glow::BLEND);
             gl.blend_func(glow::SRC_ALPHA, glow::ONE_MINUS_SRC_ALPHA);
 
-            if let Some(tex) = self.sprite_atlas_tex {
-                set_uniform_1_i32(gl, self.program, "tex", 0);
+            if let Some(sprite_atlas_tex) = self.sprite_atlas_tex {
+                set_uniform_1_i32(gl, self.program, "sprite_atlas_tex", 0);
                 gl.active_texture(glow::TEXTURE0 + 0);
-                gl.bind_texture(glow::TEXTURE_2D, Some(tex));
+                gl.bind_texture(glow::TEXTURE_2D, Some(sprite_atlas_tex));
+            }
+
+            if let Some(glyph_atlas_tex) = self.glyph_atlas_tex {
+                set_uniform_1_i32(gl, self.program, "glyph_atlas_tex", 1);
+                gl.active_texture(glow::TEXTURE0 + 1);
+                gl.bind_texture(glow::TEXTURE_2D, Some(glyph_atlas_tex));
             }
         }
 
@@ -273,10 +295,10 @@ impl PrimitiveRenderer {
 
         if let Some(sprite) = &primitive.sprite {
             self.a_tex_uvwh.push_data(&sprite.to_tex_xywh());
-            self.a_use_tex.push_data(&[1.0]);
+            self.a_use_tex.push_data(&[1]);
         } else {
             self.a_tex_uvwh.push_data(&[0.0; 4]);
-            self.a_use_tex.push_data(&[0.0]);
+            self.a_use_tex.push_data(&[0]);
         }
 
         if let Some(color) = &primitive.color {
@@ -376,12 +398,16 @@ impl HDRResolveRenderer {
     }
 }
 
-pub struct Attribute {
-    pub data: Vec<f32>,
+pub struct Attribute<T> {
+    pub data: Vec<T>,
     pub vbo: glow::NativeBuffer,
 }
 
-impl Attribute {
+impl<T> Attribute<T>
+where
+    for<'a> &'a [T]: IntoIterator<Item = &'a T>,
+    T: Clone,
+{
     pub fn new(
         gl: &glow::Context,
         program: glow::NativeProgram,
@@ -392,8 +418,8 @@ impl Attribute {
         divisor: u32,
     ) -> Self {
         let max_n_elements = max_n_instances * size;
-        let vbo_size = size_of::<f32>() * max_n_elements;
-        let data = Vec::<f32>::with_capacity(max_n_elements);
+        let vbo_size = size_of::<T>() * max_n_elements;
+        let data = Vec::<T>::with_capacity(max_n_elements);
         let vbo = create_vbo(gl, vbo_size, glow::DYNAMIC_DRAW);
 
         unsafe {
@@ -441,8 +467,8 @@ impl Attribute {
         Self { data, vbo }
     }
 
-    pub fn push_data(&mut self, data: &[f32]) {
-        self.data.extend(data);
+    pub fn push_data(&mut self, data: &[T]) {
+        self.data.extend_from_slice(data);
     }
 
     pub fn sync_data(&mut self, gl: &glow::Context) {

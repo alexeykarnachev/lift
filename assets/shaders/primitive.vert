@@ -8,11 +8,11 @@ uniform Camera camera;
 layout (location = 0) in vec4 a_world_xywh;
 layout (location = 1) in vec4 a_tex_uvwh;
 layout (location = 2) in vec4 a_rgba;
-layout (location = 3) in float a_use_tex;
+layout (location = 3) in uint a_use_tex;
 layout (location = 4) in float a_orientation;
 layout (location = 5) in float a_flip;
 
-flat out float vs_use_tex;
+flat out uint vs_use_tex;
 out vec4 vs_rgba;
 out vec2 vs_uv;
 

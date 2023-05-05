@@ -52,7 +52,7 @@ impl World {
                 knight.text = Some(Text::from_glyph_atlas(
                     &glyph_atlas,
                     "Knight! Yes!".to_string(),
-                    0.1,
+                    0.005,
                 ));
 
                 floor_enemies.push(knight);
