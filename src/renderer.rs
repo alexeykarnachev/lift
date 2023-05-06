@@ -118,7 +118,7 @@ impl Renderer {
                 glow::RED,
                 glow::UNSIGNED_BYTE,
                 Some(&world.glyph_atlas.image),
-                glow::LINEAR,
+                glow::NEAREST,
             );
             self.primitive_renderer.glyph_atlas_tex = Some(tex);
         }
@@ -161,7 +161,7 @@ struct PrimitiveRenderer {
     a_world_xywh: Attribute<f32>,
     a_tex_uvwh: Attribute<f32>,
     a_rgba: Attribute<f32>,
-    a_use_tex: Attribute<u32>,
+    a_tex_id: Attribute<u32>,
     a_orientation: Attribute<f32>,
     a_flip: Attribute<f32>,
 }
@@ -207,11 +207,11 @@ impl PrimitiveRenderer {
             MAX_N_INSTANCED_PRIMITIVES,
             1,
         );
-        let a_use_tex = Attribute::new(
+        let a_tex_id = Attribute::new(
             gl,
             program,
             1,
-            "a_use_tex",
+            "a_tex_id",
             glow::UNSIGNED_INT,
             MAX_N_INSTANCED_PRIMITIVES,
             1,
@@ -243,7 +243,7 @@ impl PrimitiveRenderer {
             a_world_xywh,
             a_tex_uvwh,
             a_rgba,
-            a_use_tex,
+            a_tex_id,
             a_orientation,
             a_flip,
         }
@@ -293,12 +293,16 @@ impl PrimitiveRenderer {
         self.a_world_xywh.push_data(&primitive.rect.to_world_xywh());
         self.a_flip.push_data(&[(primitive.flip as i32) as f32]);
 
+        if let Some(tex) = primitive.tex {
+            self.a_tex_id.push_data(&[tex as u32]);
+        } else {
+            self.a_tex_id.push_data(&[0]);
+        }
+
         if let Some(sprite) = &primitive.sprite {
             self.a_tex_uvwh.push_data(&sprite.to_tex_xywh());
-            self.a_use_tex.push_data(&[1]);
         } else {
             self.a_tex_uvwh.push_data(&[0.0; 4]);
-            self.a_use_tex.push_data(&[0]);
         }
 
         if let Some(color) = &primitive.color {
@@ -315,7 +319,7 @@ impl PrimitiveRenderer {
         self.a_world_xywh.sync_data(gl);
         self.a_rgba.sync_data(gl);
         self.a_tex_uvwh.sync_data(gl);
-        self.a_use_tex.sync_data(gl);
+        self.a_tex_id.sync_data(gl);
         self.a_orientation.sync_data(gl);
         self.a_flip.sync_data(gl);
     }

@@ -196,13 +196,28 @@ impl<T: Float> Vec2<T> {
     }
 }
 
-#[derive(Copy, Clone)]
+pub enum Origin {
+    Center(Vec2<f32>),
+    BotCenter(Vec2<f32>),
+    BotLeft(Vec2<f32>),
+}
+
+#[derive(Debug, Copy, Clone)]
 pub struct Rect {
     pub bot_left: Vec2<f32>,
     pub top_right: Vec2<f32>,
 }
 
 impl Rect {
+    pub fn from_origin(origin: Origin, size: Vec2<f32>) -> Self {
+        use Origin::*;
+        return match origin {
+            Center(p) => Self::from_center(p, size),
+            BotCenter(p) => Self::from_bot_center(p, size),
+            BotLeft(p) => Self::from_bot_left(p, size),
+        };
+    }
+
     pub fn from_center(position: Vec2<f32>, size: Vec2<f32>) -> Self {
         let half_size = size.scale(0.5);
 

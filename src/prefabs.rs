@@ -16,7 +16,7 @@ pub fn create_default_sprite_atlas() -> SpriteAtlas {
 }
 
 pub fn create_default_glyph_atlas() -> GlyphAtlas {
-    GlyphAtlas::from_ttf("./assets/fonts/Montserrat-Bold.ttf", 32.0)
+    GlyphAtlas::from_ttf("./assets/fonts/Montserrat-Bold.ttf", 62.0)
 }
 
 pub fn create_shaft_entity(n_floors: usize) -> Entity {
@@ -25,7 +25,7 @@ pub fn create_shaft_entity(n_floors: usize) -> Entity {
     let position = Vec2::new(0.0, 0.0);
     let rect = Rect::from_bot_center(position, size);
     let primitive =
-        DrawPrimitive::with_color(rect, Color::new_gray(0.05, 1.0), 0.0);
+        DrawPrimitive::from_rect(rect, Color::new_gray(0.05, 1.0), 0.0);
 
     let mut entity = Entity::new(position);
     entity.draw_primitive = Some(primitive);
@@ -39,7 +39,7 @@ pub fn create_floor_entity(idx: usize) -> Entity {
     let position = Vec2::new(0.0, y);
     let rect = Rect::from_bot_center(Vec2::zeros(), size);
     let primitive =
-        DrawPrimitive::with_color(rect, Color::new_gray(0.3, 1.0), 0.0);
+        DrawPrimitive::from_rect(rect, Color::new_gray(0.3, 1.0), 0.0);
 
     let mut entity = Entity::new(position);
     entity.draw_primitive = Some(primitive);
@@ -53,7 +53,7 @@ pub fn create_lift_entity(floor_idx: usize) -> Entity {
     let position = Vec2::new(0.0, y);
     let rect = Rect::from_bot_center(Vec2::zeros(), size);
     let primitive =
-        DrawPrimitive::with_color(rect, Color::new_gray(0.6, 1.0), 0.0);
+        DrawPrimitive::from_rect(rect, Color::new_gray(0.6, 1.0), 0.0);
     let kinematic = Kinematic {
         max_speed: 2.0,
         speed: 0.0,

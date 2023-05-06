@@ -51,7 +51,8 @@ impl World {
                     create_knight_entity(position, &sprite_atlas);
                 knight.text = Some(Text::from_glyph_atlas(
                     &glyph_atlas,
-                    "Knight! Yes!".to_string(),
+                    "Knight! Go, go, go...".to_string(),
+                    Color::new(1.0, 1.0, 0.0, 1.0),
                     0.005,
                 ));
 
@@ -62,7 +63,13 @@ impl World {
         }
 
         let idx = (n_floors / 2) as usize;
-        let lift = create_lift_entity(idx);
+        let mut lift = create_lift_entity(idx);
+        lift.text = Some(Text::from_glyph_atlas(
+            &glyph_atlas,
+            "LIFT!".to_string(),
+            Color::new(1.0, 0.0, 1.0, 1.0),
+            0.015,
+        ));
         let shaft = create_shaft_entity(n_floors);
 
         let position = Vec2::new(0.0, lift.position.y);

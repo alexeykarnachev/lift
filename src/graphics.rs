@@ -3,8 +3,9 @@
 #![allow(unused_variables)]
 
 use crate::entity::*;
-use crate::vec::{Rect, Vec2};
+use crate::vec::{Origin, Rect, Vec2};
 use fontdue::Font;
+use fontdue::Metrics;
 use image::imageops::flip_vertical_in_place;
 use image::io::Reader as ImageReader;
 use serde::{Deserialize, Deserializer};
@@ -161,33 +162,48 @@ impl Color {
 }
 
 #[derive(Copy, Clone)]
+pub enum Texture {
+    Sprite = 1,
+    Glyph = 2,
+}
+
+#[derive(Copy, Clone)]
 pub struct DrawPrimitive {
     pub rect: Rect,
     pub color: Option<Color>,
     pub sprite: Option<Sprite>,
+    pub tex: Option<Texture>,
     pub orientation: f32,
     pub flip: bool,
 }
 
 impl DrawPrimitive {
-    pub fn with_color(rect: Rect, color: Color, orientation: f32) -> Self {
+    pub fn from_rect(rect: Rect, color: Color, orientation: f32) -> Self {
         Self {
             rect,
             color: Some(color),
             sprite: None,
+            tex: None,
             orientation,
             flip: false,
         }
     }
 
-    pub fn from_sprite(sprite: Sprite, flip: bool) -> Self {
+    pub fn from_sprite(
+        origin: Origin,
+        sprite: Sprite,
+        color: Option<Color>,
+        flip: bool,
+        tex: Texture,
+    ) -> Self {
         let size = Vec2::new(sprite.w, sprite.h).scale(sprite.scale);
-        let rect = Rect::from_bot_center(Vec2::zeros(), size);
+        let rect = Rect::from_origin(origin, size);
 
         Self {
             rect,
-            color: None,
+            color,
             sprite: Some(sprite),
+            tex: Some(tex),
             orientation: 0.0,
             flip,
         }
@@ -205,10 +221,7 @@ impl DrawPrimitive {
 pub struct Glyph {
     pub x: f32,
     pub y: f32,
-    pub w: f32,
-    pub h: f32,
-    pub w_advance: f32,
-    pub h_advance: f32,
+    pub metrics: Metrics,
 }
 
 pub struct GlyphAtlas {
@@ -228,57 +241,68 @@ impl GlyphAtlas {
 
         let mut metrics = Vec::new();
         let mut bitmaps = Vec::new();
-        let mut image_width = 0;
-        let mut image_height = 0;
+        let mut max_glyph_width = 0;
+        let mut max_glyph_height = 0;
         for u in 32..127 {
             let ch = char::from_u32(u).unwrap();
             let (metric, bitmap) = font.rasterize(ch, font_size);
+
             assert!(bitmap.len() == metric.width * metric.height);
 
             metrics.push(metric);
             bitmaps.push(bitmap);
 
-            image_width = image_width.max(metric.width);
-            image_height += metric.height;
+            max_glyph_width = max_glyph_width.max(metric.width);
+            max_glyph_height = max_glyph_height.max(metric.height);
         }
 
-        let n_bytes = image_width * image_height;
-        let mut image: Vec<u8> = vec![0; n_bytes];
+        let n_glyphs = metrics.len();
+        let n_bytes_per_glyph = max_glyph_width * max_glyph_height;
+        let n_glyphs_per_row = (n_glyphs as f32).sqrt().ceil() as usize;
+        let image_height = max_glyph_height * n_glyphs_per_row;
+        let image_width = max_glyph_width * n_glyphs_per_row;
+        let mut image = vec![0u8; image_width * image_height];
         let mut glyphs = Vec::new();
-        let mut cursor = 0;
-        let mut y = 0.0;
-        for i_glyph in 0..metrics.len() {
-            let metric = &metrics[i_glyph];
+        for i_glyph in 0..n_glyphs {
+            let ir = (i_glyph / n_glyphs_per_row) * max_glyph_height;
+            let ic = (i_glyph % n_glyphs_per_row) * max_glyph_width;
 
-            let name =
-                char::from_u32(i_glyph as u32 + 32).unwrap().to_string();
+            let metric = &metrics[i_glyph];
             let glyph = Glyph {
-                x: 0.0,
-                y,
-                w: metric.width as f32,
-                h: metric.height as f32,
-                w_advance: metric.advance_width,
-                h_advance: metric.advance_height,
+                x: ic as f32,
+                y: (image_height - ir - 1) as f32,
+                metrics: *metric,
             };
             glyphs.push(glyph);
-
             let bitmap = &bitmaps[i_glyph];
-            let n_bytes = bitmap.len();
-            for i_glyph_row in 0..metric.height {
-                let glyph_cursor = i_glyph_row * metric.width;
-                let glyph_row =
-                    &bitmap[glyph_cursor..glyph_cursor + metric.width];
-                image[cursor..cursor + metric.width]
-                    .copy_from_slice(glyph_row);
-                cursor += image_width;
-                y += 1.0;
+            assert!(bitmap.len() == metric.width * metric.height);
+
+            for gr in 0..metric.height {
+                let start = gr * metric.width;
+                let end = start + metric.width;
+                let glyph_row = &bitmap[start..end];
+
+                let start = (ir + gr) * image_width + ic;
+                let end = start + metric.width;
+                image[start..end].copy_from_slice(&glyph_row);
             }
+        }
+
+        let mut flipped_image = vec![0u8; image_width * image_height];
+        for r in 0..image_height {
+            let start = (image_height - r - 1) * image_width;
+            let end = start + image_width;
+            let source = &image[start..end];
+
+            let start = r * image_width;
+            let end = start + image_width;
+            flipped_image[start..end].copy_from_slice(source);
         }
 
         Self {
             font,
             size: [image_width as u32, image_height as u32],
-            image,
+            image: flipped_image,
             glyphs,
         }
     }
@@ -323,7 +347,7 @@ pub fn draw_entity(entity: &Entity, draw_queue: &mut Vec<DrawPrimitive>) {
         let y = primitive.rect.get_top_left().y + gap_height;
         let bot_center = Vec2::new(0.0, y);
         let background_rect = Rect::from_bot_center(bot_center, bar_size);
-        let background_primitive = DrawPrimitive::with_color(
+        let background_primitive = DrawPrimitive::from_rect(
             background_rect,
             Color::new_gray(0.2, 1.0),
             0.0,
@@ -334,7 +358,7 @@ pub fn draw_entity(entity: &Entity, draw_queue: &mut Vec<DrawPrimitive>) {
         bar_size.x *= ratio;
         let health_rect = Rect::from_bot_left(bot_left, bar_size);
         let health_primitive =
-            DrawPrimitive::with_color(health_rect, color, 0.0);
+            DrawPrimitive::from_rect(health_rect, color, 0.0);
 
         draw_queue.push(background_primitive.translate(position));
         draw_queue.push(health_primitive.translate(position));

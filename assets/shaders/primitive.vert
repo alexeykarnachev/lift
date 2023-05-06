@@ -8,11 +8,11 @@ uniform Camera camera;
 layout (location = 0) in vec4 a_world_xywh;
 layout (location = 1) in vec4 a_tex_uvwh;
 layout (location = 2) in vec4 a_rgba;
-layout (location = 3) in uint a_use_tex;
+layout (location = 3) in uint a_tex_id;
 layout (location = 4) in float a_orientation;
 layout (location = 5) in float a_flip;
 
-flat out uint vs_use_tex;
+flat out uint vs_tex_id;
 out vec4 vs_rgba;
 out vec2 vs_uv;
 
@@ -49,7 +49,7 @@ void main(void) {
     }
     vs_uv = a_tex_uvwh.xy + local_uv * vec2(a_tex_uvwh.z, -a_tex_uvwh.w);
 
-    vs_use_tex = a_use_tex;
+    vs_tex_id = a_tex_id;
     vs_rgba = a_rgba;
     gl_Position = vec4(proj_pos, 0.0, 1.0);
 }

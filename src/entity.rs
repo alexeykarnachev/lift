@@ -121,7 +121,13 @@ impl Animator {
             .unwrap()
             .get_current_frame();
 
-        DrawPrimitive::from_sprite(sprite, self.flip)
+        DrawPrimitive::from_sprite(
+            Origin::BotCenter(Vec2::zeros()),
+            sprite,
+            None,
+            self.flip,
+            Texture::Sprite,
+        )
     }
 
     pub fn update(&mut self, dt: f32) {
@@ -140,6 +146,7 @@ impl Text {
     pub fn from_glyph_atlas(
         glyph_atlas: &GlyphAtlas,
         string: String,
+        color: Color,
         scale: f32,
     ) -> Self {
         let mut draw_primitives = Vec::new();
@@ -149,14 +156,25 @@ impl Text {
             let sprite = Sprite {
                 x: glyph.x,
                 y: glyph.y,
-                w: glyph.w,
-                h: glyph.h,
+                w: glyph.metrics.width as f32,
+                h: glyph.metrics.height as f32,
                 scale,
             };
-            let mut primitive = DrawPrimitive::from_sprite(sprite, false);
-            draw_primitives.push(primitive.translate(position));
-            position.x += glyph.w_advance;
-            position.y += glyph.h_advance;
+            let mut primitive_position = position;
+            primitive_position.x += glyph.metrics.xmin as f32 * scale;
+            primitive_position.y += glyph.metrics.ymin as f32 * scale;
+            let mut primitive = DrawPrimitive::from_sprite(
+                Origin::BotLeft(Vec2::zeros()),
+                sprite,
+                Some(color),
+                false,
+                Texture::Glyph,
+            )
+            .translate(primitive_position);
+            draw_primitives.push(primitive);
+
+            position.x += glyph.metrics.advance_width * scale;
+            position.y += glyph.metrics.advance_height * scale;
         }
 
         Self { draw_primitives }
