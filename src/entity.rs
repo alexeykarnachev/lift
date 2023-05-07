@@ -69,6 +69,36 @@ pub struct Health {
     pub current: f32,
 }
 
+impl Health {
+    pub fn get_draw_primitives(
+        &self,
+        position: Vec2<f32>,
+    ) -> [DrawPrimitive; 2] {
+        let alive_color = Color::new(0.0, 1.0, 0.0, 1.0);
+        let dead_color = Color::new(1.0, 0.0, 0.0, 1.0);
+        let ratio = self.current / self.max;
+        let color = alive_color.lerp(&dead_color, ratio);
+        let bar_size = Vec2::new(1.0, 0.13);
+        let border_size = Vec2::new(0.03, 0.03);
+
+        let background_rect = Rect::from_bot_center(position, bar_size);
+        let background_primitive = DrawPrimitive::from_rect(
+            background_rect,
+            Color::new_gray(0.2, 1.0),
+            0.0,
+        );
+
+        let bot_left = background_rect.bot_left + border_size;
+        let mut bar_size = bar_size - border_size.scale(2.0);
+        bar_size.x *= ratio;
+        let health_rect = Rect::from_bot_left(bot_left, bar_size);
+        let health_primitive =
+            DrawPrimitive::from_rect(health_rect, color, 0.0);
+
+        [background_primitive, health_primitive]
+    }
+}
+
 pub struct Weapon {
     pub range: f32,
     pub speed: f32,

@@ -336,32 +336,11 @@ pub fn draw_entity(entity: &Entity, draw_queue: &mut Vec<DrawPrimitive>) {
     }
 
     if let (Some(primitive), Some(health)) = (primitive, health) {
-        let alive_color = Color::new(0.0, 1.0, 0.0, 1.0);
-        let dead_color = Color::new(1.0, 0.0, 0.0, 1.0);
-        let ratio = health.current / health.max;
-        let color = alive_color.lerp(&dead_color, ratio);
         let gap_height = 0.2;
-        let bar_size = Vec2::new(1.0, 0.13);
-        let border_size = Vec2::new(0.03, 0.03);
-
         let y = primitive.rect.get_top_left().y + gap_height;
-        let bot_center = Vec2::new(0.0, y);
-        let background_rect = Rect::from_bot_center(bot_center, bar_size);
-        let background_primitive = DrawPrimitive::from_rect(
-            background_rect,
-            Color::new_gray(0.2, 1.0),
-            0.0,
-        );
-
-        let bot_left = background_rect.bot_left + border_size;
-        let mut bar_size = bar_size - border_size.scale(2.0);
-        bar_size.x *= ratio;
-        let health_rect = Rect::from_bot_left(bot_left, bar_size);
-        let health_primitive =
-            DrawPrimitive::from_rect(health_rect, color, 0.0);
-
-        draw_queue.push(background_primitive.translate(position));
-        draw_queue.push(health_primitive.translate(position));
+        for p in health.get_draw_primitives(Vec2::new(0.0, y)) {
+            draw_queue.push(p.translate(position));
+        }
     }
 
     if let Some(text) = text {
