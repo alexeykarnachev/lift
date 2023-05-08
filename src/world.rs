@@ -98,7 +98,9 @@ impl World {
                     self.state = WorldState::GameOver;
                 }
             }
-            GameOver => {}
+            GameOver => {
+                self.update_game_over_menu(input);
+            }
         }
     }
 
@@ -222,6 +224,34 @@ impl World {
             let cursor_world_diff =
                 cursor_world_pos - cursor_world_prev_pos;
             self.camera.position -= cursor_world_diff;
+        }
+    }
+
+    fn update_game_over_menu(&mut self, input: &Input) {
+        let cursor_pos = Vec2::new(
+            input.cursor_pos.x as f32,
+            (input.window_size.y - input.cursor_pos.y) as f32,
+        );
+        let window_size = Vec2::new(
+            input.window_size.x as f32,
+            input.window_size.y as f32,
+        );
+        let cursor_pos = cursor_pos - window_size.scale(0.5);
+
+        let mut restart = &mut self.game_over_menu.restart;
+        let rect = restart.get_text_rect();
+        if rect.check_if_contains(cursor_pos) {
+            restart.change_text_color(Color::new(1.0, 1.0, 0.0, 1.0));
+        } else {
+            restart.change_text_color(Color::new(1.0, 0.0, 0.0, 1.0));
+        }
+
+        let mut quit = &mut self.game_over_menu.quit;
+        let rect = quit.get_text_rect();
+        if rect.check_if_contains(cursor_pos) {
+            quit.change_text_color(Color::new(1.0, 1.0, 0.0, 1.0));
+        } else {
+            quit.change_text_color(Color::new(1.0, 0.0, 0.0, 1.0));
         }
     }
 

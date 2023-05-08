@@ -55,6 +55,23 @@ impl Entity {
     pub fn is_dead(&self) -> bool {
         self.health.as_ref().unwrap().current <= 0.0
     }
+
+    pub fn get_text_rect(&self) -> Rect {
+        let text = self.text.as_ref().unwrap();
+        let first = text.draw_primitives[0].rect;
+        let last =
+            text.draw_primitives[text.draw_primitives.len() - 1].rect;
+
+        Rect {
+            bot_left: first.bot_left,
+            top_right: last.top_right,
+        }
+        .translate(self.position)
+    }
+
+    pub fn change_text_color(&mut self, color: Color) {
+        self.text.as_mut().unwrap().change_color(color);
+    }
 }
 
 pub struct Kinematic {
@@ -241,5 +258,11 @@ impl Text {
             .collect();
 
         Self { draw_primitives }
+    }
+
+    pub fn change_color(&mut self, color: Color) {
+        for primitive in self.draw_primitives.iter_mut() {
+            primitive.color = Some(color);
+        }
     }
 }

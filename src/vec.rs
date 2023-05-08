@@ -309,6 +309,13 @@ impl Rect {
         left_dist.min(right_dist)
     }
 
+    pub fn check_if_contains(&self, p: Vec2<f32>) -> bool {
+        p.x > self.bot_left.x
+            && p.x < self.top_right.x
+            && p.y > self.bot_left.y
+            && p.y < self.top_right.y
+    }
+
     pub fn to_xywh(&self) -> [f32; 4] {
         let center = self.get_center();
         let size = self.get_size();
