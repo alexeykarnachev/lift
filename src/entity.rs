@@ -4,7 +4,6 @@
 #![allow(unused_imports)]
 
 use crate::graphics::*;
-use crate::vec::Vec2;
 use crate::vec::*;
 use std::collections::HashMap;
 use std::fs;
@@ -84,6 +83,7 @@ impl Health {
         let background_rect = Rect::from_bot_center(position, bar_size);
         let background_primitive = DrawPrimitive::from_rect(
             background_rect,
+            Space::World,
             Color::new_gray(0.2, 1.0),
             0.0,
         );
@@ -92,8 +92,12 @@ impl Health {
         let mut bar_size = bar_size - border_size.scale(2.0);
         bar_size.x *= ratio;
         let health_rect = Rect::from_bot_left(bot_left, bar_size);
-        let health_primitive =
-            DrawPrimitive::from_rect(health_rect, color, 0.0);
+        let health_primitive = DrawPrimitive::from_rect(
+            health_rect,
+            Space::World,
+            color,
+            0.0,
+        );
 
         [background_primitive, health_primitive]
     }
@@ -152,6 +156,7 @@ impl Animator {
             .get_current_frame();
 
         DrawPrimitive::from_sprite(
+            Space::World,
             Origin::BotCenter(Vec2::zeros()),
             sprite,
             None,
@@ -175,6 +180,8 @@ pub struct Text {
 impl Text {
     pub fn from_glyph_atlas(
         glyph_atlas: &GlyphAtlas,
+        space: Space,
+        origin: Origin,
         string: String,
         color: Color,
         scale: f32,
@@ -194,6 +201,7 @@ impl Text {
             primitive_position.x += glyph.metrics.xmin as f32 * scale;
             primitive_position.y += glyph.metrics.ymin as f32 * scale;
             let mut primitive = DrawPrimitive::from_sprite(
+                space,
                 Origin::BotLeft(Vec2::zeros()),
                 sprite,
                 Some(color),
@@ -206,6 +214,22 @@ impl Text {
             position.x += glyph.metrics.advance_width * scale;
             position.y += glyph.metrics.advance_height * scale;
         }
+
+        let bot_left = draw_primitives[0].rect.bot_left;
+        let top_right =
+            draw_primitives[draw_primitives.len() - 1].rect.top_right;
+        let offset = match origin {
+            Origin::Center(p) => p + (bot_left - top_right).scale(0.5),
+            Origin::BotCenter(p) => {
+                p + Vec2::new(0.5 * (bot_left.x - top_right.x), 0.0)
+            }
+            Origin::BotLeft(p) => p,
+        };
+
+        let draw_primitives = draw_primitives
+            .iter_mut()
+            .map(|p| p.translate(offset))
+            .collect();
 
         Self { draw_primitives }
     }

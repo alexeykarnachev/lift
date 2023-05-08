@@ -168,28 +168,44 @@ pub enum Texture {
 }
 
 #[derive(Copy, Clone)]
+pub enum Space {
+    World = 1,
+    Camera = 2,
+    Screen = 3,
+}
+
+#[derive(Copy, Clone)]
 pub struct DrawPrimitive {
     pub rect: Rect,
+    pub space: Space,
+    pub orientation: f32,
+    pub flip: bool,
+
     pub color: Option<Color>,
     pub sprite: Option<Sprite>,
     pub tex: Option<Texture>,
-    pub orientation: f32,
-    pub flip: bool,
 }
 
 impl DrawPrimitive {
-    pub fn from_rect(rect: Rect, color: Color, orientation: f32) -> Self {
+    pub fn from_rect(
+        rect: Rect,
+        space: Space,
+        color: Color,
+        orientation: f32,
+    ) -> Self {
         Self {
             rect,
+            space,
+            orientation,
+            flip: false,
             color: Some(color),
             sprite: None,
             tex: None,
-            orientation,
-            flip: false,
         }
     }
 
     pub fn from_sprite(
+        space: Space,
         origin: Origin,
         sprite: Sprite,
         color: Option<Color>,
@@ -201,6 +217,7 @@ impl DrawPrimitive {
 
         Self {
             rect,
+            space,
             color,
             sprite: Some(sprite),
             tex: Some(tex),
@@ -323,29 +340,32 @@ pub fn draw_entity(entity: &Entity, draw_queue: &mut Vec<DrawPrimitive>) {
     let animator = entity.animator.as_ref();
     let text = entity.text.as_ref();
     let health = entity.health.as_ref();
+    let mut primitives = Vec::<DrawPrimitive>::with_capacity(8);
 
-    let mut primitive;
-    if let Some(animator) = animator {
-        primitive = Some(animator.get_draw_primitive());
+    let primitive = if let Some(animator) = animator {
+        Some(animator.get_draw_primitive())
     } else {
-        primitive = entity.draw_primitive;
-    }
+        entity.draw_primitive
+    };
 
     if let Some(primitive) = primitive {
-        draw_queue.push(primitive.translate(position));
+        primitives.push(primitive);
     }
 
     if let (Some(primitive), Some(health)) = (primitive, health) {
         let gap_height = 0.2;
         let y = primitive.rect.get_top_left().y + gap_height;
-        for p in health.get_draw_primitives(Vec2::new(0.0, y)) {
-            draw_queue.push(p.translate(position));
-        }
+        primitives.extend_from_slice(
+            &health.get_draw_primitives(Vec2::new(0.0, y)),
+        );
     }
 
     if let Some(text) = text {
-        for primitive in text.draw_primitives.iter() {
-            draw_queue.push(primitive.translate(position));
-        }
+        primitives.extend_from_slice(&text.draw_primitives);
+    }
+
+    for primitive in primitives.iter() {
+        let mut primitive = primitive.translate(position);
+        draw_queue.push(primitive);
     }
 }

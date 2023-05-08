@@ -6,7 +6,7 @@ use crate::entity::*;
 use crate::graphics::*;
 use crate::input::Input;
 use crate::prefabs::*;
-use crate::vec::Vec2;
+use crate::vec::*;
 
 #[derive(PartialEq)]
 pub enum WorldState {
@@ -24,6 +24,8 @@ pub struct World {
     pub enemies: Vec<Vec<Entity>>,
 
     pub floors: Vec<Entity>,
+
+    pub game_over: Entity,
 
     pub sprite_atlas: SpriteAtlas,
     pub glyph_atlas: GlyphAtlas,
@@ -51,6 +53,8 @@ impl World {
                     create_knight_entity(position, &sprite_atlas);
                 knight.text = Some(Text::from_glyph_atlas(
                     &glyph_atlas,
+                    Space::World,
+                    Origin::Center(Vec2::zeros()),
                     "Knight! Go, go, go...".to_string(),
                     Color::new(1.0, 1.0, 0.0, 1.0),
                     0.005,
@@ -66,6 +70,8 @@ impl World {
         let mut lift = create_lift_entity(idx);
         lift.text = Some(Text::from_glyph_atlas(
             &glyph_atlas,
+            Space::World,
+            Origin::Center(Vec2::zeros()),
             "LIFT!".to_string(),
             Color::new(1.0, 0.0, 1.0, 1.0),
             0.015,
@@ -79,6 +85,16 @@ impl World {
         let state = WorldState::Play;
         let camera = Camera::new(Vec2::new(0.0, lift.position.y));
 
+        let mut game_over = Entity::new(Vec2::zeros());
+        game_over.text = Some(Text::from_glyph_atlas(
+            &glyph_atlas,
+            Space::Screen,
+            Origin::Center(Vec2::new(0.0, 62.0)),
+            "Game Over".to_string(),
+            Color::new(1.0, 0.0, 0.0, 1.0),
+            2.0,
+        ));
+
         Self {
             state,
             camera,
@@ -87,6 +103,7 @@ impl World {
             player,
             enemies,
             floors,
+            game_over,
             sprite_atlas,
             glyph_atlas,
         }
@@ -276,7 +293,7 @@ pub struct Camera {
 impl Camera {
     fn new(position: Vec2<f32>) -> Self {
         Self {
-            position: position,
+            position,
             orientation: 0.0,
             view_width: 20.0,
             aspect: 1.77,

@@ -288,7 +288,7 @@ impl Rect {
         left_dist.min(right_dist)
     }
 
-    pub fn to_world_xywh(&self) -> [f32; 4] {
+    pub fn to_xywh(&self) -> [f32; 4] {
         let center = self.get_center();
         let size = self.get_size();
 

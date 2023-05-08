@@ -62,11 +62,11 @@ impl Renderer {
             HDRResolveRenderer::new(&gl, window_size);
 
         Self {
-            window: window,
-            gl: gl,
-            _gl_context: _gl_context,
-            primitive_renderer: primitive_renderer,
-            hdr_resolve_renderer: hdr_resolve_renderer,
+            window,
+            gl,
+            _gl_context,
+            primitive_renderer,
+            hdr_resolve_renderer,
             primitives: Vec::with_capacity(MAX_N_INSTANCED_PRIMITIVES),
         }
     }
@@ -82,9 +82,12 @@ impl Renderer {
             self.gl.clear(glow::COLOR_BUFFER_BIT);
         }
 
+        let screen_size =
+            [self.window.size().0 as f32, self.window.size().1 as f32];
         self.primitive_renderer.render(
             &self.gl,
             &world.camera,
+            &screen_size,
             &self.primitives,
         );
 
@@ -139,7 +142,9 @@ impl Renderer {
             draw_entity(enemy, &mut self.primitives);
         }
 
-        if world.state != WorldState::GameOver {}
+        // if world.state == WorldState::GameOver {
+        draw_entity(&world.game_over, &mut self.primitives);
+        // }
     }
 
     fn bind_screen_framebuffer(&self) {
@@ -158,7 +163,8 @@ struct PrimitiveRenderer {
     glyph_atlas_tex: Option<glow::Texture>,
 
     vao: glow::NativeVertexArray,
-    a_world_xywh: Attribute<f32>,
+    a_xywh: Attribute<f32>,
+    a_space: Attribute<u32>,
     a_tex_uvwh: Attribute<f32>,
     a_rgba: Attribute<f32>,
     a_tex_id: Attribute<u32>,
@@ -180,12 +186,21 @@ impl PrimitiveRenderer {
             gl.bind_vertex_array(Some(vao));
         }
 
-        let a_world_xywh = Attribute::new(
+        let a_xywh = Attribute::new(
             gl,
             program,
             4,
-            "a_world_xywh",
+            "a_xywh",
             glow::FLOAT,
+            MAX_N_INSTANCED_PRIMITIVES,
+            1,
+        );
+        let a_space = Attribute::new(
+            gl,
+            program,
+            1,
+            "a_space",
+            glow::UNSIGNED_INT,
             MAX_N_INSTANCED_PRIMITIVES,
             1,
         );
@@ -240,7 +255,8 @@ impl PrimitiveRenderer {
             sprite_atlas_tex: None,
             glyph_atlas_tex: None,
             vao,
-            a_world_xywh,
+            a_xywh,
+            a_space,
             a_tex_uvwh,
             a_rgba,
             a_tex_id,
@@ -253,6 +269,7 @@ impl PrimitiveRenderer {
         &mut self,
         gl: &glow::Context,
         camera: &Camera,
+        screen_size: &[f32; 2],
         primitives: &Vec<DrawPrimitive>,
     ) {
         primitives.iter().for_each(|p| self.push_primitive(p));
@@ -261,6 +278,12 @@ impl PrimitiveRenderer {
             gl.use_program(Some(self.program));
             gl.enable(glow::BLEND);
             gl.blend_func(glow::SRC_ALPHA, glow::ONE_MINUS_SRC_ALPHA);
+            set_uniform_2_f32(
+                gl,
+                self.program,
+                "screen_size",
+                screen_size,
+            );
 
             if let Some(sprite_atlas_tex) = self.sprite_atlas_tex {
                 set_uniform_1_i32(gl, self.program, "sprite_atlas_tex", 0);
@@ -290,7 +313,8 @@ impl PrimitiveRenderer {
 
     fn push_primitive(&mut self, primitive: &DrawPrimitive) {
         self.a_orientation.push_data(&[primitive.orientation]);
-        self.a_world_xywh.push_data(&primitive.rect.to_world_xywh());
+        self.a_xywh.push_data(&primitive.rect.to_xywh());
+        self.a_space.push_data(&[primitive.space as u32]);
         self.a_flip.push_data(&[(primitive.flip as i32) as f32]);
 
         if let Some(tex) = primitive.tex {
@@ -316,7 +340,8 @@ impl PrimitiveRenderer {
         unsafe {
             gl.bind_vertex_array(Some(self.vao));
         }
-        self.a_world_xywh.sync_data(gl);
+        self.a_xywh.sync_data(gl);
+        self.a_space.sync_data(gl);
         self.a_rgba.sync_data(gl);
         self.a_tex_uvwh.sync_data(gl);
         self.a_tex_id.sync_data(gl);
