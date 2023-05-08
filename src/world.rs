@@ -52,9 +52,10 @@ impl World {
                 let side = if enemy_idx % 2 == 1 { -1.0 } else { 1.0 };
                 let x = (2.0 + 2.0 * enemy_idx as f32) * side;
                 let position = Vec2::new(x, floor_y);
-                let knight = create_knight_entity(position, &sprite_atlas);
+                let destroyer =
+                    create_destroyer_entity(position, &sprite_atlas);
 
-                floor_enemies.push(knight);
+                floor_enemies.push(destroyer);
             }
 
             enemies.push(floor_enemies);
@@ -65,7 +66,7 @@ impl World {
         let shaft = create_shaft_entity(n_floors);
 
         let position = Vec2::new(0.0, lift.position.y);
-        let mut player = create_knight_entity(position, &sprite_atlas);
+        let mut player = create_destroyer_entity(position, &sprite_atlas);
         player.kinematic = None;
         player.health.as_mut().unwrap().current = 10.0;
 
@@ -389,11 +390,11 @@ fn attack(entity: &mut Entity, target: &mut Entity, dt: f32) {
         kinematic.speed = kinematic.max_speed * dist.signum();
         let step = dt * kinematic.speed;
         position.x += step;
-        animator.play("run");
+        animator.play("walk");
     } else if weapon.is_ready() && can_reach {
         weapon.cooldown = 0.0;
         damage += weapon.damage;
-        animator.play("attack");
+        animator.play("shoot");
     }
 
     weapon.cooldown += dt;

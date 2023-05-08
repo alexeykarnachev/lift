@@ -1,0 +1,45 @@
+{ "frames": [
+   {
+    "filename": "destroyer_hurt.0",
+    "frame": { "x": 0, "y": 0, "w": 45, "h": 79 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 33, "y": 51, "w": 43, "h": 77 },
+    "sourceSize": { "w": 128, "h": 128 },
+    "duration": 100
+   },
+   {
+    "filename": "destroyer_hurt.1",
+    "frame": { "x": 45, "y": 0, "w": 45, "h": 79 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 33, "y": 51, "w": 43, "h": 77 },
+    "sourceSize": { "w": 128, "h": 128 },
+    "duration": 100
+   },
+   {
+    "filename": "destroyer_hurt.2",
+    "frame": { "x": 90, "y": 0, "w": 45, "h": 79 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 33, "y": 51, "w": 43, "h": 77 },
+    "sourceSize": { "w": 128, "h": 128 },
+    "duration": 100
+   }
+ ],
+ "meta": {
+  "app": "http://www.aseprite.org/",
+  "version": "1.3-rc2-x64",
+  "image": "destroyer_hurt.png",
+  "format": "RGBA8888",
+  "size": { "w": 135, "h": 79 },
+  "scale": "1",
+  "frameTags": [
+  ],
+  "layers": [
+   { "name": "Sprite Sheet", "opacity": 255, "blendMode": "normal" }
+  ],
+  "slices": [
+  ]
+ }
+}

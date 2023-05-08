@@ -80,9 +80,25 @@ pub struct Kinematic {
     pub target: Option<Vec2<f32>>,
 }
 
+impl Kinematic {
+    pub fn new(max_speed: f32) -> Self {
+        Self {
+            max_speed,
+            speed: 0.0,
+            target: None,
+        }
+    }
+}
+
 pub struct Health {
     pub max: f32,
     pub current: f32,
+}
+
+impl Health {
+    pub fn new(max: f32) -> Self {
+        Self { max, current: max }
+    }
 }
 
 impl Health {
@@ -123,6 +139,15 @@ pub struct Weapon {
 }
 
 impl Weapon {
+    pub fn new(range: f32, speed: f32, damage: f32) -> Self {
+        Self {
+            range,
+            speed,
+            damage,
+            cooldown: 0.0,
+        }
+    }
+
     pub fn is_ready(&self) -> bool {
         self.cooldown >= 1.0 / self.speed
     }
@@ -141,7 +166,7 @@ impl Animator {
         animation_to_sprite.insert("default", default_sprite);
 
         Self {
-            rect: rect,
+            rect,
             flip: false,
             current_animation: "default",
             animation_to_sprite,

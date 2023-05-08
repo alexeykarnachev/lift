@@ -81,7 +81,7 @@ impl SpriteAtlas {
 
 pub struct AnimatedSprite {
     pub name: &'static str,
-    pub duration: f32,
+    pub sprite_duration: f32,
     pub scale: f32,
     current_duration: f32,
 
@@ -92,7 +92,7 @@ impl AnimatedSprite {
     pub fn from_sprite_atlas(
         sprite_atlas: &SpriteAtlas,
         name: &'static str,
-        duration: f32,
+        sprite_duration: f32,
         scale: f32,
     ) -> Self {
         let frames = sprite_atlas.sprites.get(name).unwrap_or_else(|| {
@@ -101,7 +101,7 @@ impl AnimatedSprite {
 
         Self {
             name,
-            duration,
+            sprite_duration,
             scale,
             current_duration: 0.0,
             frames: frames.to_vec(),
@@ -113,9 +113,11 @@ impl AnimatedSprite {
     }
 
     pub fn get_current_frame(&self) -> Sprite {
-        let mut cycle = self.current_duration / self.duration;
+        let n_frames = self.frames.len();
+        let mut cycle = self.current_duration
+            / (self.sprite_duration * n_frames as f32);
         cycle -= cycle.floor();
-        let frame_idx = (cycle * self.frames.len() as f32).floor();
+        let frame_idx = (cycle * n_frames as f32).floor();
 
         let mut frame = self.frames[frame_idx as usize];
         frame.scale = self.scale;

@@ -76,36 +76,25 @@ pub fn create_lift_entity(floor_idx: usize) -> Entity {
     entity
 }
 
-pub fn create_knight_entity(
+pub fn create_destroyer_entity(
     position: Vec2<f32>,
     sprite_atlas: &SpriteAtlas,
 ) -> Entity {
-    let size = Vec2::new(0.5, 1.0);
-    let collider = Rect::from_bot_center(Vec2::zeros(), size);
-    let kinematic = Kinematic {
-        max_speed: 5.0,
-        speed: 0.0,
-        target: None,
-    };
-    let health = Health {
-        max: 1000.0,
-        current: 1000.0,
-    };
-    let weapon = Weapon {
-        range: 0.5,
-        speed: 2.0,
-        damage: 10.0,
-        cooldown: 0.0,
-    };
+    let collider =
+        Rect::from_bot_center(Vec2::zeros(), Vec2::new(0.5, 1.0));
+    let kinematic = Kinematic::new(1.0);
+    let health = Health::new(1000.0);
+    let weapon = Weapon::new(2.0, 2.0, 10.0);
 
     let rect = collider;
+    let scale = 0.015;
     let mut animator = Animator::new(
         rect,
         AnimatedSprite::from_sprite_atlas(
             sprite_atlas,
-            "knight_idle",
-            2.0,
-            0.025,
+            "destroyer_idle",
+            0.1,
+            scale,
         ),
     );
 
@@ -113,27 +102,45 @@ pub fn create_knight_entity(
         "idle",
         AnimatedSprite::from_sprite_atlas(
             sprite_atlas,
-            "knight_idle",
-            0.5,
-            0.025,
+            "destroyer_idle",
+            0.1,
+            scale,
         ),
     );
     animator.add(
-        "attack",
+        "shoot",
         AnimatedSprite::from_sprite_atlas(
             sprite_atlas,
-            "knight_attack",
-            0.5,
-            0.025,
+            "destroyer_shoot",
+            0.1,
+            scale,
         ),
     );
     animator.add(
-        "run",
+        "walk",
         AnimatedSprite::from_sprite_atlas(
             sprite_atlas,
-            "knight_run",
-            0.5,
-            0.025,
+            "destroyer_walk",
+            0.1,
+            scale,
+        ),
+    );
+    animator.add(
+        "hurt",
+        AnimatedSprite::from_sprite_atlas(
+            sprite_atlas,
+            "destroyer_hurt",
+            0.1,
+            scale,
+        ),
+    );
+    animator.add(
+        "die",
+        AnimatedSprite::from_sprite_atlas(
+            sprite_atlas,
+            "destroyer_dead",
+            0.1,
+            scale,
         ),
     );
 
