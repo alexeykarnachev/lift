@@ -178,7 +178,6 @@ pub enum Space {
 pub struct DrawPrimitive {
     pub rect: Rect,
     pub space: Space,
-    pub orientation: f32,
     pub flip: bool,
 
     pub color: Option<Color>,
@@ -187,16 +186,10 @@ pub struct DrawPrimitive {
 }
 
 impl DrawPrimitive {
-    pub fn from_rect(
-        rect: Rect,
-        space: Space,
-        color: Color,
-        orientation: f32,
-    ) -> Self {
+    pub fn from_rect(rect: Rect, space: Space, color: Color) -> Self {
         Self {
             rect,
             space,
-            orientation,
             flip: false,
             color: Some(color),
             sprite: None,
@@ -221,7 +214,6 @@ impl DrawPrimitive {
             color,
             sprite: Some(sprite),
             tex: Some(tex),
-            orientation: 0.0,
             flip,
         }
     }

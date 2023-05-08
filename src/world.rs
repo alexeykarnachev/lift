@@ -290,7 +290,6 @@ impl World {
 
 pub struct Camera {
     pub position: Vec2<f32>,
-    pub orientation: f32,
 
     pub view_width: f32,
     pub aspect: f32,
@@ -300,7 +299,6 @@ impl Camera {
     fn new(position: Vec2<f32>) -> Self {
         Self {
             position,
-            orientation: 0.0,
             view_width: 20.0,
             aspect: 1.77,
         }
@@ -329,8 +327,7 @@ pub fn window_to_world(
         height - window_pos.y as f32,
     );
     let bot_left = camera.position - view_size.scale(0.5);
-    let mut world_pos = bot_left + view_size * window_pos / window_size;
-    world_pos = world_pos.rotate(Vec2::zeros(), camera.orientation);
+    let world_pos = bot_left + view_size * window_pos / window_size;
     return world_pos;
 }
 
@@ -341,8 +338,7 @@ pub fn world_to_screen(
 ) -> Vec2<i32> {
     let view_size = camera.get_view_size();
     let bot_left = camera.position - view_size.scale(0.5);
-    let view_pos = world_pos.rotate(camera.position, -camera.orientation)
-        - camera.position;
+    let view_pos = world_pos - camera.position;
     let ndc_pos = view_pos.scale(2.0) / view_size;
     let window_size =
         Vec2::new(window_size.x as f32, window_size.y as f32);

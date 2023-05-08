@@ -28,7 +28,6 @@ pub fn create_shaft_entity(n_floors: usize) -> Entity {
         rect,
         Space::World,
         Color::new_gray(0.05, 1.0),
-        0.0,
     );
 
     let mut entity = Entity::new(position);
@@ -46,7 +45,6 @@ pub fn create_floor_entity(idx: usize) -> Entity {
         rect,
         Space::World,
         Color::new_gray(0.3, 1.0),
-        0.0,
     );
 
     let mut entity = Entity::new(position);
@@ -64,7 +62,6 @@ pub fn create_lift_entity(floor_idx: usize) -> Entity {
         rect,
         Space::World,
         Color::new_gray(0.6, 1.0),
-        0.0,
     );
     let kinematic = Kinematic {
         max_speed: 2.0,

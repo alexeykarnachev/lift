@@ -176,7 +176,6 @@ struct PrimitiveRenderer {
     a_tex_uvwh: Attribute<f32>,
     a_rgba: Attribute<f32>,
     a_tex_id: Attribute<u32>,
-    a_orientation: Attribute<f32>,
     a_flip: Attribute<f32>,
 }
 
@@ -239,15 +238,6 @@ impl PrimitiveRenderer {
             MAX_N_INSTANCED_PRIMITIVES,
             1,
         );
-        let a_orientation = Attribute::new(
-            gl,
-            program,
-            1,
-            "a_orientation",
-            glow::FLOAT,
-            MAX_N_INSTANCED_PRIMITIVES,
-            1,
-        );
         let a_flip = Attribute::new(
             gl,
             program,
@@ -268,7 +258,6 @@ impl PrimitiveRenderer {
             a_tex_uvwh,
             a_rgba,
             a_tex_id,
-            a_orientation,
             a_flip,
         }
     }
@@ -320,7 +309,6 @@ impl PrimitiveRenderer {
     }
 
     fn push_primitive(&mut self, primitive: &DrawPrimitive) {
-        self.a_orientation.push_data(&[primitive.orientation]);
         self.a_xywh.push_data(&primitive.rect.to_xywh());
         self.a_space.push_data(&[primitive.space as u32]);
         self.a_flip.push_data(&[(primitive.flip as i32) as f32]);
@@ -353,7 +341,6 @@ impl PrimitiveRenderer {
         self.a_rgba.sync_data(gl);
         self.a_tex_uvwh.sync_data(gl);
         self.a_tex_id.sync_data(gl);
-        self.a_orientation.sync_data(gl);
         self.a_flip.sync_data(gl);
     }
 }
@@ -670,12 +657,6 @@ fn set_uniform_camera(
         [camera.position.to_array(), view_size.to_array()].concat();
 
     set_uniform_4_f32(gl, program, "camera.world_xywh", &world_xywh);
-    set_uniform_1_f32(
-        gl,
-        program,
-        "camera.orientation",
-        camera.orientation,
-    );
 }
 
 fn set_uniform_1_f32(

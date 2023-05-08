@@ -43,19 +43,6 @@ impl<T: Copy + Add<Output = T>> Vec2<T> {
     }
 }
 
-impl Vec2<f32> {
-    pub fn from_orientation(orientation: f32) -> Self {
-        Self {
-            x: orientation.cos(),
-            y: orientation.sin(),
-        }
-    }
-
-    pub fn to_orientation(&self) -> f32 {
-        self.y.atan2(self.x)
-    }
-}
-
 impl<T: From<f32>> Vec2<T> {
     pub fn zeros() -> Self {
         Self {

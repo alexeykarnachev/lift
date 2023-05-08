@@ -102,19 +102,14 @@ impl Health {
             background_rect,
             Space::World,
             Color::new_gray(0.2, 1.0),
-            0.0,
         );
 
         let bot_left = background_rect.bot_left + border_size;
         let mut bar_size = bar_size - border_size.scale(2.0);
         bar_size.x *= ratio;
         let health_rect = Rect::from_bot_left(bot_left, bar_size);
-        let health_primitive = DrawPrimitive::from_rect(
-            health_rect,
-            Space::World,
-            color,
-            0.0,
-        );
+        let health_primitive =
+            DrawPrimitive::from_rect(health_rect, Space::World, color);
 
         [background_primitive, health_primitive]
     }
