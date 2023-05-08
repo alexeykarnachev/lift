@@ -200,6 +200,8 @@ pub enum Origin {
     Center(Vec2<f32>),
     BotCenter(Vec2<f32>),
     BotLeft(Vec2<f32>),
+    RightCenter(Vec2<f32>),
+    LeftCenter(Vec2<f32>),
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -215,6 +217,8 @@ impl Rect {
             Center(p) => Self::from_center(p, size),
             BotCenter(p) => Self::from_bot_center(p, size),
             BotLeft(p) => Self::from_bot_left(p, size),
+            RightCenter(p) => Self::from_right_center(p, size),
+            LeftCenter(p) => Self::from_left_center(p, size),
         };
     }
 
@@ -236,6 +240,23 @@ impl Rect {
 
     pub fn from_bot_left(position: Vec2<f32>, size: Vec2<f32>) -> Self {
         let center = position + size.scale(0.5);
+
+        Self::from_center(center, size)
+    }
+
+    pub fn from_right_center(
+        position: Vec2<f32>,
+        size: Vec2<f32>,
+    ) -> Self {
+        let mut center = position;
+        center.x += size.x * 0.5;
+
+        Self::from_center(center, size)
+    }
+
+    pub fn from_left_center(position: Vec2<f32>, size: Vec2<f32>) -> Self {
+        let mut center = position;
+        center.x -= size.x * 0.5;
 
         Self::from_center(center, size)
     }

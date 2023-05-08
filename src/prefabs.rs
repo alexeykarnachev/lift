@@ -86,7 +86,7 @@ pub fn create_knight_entity(
     let size = Vec2::new(0.5, 1.0);
     let collider = Rect::from_bot_center(Vec2::zeros(), size);
     let kinematic = Kinematic {
-        max_speed: 0.5,
+        max_speed: 5.0,
         speed: 0.0,
         target: None,
     };

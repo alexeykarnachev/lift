@@ -8,6 +8,7 @@ use vec::Vec2;
 use world::World;
 
 mod entity;
+mod game_over;
 mod graphics;
 mod input;
 mod prefabs;

@@ -142,9 +142,17 @@ impl Renderer {
             draw_entity(enemy, &mut self.primitives);
         }
 
-        // if world.state == WorldState::GameOver {
-        draw_entity(&world.game_over, &mut self.primitives);
-        // }
+        if world.state == WorldState::GameOver {
+            draw_entity(
+                &world.game_over_menu.game_over,
+                &mut self.primitives,
+            );
+            draw_entity(
+                &world.game_over_menu.restart,
+                &mut self.primitives,
+            );
+            draw_entity(&world.game_over_menu.quit, &mut self.primitives);
+        }
     }
 
     fn bind_screen_framebuffer(&self) {

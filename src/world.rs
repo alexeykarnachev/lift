@@ -3,6 +3,7 @@
 #![allow(unused_variables)]
 
 use crate::entity::*;
+use crate::game_over::*;
 use crate::graphics::*;
 use crate::input::Input;
 use crate::prefabs::*;
@@ -25,7 +26,7 @@ pub struct World {
 
     pub floors: Vec<Entity>,
 
-    pub game_over: Entity,
+    pub game_over_menu: GameOverMenu,
 
     pub sprite_atlas: SpriteAtlas,
     pub glyph_atlas: GlyphAtlas,
@@ -48,17 +49,7 @@ impl World {
                 let side = if enemy_idx % 2 == 1 { -1.0 } else { 1.0 };
                 let x = (2.0 + 2.0 * enemy_idx as f32) * side;
                 let position = Vec2::new(x, floor_y);
-
-                let mut knight =
-                    create_knight_entity(position, &sprite_atlas);
-                knight.text = Some(Text::from_glyph_atlas(
-                    &glyph_atlas,
-                    Space::World,
-                    Origin::Center(Vec2::zeros()),
-                    "Knight! Go, go, go...".to_string(),
-                    Color::new(1.0, 1.0, 0.0, 1.0),
-                    0.005,
-                ));
+                let knight = create_knight_entity(position, &sprite_atlas);
 
                 floor_enemies.push(knight);
             }
@@ -68,32 +59,17 @@ impl World {
 
         let idx = (n_floors / 2) as usize;
         let mut lift = create_lift_entity(idx);
-        lift.text = Some(Text::from_glyph_atlas(
-            &glyph_atlas,
-            Space::World,
-            Origin::Center(Vec2::zeros()),
-            "LIFT!".to_string(),
-            Color::new(1.0, 0.0, 1.0, 1.0),
-            0.015,
-        ));
         let shaft = create_shaft_entity(n_floors);
 
         let position = Vec2::new(0.0, lift.position.y);
         let mut player = create_knight_entity(position, &sprite_atlas);
         player.kinematic = None;
+        player.health.as_mut().unwrap().current = 10.0;
 
         let state = WorldState::Play;
         let camera = Camera::new(Vec2::new(0.0, lift.position.y));
 
-        let mut game_over = Entity::new(Vec2::zeros());
-        game_over.text = Some(Text::from_glyph_atlas(
-            &glyph_atlas,
-            Space::Screen,
-            Origin::Center(Vec2::new(0.0, 62.0)),
-            "Game Over".to_string(),
-            Color::new(1.0, 0.0, 0.0, 1.0),
-            2.0,
-        ));
+        let game_over_menu = GameOverMenu::new(&glyph_atlas);
 
         Self {
             state,
@@ -103,7 +79,7 @@ impl World {
             player,
             enemies,
             floors,
-            game_over,
+            game_over_menu,
             sprite_atlas,
             glyph_atlas,
         }

@@ -224,6 +224,15 @@ impl Text {
                 p + Vec2::new(0.5 * (bot_left.x - top_right.x), 0.0)
             }
             Origin::BotLeft(p) => p,
+            Origin::LeftCenter(p) => {
+                p + Vec2::new(0.0, 0.5 * (-bot_left.y + top_right.y))
+            }
+            Origin::RightCenter(p) => {
+                p + Vec2::new(
+                    bot_left.x - top_right.x,
+                    0.5 * (-bot_left.y + top_right.y),
+                )
+            }
         };
 
         let draw_primitives = draw_primitives
