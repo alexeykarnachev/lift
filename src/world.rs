@@ -13,6 +13,8 @@ use crate::vec::*;
 pub enum WorldState {
     Play,
     GameOver,
+    Restart,
+    Quit,
 }
 
 pub struct World {
@@ -33,7 +35,8 @@ pub struct World {
 }
 
 impl World {
-    pub fn new(n_floors: usize) -> Self {
+    pub fn new() -> Self {
+        let n_floors = 16;
         let sprite_atlas = create_default_sprite_atlas();
         let glyph_atlas = create_default_glyph_atlas();
         let mut floors = Vec::with_capacity(n_floors as usize);
@@ -86,21 +89,25 @@ impl World {
     }
 
     pub fn update(&mut self, dt: f32, input: &Input) {
+        self.camera.aspect =
+            input.window_size.x as f32 / input.window_size.y as f32;
+
         use WorldState::*;
         match self.state {
             Play => {
+                self.update_free_camera(input);
                 self.update_lift(dt, input);
                 self.update_floors();
                 self.update_enemies(dt);
                 self.update_player(dt);
-                self.update_free_camera(input);
-                if self.player.is_dead() {
-                    self.state = WorldState::GameOver;
-                }
             }
             GameOver => {
                 self.update_game_over_menu(input);
             }
+            Restart => {
+                *self = Self::new();
+            }
+            Quit => {}
         }
     }
 
@@ -200,11 +207,13 @@ impl World {
             attack(&mut self.player, enemy, dt);
             self.player.update_animator(dt);
         }
+
+        if self.player.is_dead() {
+            self.state = WorldState::GameOver;
+        }
     }
 
     fn update_free_camera(&mut self, input: &Input) {
-        self.camera.aspect =
-            input.window_size.x as f32 / input.window_size.y as f32;
         if input.wheel_d != 0 {
             let diff = self.camera.view_width * 0.1 * input.wheel_d as f32;
             self.camera.view_width -= diff;
@@ -242,6 +251,9 @@ impl World {
         let rect = restart.get_text_rect();
         if rect.check_if_contains(cursor_pos) {
             restart.change_text_color(Color::new(1.0, 1.0, 0.0, 1.0));
+            if input.lmb_press_pos.is_some() {
+                self.state = WorldState::Restart;
+            }
         } else {
             restart.change_text_color(Color::new(1.0, 0.0, 0.0, 1.0));
         }
@@ -250,6 +262,9 @@ impl World {
         let rect = quit.get_text_rect();
         if rect.check_if_contains(cursor_pos) {
             quit.change_text_color(Color::new(1.0, 1.0, 0.0, 1.0));
+            if input.lmb_press_pos.is_some() {
+                self.state = WorldState::Quit;
+            }
         } else {
             quit.change_text_color(Color::new(1.0, 0.0, 0.0, 1.0));
         }

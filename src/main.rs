@@ -5,7 +5,7 @@ use input::Input;
 use renderer::Renderer;
 use std::time::Instant;
 use vec::Vec2;
-use world::World;
+use world::*;
 
 mod entity;
 mod game_over;
@@ -21,10 +21,7 @@ fn main() {
     let sdl = sdl2::init().unwrap();
     let mut renderer = Renderer::new(&sdl, "Lift", window_size);
     let mut input = Input::new(window_size);
-
-    // ------------------------------------------------------------------
-    let n_floors = 16;
-    let mut world = World::new(n_floors);
+    let mut world = World::new();
 
     // ------------------------------------------------------------------
     let mut event_pump = sdl.event_pump().unwrap();
@@ -32,7 +29,7 @@ fn main() {
     'main: loop {
         for event in event_pump.poll_iter() {
             input.handle_event(&event);
-            if input.should_quit {
+            if input.should_quit || world.state == WorldState::Quit {
                 break 'main;
             }
         }
