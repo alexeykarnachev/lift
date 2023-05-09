@@ -54,6 +54,7 @@ pub struct SpriteAtlas {
     pub format: ImageFormat,
     pub size: [u32; 2],
     pub sprites: HashMap<String, Vec<Sprite>>,
+    pub sprite_duration: f32,
 
     #[serde(skip)]
     pub image: Vec<u8>,
@@ -100,13 +101,13 @@ impl AnimatedSprite {
     pub fn from_sprite_atlas(
         sprite_atlas: &SpriteAtlas,
         name: &'static str,
-        sprite_duration: f32,
         animation_mode: AnimationMode,
         scale: f32,
     ) -> Self {
         let frames = sprite_atlas.sprites.get(name).unwrap_or_else(|| {
             panic!("There is no such sprite in the sprite atlas: {}", name)
         });
+        let sprite_duration = sprite_atlas.sprite_duration;
 
         Self {
             name,

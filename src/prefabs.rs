@@ -98,7 +98,6 @@ pub fn create_destroyer_entity(
         AnimatedSprite::from_sprite_atlas(
             sprite_atlas,
             "destroyer_idle",
-            0.1,
             AnimationMode::Repeat,
             scale,
         ),
@@ -110,7 +109,6 @@ pub fn create_destroyer_entity(
         AnimatedSprite::from_sprite_atlas(
             sprite_atlas,
             "destroyer_idle",
-            0.1,
             AnimationMode::Repeat,
             scale,
         ),
@@ -120,7 +118,6 @@ pub fn create_destroyer_entity(
         AnimatedSprite::from_sprite_atlas(
             sprite_atlas,
             "destroyer_shoot",
-            0.1,
             AnimationMode::RepeatFrom(4),
             scale,
         ),
@@ -130,7 +127,6 @@ pub fn create_destroyer_entity(
         AnimatedSprite::from_sprite_atlas(
             sprite_atlas,
             "destroyer_walk",
-            0.1,
             AnimationMode::Repeat,
             scale,
         ),
@@ -140,7 +136,6 @@ pub fn create_destroyer_entity(
         AnimatedSprite::from_sprite_atlas(
             sprite_atlas,
             "destroyer_hurt",
-            0.1,
             AnimationMode::Once,
             scale,
         ),
@@ -150,7 +145,6 @@ pub fn create_destroyer_entity(
         AnimatedSprite::from_sprite_atlas(
             sprite_atlas,
             "destroyer_dead",
-            0.1,
             AnimationMode::Once,
             scale,
         ),

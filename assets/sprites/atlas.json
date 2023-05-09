@@ -5,6 +5,7 @@
         637,
         524
     ],
+    "sprite_duration": 0.1,
     "sprites": {
         "destroyer_shoot": [
             {

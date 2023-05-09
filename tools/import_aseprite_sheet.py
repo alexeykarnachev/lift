@@ -60,9 +60,16 @@ if __name__ == "__main__":
         atlas_sheet[cursor : cursor + sheet.shape[0], : sheet.shape[1], :] = sheet
 
         frames = meta["frames"]
+        duration = None
         for frame in frames:
             sprite_name, frame_idx = frame["filename"].split(".")
             source_size = frame["sourceSize"]
+
+            if duration is None:
+                duration = frame["duration"]
+            elif duration != frame["duration"]:
+                raise ValueError("Sprites with the different duration are not allowed")
+
             frame = frame["frame"]
 
             frame["x"] += 1
@@ -90,6 +97,7 @@ if __name__ == "__main__":
         "file_name": "atlas.png",
         "format": image_format,
         "size": [atlas_width, atlas_height],
+        "sprite_duration": duration / 1000.0,
         "sprites": atlas_meta,
     }
 
