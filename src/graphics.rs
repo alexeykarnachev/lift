@@ -79,11 +79,19 @@ impl SpriteAtlas {
     }
 }
 
+#[derive(Copy, Clone)]
+pub enum AnimationMode {
+    Repeat,
+    RepeatFrom(usize),
+    Once,
+}
+
 pub struct AnimatedSprite {
     pub name: &'static str,
     pub sprite_duration: f32,
+    pub animation_mode: AnimationMode,
     pub scale: f32,
-    current_duration: f32,
+    cycle: f32,
 
     frames: Vec<Sprite>,
 }
@@ -93,6 +101,7 @@ impl AnimatedSprite {
         sprite_atlas: &SpriteAtlas,
         name: &'static str,
         sprite_duration: f32,
+        animation_mode: AnimationMode,
         scale: f32,
     ) -> Self {
         let frames = sprite_atlas.sprites.get(name).unwrap_or_else(|| {
@@ -102,24 +111,42 @@ impl AnimatedSprite {
         Self {
             name,
             sprite_duration,
+            animation_mode,
             scale,
-            current_duration: 0.0,
+            cycle: 0.0,
             frames: frames.to_vec(),
         }
     }
 
     pub fn update(&mut self, dt: f32) {
-        self.current_duration += dt;
+        use AnimationMode::*;
+
+        let n_frames = self.frames.len() as f32;
+        let full_cycle_duration = self.sprite_duration * n_frames;
+        self.cycle += dt / full_cycle_duration;
+
+        match self.animation_mode {
+            Once => {
+                self.cycle = self.cycle.min(1.0);
+            }
+            Repeat => {
+                self.cycle -= self.cycle.floor();
+            }
+            RepeatFrom(idx) => {
+                if self.cycle > 1.0 {
+                    self.cycle = idx as f32 / n_frames;
+                }
+            }
+        }
+
+        assert!(self.cycle <= 1.0);
     }
 
     pub fn get_current_frame(&self) -> Sprite {
-        let n_frames = self.frames.len();
-        let mut cycle = self.current_duration
-            / (self.sprite_duration * n_frames as f32);
-        cycle -= cycle.floor();
-        let frame_idx = (cycle * n_frames as f32).floor();
+        let max_idx = (self.frames.len() - 1) as f32;
+        let frame_idx = (self.cycle * max_idx) as usize;
 
-        let mut frame = self.frames[frame_idx as usize];
+        let mut frame = self.frames[frame_idx];
         frame.scale = self.scale;
 
         frame
@@ -144,7 +171,7 @@ impl Color {
             r: c,
             g: c,
             b: c,
-            a: a,
+            a,
         }
     }
 

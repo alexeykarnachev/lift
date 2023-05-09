@@ -9,7 +9,7 @@ use crate::input::Input;
 use crate::prefabs::*;
 use crate::vec::*;
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub enum WorldState {
     Play,
     GameOver,
@@ -68,7 +68,8 @@ impl World {
         let position = Vec2::new(0.0, lift.position.y);
         let mut player = create_destroyer_entity(position, &sprite_atlas);
         player.kinematic = None;
-        player.health.as_mut().unwrap().current = 10.0;
+        player.health.as_mut().unwrap().current = 1000.0;
+        player.weapon.as_mut().unwrap().damage = 600.0;
 
         let state = WorldState::Play;
         let camera = Camera::new(Vec2::new(0.0, lift.position.y));
@@ -93,14 +94,15 @@ impl World {
         self.camera.aspect =
             input.window_size.x as f32 / input.window_size.y as f32;
 
+        self.update_lift(dt, input);
+        self.update_floors();
+        self.update_enemies(dt);
+        self.update_player(dt);
+
         use WorldState::*;
         match self.state {
             Play => {
                 self.update_free_camera(input);
-                self.update_lift(dt, input);
-                self.update_floors();
-                self.update_enemies(dt);
-                self.update_player(dt);
             }
             GameOver => {
                 self.update_game_over_menu(input);
@@ -178,12 +180,20 @@ impl World {
         };
 
         for enemy in self.enemies[floor_idx].iter_mut() {
-            attack(enemy, &mut self.player, dt);
             enemy.update_animator(dt);
+            attack(enemy, &mut self.player, dt);
         }
     }
 
     pub fn update_player(&mut self, dt: f32) {
+        self.player.update_animator(dt);
+        if self.player.state == EntityState::Dead {
+            if self.state == WorldState::Play {
+                self.state = WorldState::GameOver;
+            }
+            return;
+        }
+
         self.player.position.y = self.lift.position.y;
 
         let floor_idx = if let Some(idx) = self.get_lift_floor_idx() {
@@ -197,20 +207,19 @@ impl World {
         let mut nearest_dist = f32::INFINITY;
         for (idx, enemy) in self.enemies[floor_idx].iter_mut().enumerate()
         {
-            let dist = collider.get_x_dist_to(enemy.position.x);
-            if dist < nearest_dist {
-                nearest_dist = dist;
-                nearest_enemy = Some(enemy);
+            if enemy.can_be_attacked() {
+                let dist = collider.get_x_dist_to(enemy.position.x);
+                if dist < nearest_dist {
+                    nearest_dist = dist;
+                    nearest_enemy = Some(enemy);
+                }
             }
         }
 
         if let Some(enemy) = nearest_enemy {
             attack(&mut self.player, enemy, dt);
-            self.player.update_animator(dt);
-        }
-
-        if self.player.is_dead() {
-            self.state = WorldState::GameOver;
+        } else {
+            self.player.state = EntityState::Idle;
         }
     }
 
@@ -369,6 +378,15 @@ pub fn world_to_screen(
 }
 
 fn attack(entity: &mut Entity, target: &mut Entity, dt: f32) {
+    if !entity.can_attack() {
+        return;
+    }
+
+    if !target.can_be_attacked() {
+        entity.state = EntityState::Idle;
+        return;
+    }
+
     let target_position = &target.position;
     let target_collider = target.collider.as_ref().unwrap();
     let target_width = target_collider.get_width();
@@ -390,14 +408,16 @@ fn attack(entity: &mut Entity, target: &mut Entity, dt: f32) {
         kinematic.speed = kinematic.max_speed * dist.signum();
         let step = dt * kinematic.speed;
         position.x += step;
-        animator.play("walk");
+        entity.state = EntityState::Moving;
     } else if weapon.is_ready() && can_reach {
         weapon.cooldown = 0.0;
         damage += weapon.damage;
-        animator.play("shoot");
+        entity.state = EntityState::Attacking;
+    } else if !can_reach {
+        entity.state = EntityState::Idle;
     }
 
     weapon.cooldown += dt;
     animator.flip = dist < 0.0;
-    target_health.current -= damage;
+    target.receive_damage(damage);
 }

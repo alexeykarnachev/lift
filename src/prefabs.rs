@@ -84,7 +84,7 @@ pub fn create_destroyer_entity(
         Rect::from_bot_center(Vec2::zeros(), Vec2::new(0.5, 1.0));
     let kinematic = Kinematic::new(1.0);
     let health = Health::new(1000.0);
-    let weapon = Weapon::new(2.0, 2.0, 10.0);
+    let weapon = Weapon::new(2.0, 2.0, 100.0);
 
     let rect = collider;
     let scale = 0.015;
@@ -94,52 +94,59 @@ pub fn create_destroyer_entity(
             sprite_atlas,
             "destroyer_idle",
             0.1,
+            AnimationMode::Repeat,
             scale,
         ),
     );
 
+    use AnimationType::*;
     animator.add(
-        "idle",
+        Idle,
         AnimatedSprite::from_sprite_atlas(
             sprite_atlas,
             "destroyer_idle",
             0.1,
+            AnimationMode::Repeat,
             scale,
         ),
     );
     animator.add(
-        "shoot",
+        Attack,
         AnimatedSprite::from_sprite_atlas(
             sprite_atlas,
             "destroyer_shoot",
             0.1,
+            AnimationMode::RepeatFrom(4),
             scale,
         ),
     );
     animator.add(
-        "walk",
+        Move,
         AnimatedSprite::from_sprite_atlas(
             sprite_atlas,
             "destroyer_walk",
             0.1,
+            AnimationMode::Repeat,
             scale,
         ),
     );
     animator.add(
-        "hurt",
+        Hurt,
         AnimatedSprite::from_sprite_atlas(
             sprite_atlas,
             "destroyer_hurt",
             0.1,
+            AnimationMode::Once,
             scale,
         ),
     );
     animator.add(
-        "die",
+        Die,
         AnimatedSprite::from_sprite_atlas(
             sprite_atlas,
             "destroyer_dead",
             0.1,
+            AnimationMode::Once,
             scale,
         ),
     );

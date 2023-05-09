@@ -8,7 +8,16 @@ use crate::vec::*;
 use std::collections::HashMap;
 use std::fs;
 
+#[derive(PartialEq, Debug)]
+pub enum EntityState {
+    Idle,
+    Moving,
+    Attacking,
+    Dead,
+}
+
 pub struct Entity {
+    pub state: EntityState,
     pub position: Vec2<f32>,
     pub collider: Option<Rect>,
     pub kinematic: Option<Kinematic>,
@@ -22,6 +31,7 @@ pub struct Entity {
 impl Entity {
     pub fn new(position: Vec2<f32>) -> Self {
         Self {
+            state: EntityState::Idle,
             position,
             collider: None,
             kinematic: None,
@@ -49,11 +59,35 @@ impl Entity {
     }
 
     pub fn update_animator(&mut self, dt: f32) {
-        self.animator.as_mut().unwrap().update(dt);
+        use AnimationType::*;
+        let animator = self.animator.as_mut().unwrap();
+        match self.state {
+            EntityState::Idle => animator.play(Idle),
+            EntityState::Moving => animator.play(Move),
+            EntityState::Attacking => animator.play(Attack),
+            EntityState::Dead => animator.play(Die),
+        }
+
+        animator.update(dt);
     }
 
-    pub fn is_dead(&self) -> bool {
-        self.health.as_ref().unwrap().current <= 0.0
+    pub fn can_be_attacked(&self) -> bool {
+        let hp = self.health.as_ref().unwrap().current;
+
+        hp > 0.0
+    }
+
+    pub fn can_attack(&self) -> bool {
+        self.state != EntityState::Dead
+    }
+
+    pub fn receive_damage(&mut self, value: f32) {
+        let mut health = self.health.as_mut().unwrap();
+        health.receive_damage(value);
+
+        if health.is_dead() {
+            self.state = EntityState::Dead;
+        }
     }
 
     pub fn get_text_rect(&self) -> Rect {
@@ -98,6 +132,14 @@ pub struct Health {
 impl Health {
     pub fn new(max: f32) -> Self {
         Self { max, current: max }
+    }
+
+    pub fn receive_damage(&mut self, value: f32) {
+        self.current = (self.current - value).max(0.0);
+    }
+
+    pub fn is_dead(&self) -> bool {
+        self.current <= 0.0
     }
 }
 
@@ -153,42 +195,53 @@ impl Weapon {
     }
 }
 
+#[derive(Eq, Hash, PartialEq)]
+pub enum AnimationType {
+    Default_,
+    Idle,
+    Move,
+    Attack,
+    Hurt,
+    Die,
+}
+
 pub struct Animator {
     pub rect: Rect,
     pub flip: bool,
-    current_animation: &'static str,
-    animation_to_sprite: HashMap<&'static str, AnimatedSprite>,
+    animation_type: AnimationType,
+    animation_to_sprite: HashMap<AnimationType, AnimatedSprite>,
 }
 
 impl Animator {
     pub fn new(rect: Rect, default_sprite: AnimatedSprite) -> Self {
         let mut animation_to_sprite = HashMap::new();
-        animation_to_sprite.insert("default", default_sprite);
+        animation_to_sprite
+            .insert(AnimationType::Default_, default_sprite);
 
         Self {
             rect,
             flip: false,
-            current_animation: "default",
+            animation_type: AnimationType::Default_,
             animation_to_sprite,
         }
     }
 
     pub fn add(
         &mut self,
-        animation: &'static str,
+        animation_type: AnimationType,
         sprite: AnimatedSprite,
     ) {
-        self.animation_to_sprite.insert(animation, sprite);
+        self.animation_to_sprite.insert(animation_type, sprite);
     }
 
-    pub fn play(&mut self, animation: &'static str) {
-        self.current_animation = animation;
+    pub fn play(&mut self, animation_type: AnimationType) {
+        self.animation_type = animation_type;
     }
 
     pub fn get_draw_primitive(&self) -> DrawPrimitive {
         let mut sprite = self
             .animation_to_sprite
-            .get(self.current_animation)
+            .get(&self.animation_type)
             .unwrap()
             .get_current_frame();
 
@@ -204,7 +257,7 @@ impl Animator {
 
     pub fn update(&mut self, dt: f32) {
         self.animation_to_sprite
-            .get_mut(self.current_animation)
+            .get_mut(&self.animation_type)
             .unwrap()
             .update(dt);
     }
