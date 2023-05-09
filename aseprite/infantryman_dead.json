@@ -1,0 +1,63 @@
+{ "frames": [
+   {
+    "filename": "infantryman_dead.0",
+    "frame": { "x": 0, "y": 0, "w": 86, "h": 75 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 2, "y": 55, "w": 84, "h": 73 },
+    "sourceSize": { "w": 128, "h": 128 },
+    "duration": 100
+   },
+   {
+    "filename": "infantryman_dead.1",
+    "frame": { "x": 86, "y": 0, "w": 86, "h": 75 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 2, "y": 55, "w": 84, "h": 73 },
+    "sourceSize": { "w": 128, "h": 128 },
+    "duration": 100
+   },
+   {
+    "filename": "infantryman_dead.2",
+    "frame": { "x": 172, "y": 0, "w": 86, "h": 75 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 2, "y": 55, "w": 84, "h": 73 },
+    "sourceSize": { "w": 128, "h": 128 },
+    "duration": 100
+   },
+   {
+    "filename": "infantryman_dead.3",
+    "frame": { "x": 258, "y": 0, "w": 86, "h": 75 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 2, "y": 55, "w": 84, "h": 73 },
+    "sourceSize": { "w": 128, "h": 128 },
+    "duration": 100
+   },
+   {
+    "filename": "infantryman_dead.4",
+    "frame": { "x": 344, "y": 0, "w": 86, "h": 75 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 2, "y": 55, "w": 84, "h": 73 },
+    "sourceSize": { "w": 128, "h": 128 },
+    "duration": 100
+   }
+ ],
+ "meta": {
+  "app": "http://www.aseprite.org/",
+  "version": "1.3-rc2-x64",
+  "image": "infantryman_dead.png",
+  "format": "RGBA8888",
+  "size": { "w": 430, "h": 75 },
+  "scale": "1",
+  "frameTags": [
+  ],
+  "layers": [
+   { "name": "Sprite Sheet", "opacity": 255, "blendMode": "normal" }
+  ],
+  "slices": [
+  ]
+ }
+}

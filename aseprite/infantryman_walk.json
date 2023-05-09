@@ -1,0 +1,72 @@
+{ "frames": [
+   {
+    "filename": "infantryman_walk.0",
+    "frame": { "x": 0, "y": 0, "w": 32, "h": 76 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 47, "y": 54, "w": 30, "h": 74 },
+    "sourceSize": { "w": 128, "h": 128 },
+    "duration": 100
+   },
+   {
+    "filename": "infantryman_walk.1",
+    "frame": { "x": 32, "y": 0, "w": 32, "h": 76 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 47, "y": 54, "w": 30, "h": 74 },
+    "sourceSize": { "w": 128, "h": 128 },
+    "duration": 100
+   },
+   {
+    "filename": "infantryman_walk.2",
+    "frame": { "x": 64, "y": 0, "w": 32, "h": 76 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 47, "y": 54, "w": 30, "h": 74 },
+    "sourceSize": { "w": 128, "h": 128 },
+    "duration": 100
+   },
+   {
+    "filename": "infantryman_walk.3",
+    "frame": { "x": 96, "y": 0, "w": 32, "h": 76 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 47, "y": 54, "w": 30, "h": 74 },
+    "sourceSize": { "w": 128, "h": 128 },
+    "duration": 100
+   },
+   {
+    "filename": "infantryman_walk.4",
+    "frame": { "x": 128, "y": 0, "w": 32, "h": 76 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 47, "y": 54, "w": 30, "h": 74 },
+    "sourceSize": { "w": 128, "h": 128 },
+    "duration": 100
+   },
+   {
+    "filename": "infantryman_walk.5",
+    "frame": { "x": 160, "y": 0, "w": 32, "h": 76 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 47, "y": 54, "w": 30, "h": 74 },
+    "sourceSize": { "w": 128, "h": 128 },
+    "duration": 100
+   }
+ ],
+ "meta": {
+  "app": "http://www.aseprite.org/",
+  "version": "1.3-rc2-x64",
+  "image": "infantryman_walk.png",
+  "format": "RGBA8888",
+  "size": { "w": 192, "h": 76 },
+  "scale": "1",
+  "frameTags": [
+  ],
+  "layers": [
+   { "name": "Sprite Sheet", "opacity": 255, "blendMode": "normal" }
+  ],
+  "slices": [
+  ]
+ }
+}

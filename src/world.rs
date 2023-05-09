@@ -48,14 +48,14 @@ impl World {
             let floor_y = floor.position.y;
             floors.push(floor);
 
-            let n_enemies = 4;
+            let n_enemies = 1;
             let mut floor_enemies = Vec::with_capacity(n_enemies);
             for enemy_idx in 0..n_enemies {
                 let side = if enemy_idx % 2 == 1 { -1.0 } else { 1.0 };
                 let x = (2.0 + 2.0 * enemy_idx as f32) * side;
                 let position = Vec2::new(x, floor_y);
                 let destroyer =
-                    create_destroyer_entity(position, &sprite_atlas);
+                    create_infantryman_entity(position, &sprite_atlas);
 
                 floor_enemies.push(destroyer);
             }

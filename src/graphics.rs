@@ -98,7 +98,7 @@ pub struct AnimatedSprite {
 }
 
 impl AnimatedSprite {
-    pub fn from_sprite_atlas(
+    pub fn new(
         sprite_atlas: &SpriteAtlas,
         name: &'static str,
         animation_mode: AnimationMode,

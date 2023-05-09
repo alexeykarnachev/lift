@@ -88,14 +88,14 @@ pub fn create_destroyer_entity(
     let collider =
         Rect::from_bot_center(Vec2::zeros(), Vec2::new(0.5, 1.0));
     let kinematic = Kinematic::new(1.0);
-    let health = Health::new(200.0);
-    let weapon = Weapon::new(2.0, 2.0, 100.0);
+    let health = Health::new(2000.0);
+    let weapon = Weapon::new(2.0, 2.0, 500.0);
 
     let rect = collider;
     let scale = 0.015;
     let mut animator = Animator::new(
         rect,
-        AnimatedSprite::from_sprite_atlas(
+        AnimatedSprite::new(
             sprite_atlas,
             "destroyer_idle",
             AnimationMode::Repeat,
@@ -106,7 +106,7 @@ pub fn create_destroyer_entity(
     use AnimationType::*;
     animator.add(
         Idle,
-        AnimatedSprite::from_sprite_atlas(
+        AnimatedSprite::new(
             sprite_atlas,
             "destroyer_idle",
             AnimationMode::Repeat,
@@ -115,7 +115,7 @@ pub fn create_destroyer_entity(
     );
     animator.add(
         Attack,
-        AnimatedSprite::from_sprite_atlas(
+        AnimatedSprite::new(
             sprite_atlas,
             "destroyer_shoot",
             AnimationMode::RepeatFrom(4),
@@ -124,7 +124,7 @@ pub fn create_destroyer_entity(
     );
     animator.add(
         Move,
-        AnimatedSprite::from_sprite_atlas(
+        AnimatedSprite::new(
             sprite_atlas,
             "destroyer_walk",
             AnimationMode::Repeat,
@@ -133,7 +133,7 @@ pub fn create_destroyer_entity(
     );
     animator.add(
         Hurt,
-        AnimatedSprite::from_sprite_atlas(
+        AnimatedSprite::new(
             sprite_atlas,
             "destroyer_hurt",
             AnimationMode::Once,
@@ -142,9 +142,88 @@ pub fn create_destroyer_entity(
     );
     animator.add(
         Die,
-        AnimatedSprite::from_sprite_atlas(
+        AnimatedSprite::new(
             sprite_atlas,
             "destroyer_dead",
+            AnimationMode::Once,
+            scale,
+        ),
+    );
+
+    let mut entity = Entity::new(position);
+    entity.collider = Some(collider);
+    entity.kinematic = Some(kinematic);
+    entity.health = Some(health);
+    entity.weapon = Some(weapon);
+    entity.animator = Some(animator);
+
+    entity
+}
+
+pub fn create_infantryman_entity(
+    position: Vec2<f32>,
+    sprite_atlas: &SpriteAtlas,
+) -> Entity {
+    let collider =
+        Rect::from_bot_center(Vec2::zeros(), Vec2::new(0.5, 1.0));
+    let kinematic = Kinematic::new(1.0);
+    let health = Health::new(2000.0);
+    let weapon = Weapon::new(2.0, 2.0, 100.0);
+
+    let rect = collider;
+    let scale = 0.015;
+    let mut animator = Animator::new(
+        rect,
+        AnimatedSprite::new(
+            sprite_atlas,
+            "infantryman_idle",
+            AnimationMode::Repeat,
+            scale,
+        ),
+    );
+
+    use AnimationType::*;
+    animator.add(
+        Idle,
+        AnimatedSprite::new(
+            sprite_atlas,
+            "infantryman_idle",
+            AnimationMode::Repeat,
+            scale,
+        ),
+    );
+    animator.add(
+        Attack,
+        AnimatedSprite::new(
+            sprite_atlas,
+            "infantryman_shoot",
+            AnimationMode::RepeatFrom(4),
+            scale,
+        ),
+    );
+    animator.add(
+        Move,
+        AnimatedSprite::new(
+            sprite_atlas,
+            "infantryman_walk",
+            AnimationMode::Repeat,
+            scale,
+        ),
+    );
+    animator.add(
+        Hurt,
+        AnimatedSprite::new(
+            sprite_atlas,
+            "infantryman_hurt",
+            AnimationMode::Once,
+            scale,
+        ),
+    );
+    animator.add(
+        Die,
+        AnimatedSprite::new(
+            sprite_atlas,
+            "infantryman_dead",
             AnimationMode::Once,
             scale,
         ),
