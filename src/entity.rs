@@ -103,7 +103,7 @@ impl Entity {
         .translate(self.position)
     }
 
-    pub fn change_text_color(&mut self, color: Color) {
+    pub fn set_text_color(&mut self, color: Color) {
         self.text.as_mut().unwrap().change_color(color);
     }
 }
@@ -159,7 +159,7 @@ impl Health {
         let background_primitive = DrawPrimitive::from_rect(
             background_rect,
             Space::World,
-            Color::new_gray(0.2, 1.0),
+            Color::gray(0.2, 1.0),
         );
 
         let bot_left = background_rect.bot_left + border_size;

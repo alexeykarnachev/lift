@@ -3,11 +3,12 @@
 #![allow(unused_variables)]
 
 use crate::entity::*;
-use crate::game_over::*;
 use crate::graphics::*;
 use crate::input::Input;
 use crate::prefabs::*;
+use crate::ui::*;
 use crate::vec::*;
+use std::fs;
 
 #[derive(PartialEq, Debug)]
 pub enum WorldState {
@@ -28,7 +29,8 @@ pub struct World {
 
     pub floors: Vec<Entity>,
 
-    pub game_over_menu: GameOverMenu,
+    pub game_over_ui: UI,
+    pub game_over_ui_last_modified: u64,
 
     pub sprite_atlas: SpriteAtlas,
     pub glyph_atlas: GlyphAtlas,
@@ -68,13 +70,13 @@ impl World {
         let position = Vec2::new(0.0, lift.position.y);
         let mut player = create_destroyer_entity(position, &sprite_atlas);
         player.kinematic = None;
-        player.health.as_mut().unwrap().current = 1000.0;
-        player.weapon.as_mut().unwrap().damage = 600.0;
 
         let state = WorldState::Play;
         let camera = Camera::new(Vec2::new(0.0, lift.position.y));
 
-        let game_over_menu = GameOverMenu::new(&glyph_atlas);
+        let game_over_ui = create_default_game_over_ui(&glyph_atlas);
+        let game_over_ui_last_modified =
+            get_last_modified(game_over_ui.file_path);
 
         Self {
             state,
@@ -84,18 +86,19 @@ impl World {
             player,
             enemies,
             floors,
-            game_over_menu,
+            game_over_ui,
+            game_over_ui_last_modified,
             sprite_atlas,
             glyph_atlas,
         }
     }
 
     pub fn update(&mut self, dt: f32, input: &Input) {
+        self.hot_reload();
+
         self.camera.aspect =
             input.window_size.x as f32 / input.window_size.y as f32;
 
-        self.update_lift(dt, input);
-        self.update_floors();
         self.update_enemies(dt);
         self.update_player(dt);
 
@@ -103,6 +106,8 @@ impl World {
         match self.state {
             Play => {
                 self.update_free_camera(input);
+                self.update_lift(dt, input);
+                self.update_floors();
             }
             GameOver => {
                 self.update_game_over_menu(input);
@@ -111,6 +116,15 @@ impl World {
                 *self = Self::new();
             }
             Quit => {}
+        }
+    }
+
+    fn hot_reload(&mut self) {
+        let game_over_ui_last_modified =
+            get_last_modified(self.game_over_ui.file_path);
+        if game_over_ui_last_modified != self.game_over_ui_last_modified {
+            self.game_over_ui =
+                create_default_game_over_ui(&self.glyph_atlas);
         }
     }
 
@@ -168,7 +182,7 @@ impl World {
         for (idx, floor) in self.floors.iter_mut().enumerate() {
             let gray = 0.5
                 - (0.6 * (idx as f32 - lift_floor_idx).abs()).powf(2.0);
-            floor.set_draw_primitive_color(Color::new_gray(gray, 1.0));
+            floor.set_draw_primitive_color(Color::gray(gray, 1.0));
         }
     }
 
@@ -247,36 +261,17 @@ impl World {
     }
 
     fn update_game_over_menu(&mut self, input: &Input) {
-        let cursor_pos = Vec2::new(
-            input.cursor_pos.x as f32,
-            (input.window_size.y - input.cursor_pos.y) as f32,
-        );
-        let window_size = Vec2::new(
-            input.window_size.x as f32,
-            input.window_size.y as f32,
-        );
-        let cursor_pos = cursor_pos - window_size.scale(0.5);
-
-        let mut restart = &mut self.game_over_menu.restart;
-        let rect = restart.get_text_rect();
-        if rect.check_if_contains(cursor_pos) {
-            restart.change_text_color(Color::new(1.0, 1.0, 0.0, 1.0));
-            if input.lmb_press_pos.is_some() {
-                self.state = WorldState::Restart;
+        if let Some(event) = self.game_over_ui.process_input(input) {
+            match event {
+                UIEvent::LMBPress(id) => match id.as_str() {
+                    "restart" => self.state = WorldState::Restart,
+                    "quit" => {
+                        self.state = WorldState::Quit;
+                    }
+                    _ => {}
+                },
+                _ => {}
             }
-        } else {
-            restart.change_text_color(Color::new(1.0, 0.0, 0.0, 1.0));
-        }
-
-        let mut quit = &mut self.game_over_menu.quit;
-        let rect = quit.get_text_rect();
-        if rect.check_if_contains(cursor_pos) {
-            quit.change_text_color(Color::new(1.0, 1.0, 0.0, 1.0));
-            if input.lmb_press_pos.is_some() {
-                self.state = WorldState::Quit;
-            }
-        } else {
-            quit.change_text_color(Color::new(1.0, 0.0, 0.0, 1.0));
         }
     }
 
@@ -420,4 +415,9 @@ fn attack(entity: &mut Entity, target: &mut Entity, dt: f32) {
     weapon.cooldown += dt;
     animator.flip = dist < 0.0;
     target.receive_damage(damage);
+}
+
+fn get_last_modified(file_path: &str) -> u64 {
+    let metadata = fs::metadata(file_path).unwrap();
+    metadata.modified().unwrap().elapsed().unwrap().as_millis() as u64
 }

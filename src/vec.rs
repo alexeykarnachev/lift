@@ -191,6 +191,21 @@ pub enum Origin {
     LeftCenter(Vec2<f32>),
 }
 
+impl Origin {
+    pub fn from_str(name: &str, position: Vec2<f32>) -> Self {
+        match name {
+            "Center" => Self::Center(position),
+            "BotCenter" => Self::BotCenter(position),
+            "BotLeft" => Self::BotLeft(position),
+            "RightCenter" => Self::RightCenter(position),
+            "LeftCenter" => Self::LeftCenter(position),
+            _ => {
+                panic!("Unknown Origin: {}", name)
+            }
+        }
+    }
+}
+
 #[derive(Debug, Copy, Clone)]
 pub struct Rect {
     pub bot_left: Vec2<f32>,

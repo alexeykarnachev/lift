@@ -1,0 +1,38 @@
+[
+    {
+        "id": "game_over",
+        "position": {
+            "origin": "Center",
+            "x": 0.0,
+            "y": 200.0
+        },
+        "text": {
+            "string": "Game Over",
+            "scale": 2.0
+        }
+    },
+    {
+        "id": "restart",
+        "position": {
+            "origin": "Center",
+            "x": 0.0,
+            "y": 75.0
+        },
+        "text": {
+            "string": "Restart",
+            "scale": 1.0
+        }
+    },
+    {
+        "id": "quit",
+        "position": {
+            "origin": "Center",
+            "x": 0.0,
+            "y": 0.0
+        },
+        "text": {
+            "string": "Quit",
+            "scale": 1.0
+        }
+    }
+]

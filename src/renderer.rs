@@ -143,15 +143,9 @@ impl Renderer {
         }
 
         if world.state == WorldState::GameOver {
-            draw_entity(
-                &world.game_over_menu.game_over,
-                &mut self.primitives,
-            );
-            draw_entity(
-                &world.game_over_menu.restart,
-                &mut self.primitives,
-            );
-            draw_entity(&world.game_over_menu.quit, &mut self.primitives);
+            for (_, entity) in world.game_over_ui.id_to_entity.iter() {
+                draw_entity(entity, &mut self.primitives);
+            }
         }
     }
 

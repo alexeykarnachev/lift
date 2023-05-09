@@ -1,5 +1,6 @@
 use crate::entity::*;
 use crate::graphics::*;
+use crate::ui::*;
 use crate::vec::*;
 
 const FLOOR_WIDTH: f32 = 100.0;
@@ -19,6 +20,10 @@ pub fn create_default_glyph_atlas() -> GlyphAtlas {
     GlyphAtlas::from_ttf("./assets/fonts/Montserrat-Bold.ttf", 62.0)
 }
 
+pub fn create_default_game_over_ui(glyph_atlas: &GlyphAtlas) -> UI {
+    UI::from_file("./assets/ui/game_over.json", glyph_atlas)
+}
+
 pub fn create_shaft_entity(n_floors: usize) -> Entity {
     let height = n_floors as f32 * FLOOR_HEIGHT;
     let size = Vec2::new(SHAFT_WIDTH, height);
@@ -27,7 +32,7 @@ pub fn create_shaft_entity(n_floors: usize) -> Entity {
     let primitive = DrawPrimitive::from_rect(
         rect,
         Space::World,
-        Color::new_gray(0.05, 1.0),
+        Color::gray(0.05, 1.0),
     );
 
     let mut entity = Entity::new(position);
@@ -44,7 +49,7 @@ pub fn create_floor_entity(idx: usize) -> Entity {
     let primitive = DrawPrimitive::from_rect(
         rect,
         Space::World,
-        Color::new_gray(0.3, 1.0),
+        Color::gray(0.3, 1.0),
     );
 
     let mut entity = Entity::new(position);
@@ -61,7 +66,7 @@ pub fn create_lift_entity(floor_idx: usize) -> Entity {
     let primitive = DrawPrimitive::from_rect(
         rect,
         Space::World,
-        Color::new_gray(0.6, 1.0),
+        Color::gray(0.6, 1.0),
     );
     let kinematic = Kinematic {
         max_speed: 2.0,
@@ -83,7 +88,7 @@ pub fn create_destroyer_entity(
     let collider =
         Rect::from_bot_center(Vec2::zeros(), Vec2::new(0.5, 1.0));
     let kinematic = Kinematic::new(1.0);
-    let health = Health::new(1000.0);
+    let health = Health::new(200.0);
     let weapon = Weapon::new(2.0, 2.0, 100.0);
 
     let rect = collider;

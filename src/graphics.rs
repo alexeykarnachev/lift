@@ -166,13 +166,16 @@ impl Color {
         Self { r, g, b, a }
     }
 
-    pub fn new_gray(c: f32, a: f32) -> Self {
-        Self {
-            r: c,
-            g: c,
-            b: c,
-            a,
-        }
+    pub fn gray(c: f32, a: f32) -> Self {
+        Self::new(c, c, c, a)
+    }
+
+    pub fn red(a: f32) -> Self {
+        Self::new(1.0, 0.0, 0.0, a)
+    }
+
+    pub fn yellow(a: f32) -> Self {
+        Self::new(1.0, 1.0, 0.0, a)
     }
 
     pub fn to_array(&self) -> [f32; 4] {
