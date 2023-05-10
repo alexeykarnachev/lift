@@ -1,10 +1,11 @@
 #![allow(unused_mut)]
 #![allow(dead_code)]
 #![allow(unused_variables)]
+#![allow(unused_imports)]
 
 use crate::entity::*;
 use crate::graphics::*;
-use crate::input::Input;
+use crate::input::*;
 use crate::prefabs::*;
 use crate::ui::*;
 use crate::vec::*;
@@ -48,8 +49,9 @@ impl World {
             let floor_y = floor.position.y;
             floors.push(floor);
 
-            let n_enemies = 1;
+            let n_enemies = 0;
             let mut floor_enemies = Vec::with_capacity(n_enemies);
+            /*
             for enemy_idx in 0..n_enemies {
                 let side = if enemy_idx % 2 == 1 { -1.0 } else { 1.0 };
                 let x = (2.0 + 2.0 * enemy_idx as f32) * side;
@@ -59,6 +61,7 @@ impl World {
 
                 floor_enemies.push(destroyer);
             }
+            */
 
             enemies.push(floor_enemies);
         }
@@ -68,7 +71,7 @@ impl World {
         let shaft = create_shaft_entity(n_floors);
 
         let position = Vec2::new(0.0, lift.position.y);
-        let mut player = create_destroyer_entity(position, &sprite_atlas);
+        let mut player = create_player_entity(position, &sprite_atlas);
         player.kinematic = None;
 
         let state = WorldState::Play;
@@ -100,7 +103,7 @@ impl World {
             input.window_size.x as f32 / input.window_size.y as f32;
 
         self.update_enemies(dt);
-        self.update_player(dt);
+        self.update_player(dt, input);
 
         use WorldState::*;
         match self.state {
@@ -186,55 +189,12 @@ impl World {
         }
     }
 
-    pub fn update_enemies(&mut self, dt: f32) {
-        let floor_idx = if let Some(idx) = self.get_lift_floor_idx() {
-            idx
-        } else {
-            return;
-        };
+    pub fn update_enemies(&mut self, dt: f32) {}
 
-        for enemy in self.enemies[floor_idx].iter_mut() {
-            enemy.update_animator(dt);
-            attack(enemy, &mut self.player, dt);
-        }
-    }
-
-    pub fn update_player(&mut self, dt: f32) {
-        self.player.update_animator(dt);
-        if self.player.state == EntityState::Dead {
-            if self.state == WorldState::Play {
-                self.state = WorldState::GameOver;
-            }
-            return;
-        }
-
-        self.player.position.y = self.lift.position.y;
-
-        let floor_idx = if let Some(idx) = self.get_lift_floor_idx() {
-            idx
-        } else {
-            return;
-        };
-
-        let collider = self.player.get_collider();
-        let mut nearest_enemy = None;
-        let mut nearest_dist = f32::INFINITY;
-        for (idx, enemy) in self.enemies[floor_idx].iter_mut().enumerate()
-        {
-            if enemy.can_be_attacked() {
-                let dist = collider.get_x_dist_to(enemy.position.x);
-                if dist < nearest_dist {
-                    nearest_dist = dist;
-                    nearest_enemy = Some(enemy);
-                }
-            }
-        }
-
-        if let Some(enemy) = nearest_enemy {
-            attack(&mut self.player, enemy, dt);
-        } else {
-            self.player.state = EntityState::Idle;
-        }
+    pub fn update_player(&mut self, dt: f32, input: &Input) {
+        let foo = input.key_is_down[Keyaction::Right as usize];
+        let bar = input.key_is_down[Keyaction::Up as usize];
+        println!("{:?}", foo && bar);
     }
 
     fn update_free_camera(&mut self, input: &Input) {

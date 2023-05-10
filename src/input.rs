@@ -1,6 +1,27 @@
 use crate::vec::Vec2;
 use sdl2::event::{Event, WindowEvent};
+use sdl2::keyboard::Keycode;
 use sdl2::mouse::MouseButton;
+
+pub enum Keyaction {
+    Left,
+    Right,
+    Up,
+    Down,
+    _N,
+}
+
+const N_KEYACTIONS: usize = Keyaction::_N as usize;
+
+pub fn keycode_to_keyaction(code: Keycode) -> Option<Keyaction> {
+    match code {
+        Keycode::Left | Keycode::A => Some(Keyaction::Left),
+        Keycode::Right | Keycode::D => Some(Keyaction::Right),
+        Keycode::Up | Keycode::W => Some(Keyaction::Up),
+        Keycode::Down | Keycode::S => Some(Keyaction::Down),
+        _ => None,
+    }
+}
 
 struct Accum {
     cursor_pos: Vec2<i32>,
@@ -9,6 +30,7 @@ struct Accum {
     wheel_d: i32,
 }
 
+const N_KEYS: usize = 256;
 pub struct Input {
     accum: Accum,
 
@@ -26,6 +48,8 @@ pub struct Input {
     pub mmb_is_down: bool,
 
     pub wheel_d: i32,
+
+    pub key_is_down: [bool; N_KEYACTIONS],
 }
 
 impl Input {
@@ -51,6 +75,7 @@ impl Input {
             rmb_is_down: false,
             mmb_is_down: false,
             wheel_d: 0,
+            key_is_down: [false; N_KEYACTIONS],
         }
     }
 
@@ -116,6 +141,22 @@ impl Input {
             }
             Event::MouseWheel { y, .. } => {
                 self.accum.wheel_d += *y;
+            }
+            Event::KeyDown {
+                keycode: Some(code),
+                ..
+            } => {
+                if let Some(action) = keycode_to_keyaction(*code) {
+                    self.key_is_down[action as usize] = true;
+                }
+            }
+            Event::KeyUp {
+                keycode: Some(code),
+                ..
+            } => {
+                if let Some(action) = keycode_to_keyaction(*code) {
+                    self.key_is_down[action as usize] = false;
+                }
             }
             _ => {}
         }
