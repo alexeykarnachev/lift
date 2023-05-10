@@ -282,6 +282,10 @@ impl Rect {
         self.get_size().x
     }
 
+    pub fn get_height(&self) -> f32 {
+        self.get_size().y
+    }
+
     pub fn get_center(&self) -> Vec2<f32> {
         (self.top_right + self.bot_left).scale(0.5)
     }

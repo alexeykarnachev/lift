@@ -360,38 +360,84 @@ impl GlyphAtlas {
     }
 }
 
-pub fn draw_entity(entity: &Entity, draw_queue: &mut Vec<DrawPrimitive>) {
-    let position = entity.position;
+pub fn draw_humanoid(
+    humanoid: &Humanoid,
+    draw_queue: &mut Vec<DrawPrimitive>,
+) {
+    // Main primitive
+    let rect = humanoid.get_collider();
+    draw_queue.push(DrawPrimitive::from_rect(
+        rect,
+        Space::World,
+        Color::new(0.6, 0.8, 0.2, 1.0),
+    ));
 
-    let animator = entity.animator.as_ref();
-    let text = entity.text.as_ref();
-    let health = entity.health.as_ref();
-    let mut primitives = Vec::<DrawPrimitive>::with_capacity(8);
+    // Healthbar
+    let alive_color = Color::new(0.0, 1.0, 0.0, 1.0);
+    let dead_color = Color::new(1.0, 0.0, 0.0, 1.0);
+    let ratio = humanoid.current_health / humanoid.max_health;
+    let color = alive_color.lerp(&dead_color, ratio);
+    let bar_size = Vec2::new(1.0, 0.13);
+    let border_size = Vec2::new(0.03, 0.03);
 
-    let primitive = if let Some(animator) = animator {
-        Some(animator.get_draw_primitive())
-    } else {
-        entity.draw_primitive
-    };
+    let y = rect.get_top_left().y + 0.2;
+    let position = Vec2::new(rect.get_center().x, y);
+    let background_rect = Rect::from_bot_center(position, bar_size);
+    draw_queue.push(DrawPrimitive::from_rect(
+        background_rect,
+        Space::World,
+        Color::gray(0.2, 1.0),
+    ));
 
-    if let Some(primitive) = primitive {
-        primitives.push(primitive);
-    }
+    let bot_left = background_rect.bot_left + border_size;
+    let mut bar_size = bar_size - border_size.scale(2.0);
+    bar_size.x *= ratio;
+    let health_rect = Rect::from_bot_left(bot_left, bar_size);
+    draw_queue.push(DrawPrimitive::from_rect(
+        health_rect,
+        Space::World,
+        color,
+    ));
+}
 
-    if let (Some(primitive), Some(health)) = (primitive, health) {
-        let gap_height = 0.2;
-        let y = primitive.rect.get_top_left().y + gap_height;
-        primitives.extend_from_slice(
-            &health.get_draw_primitives(Vec2::new(0.0, y)),
-        );
-    }
+pub fn draw_bullet(bullet: &Bullet, draw_queue: &mut Vec<DrawPrimitive>) {
+    let rect = Rect::from_center(bullet.position, Vec2::new(0.2, 0.2));
+    draw_queue.push(DrawPrimitive::from_rect(
+        rect,
+        Space::World,
+        Color::red(1.0),
+    ));
+}
 
-    if let Some(text) = text {
-        primitives.extend_from_slice(&text.draw_primitives);
-    }
+pub fn draw_shaft(shaft: &Shaft, draw_queue: &mut Vec<DrawPrimitive>) {
+    let rect = shaft.get_collider();
+    draw_queue.push(DrawPrimitive::from_rect(
+        rect,
+        Space::World,
+        Color::gray(0.05, 1.0),
+    ));
+}
 
-    for primitive in primitives.iter() {
-        let mut primitive = primitive.translate(position);
-        draw_queue.push(primitive);
-    }
+pub fn draw_floor(
+    floor: &Floor,
+    lift_floor_idx: f32,
+    draw_queue: &mut Vec<DrawPrimitive>,
+) {
+    let gray =
+        0.5 - (0.6 * (floor.idx as f32 - lift_floor_idx).abs()).powf(2.0);
+    let rect = floor.get_collider();
+    draw_queue.push(DrawPrimitive::from_rect(
+        rect,
+        Space::World,
+        Color::gray(gray, 1.0),
+    ));
+}
+
+pub fn draw_lift(lift: &Lift, draw_queue: &mut Vec<DrawPrimitive>) {
+    let rect = lift.get_collider();
+    draw_queue.push(DrawPrimitive::from_rect(
+        rect,
+        Space::World,
+        Color::gray(0.6, 1.0),
+    ));
 }

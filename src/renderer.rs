@@ -131,26 +131,24 @@ impl Renderer {
         self.primitives.clear();
 
         world.floors.iter().for_each(|floor| {
-            draw_entity(floor, &mut self.primitives);
+            draw_floor(
+                floor,
+                world.get_lift_floor_idx_f(),
+                &mut self.primitives,
+            );
         });
-        draw_entity(&world.shaft, &mut self.primitives);
-        draw_entity(&world.lift, &mut self.primitives);
-        draw_entity(&world.player, &mut self.primitives);
+        draw_shaft(&world.shaft, &mut self.primitives);
+        draw_lift(&world.lift, &mut self.primitives);
+        draw_humanoid(&world.player, &mut self.primitives);
 
         let floor_idx = world.get_lift_nearest_floor_idx();
-        for enemy in world.enemies[floor_idx].iter() {
-            draw_entity(enemy, &mut self.primitives);
-        }
+        world.enemies[floor_idx].iter().for_each(|enemy| {
+            draw_humanoid(enemy, &mut self.primitives);
+        });
 
-        for bullet in world.bullets.iter() {
-            draw_entity(bullet, &mut self.primitives);
-        }
-
-        if world.state == WorldState::GameOver {
-            for (_, entity) in world.game_over_ui.id_to_entity.iter() {
-                draw_entity(entity, &mut self.primitives);
-            }
-        }
+        world.bullets.iter().for_each(|bullet| {
+            draw_bullet(bullet, &mut self.primitives);
+        });
     }
 
     fn bind_screen_framebuffer(&self) {

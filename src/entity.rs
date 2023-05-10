@@ -8,6 +8,7 @@ use crate::vec::*;
 use std::collections::HashMap;
 use std::fs;
 
+/*
 #[repr(u32)]
 #[derive(Debug)]
 pub enum EntityState {
@@ -17,50 +18,46 @@ pub enum EntityState {
     Attack = 1 << 3,
     Dead = 1 << 4,
 }
+*/
 
 #[derive(Clone)]
-pub struct Entity {
-    pub states: u32,
+pub struct Humanoid {
     pub position: Vec2<f32>,
-    pub collider: Option<Rect>,
-    pub kinematic: Option<Kinematic>,
-    pub health: Option<Health>,
-    pub weapon: Option<Weapon>,
-    pub bullet: Option<Bullet>,
-    pub draw_primitive: Option<DrawPrimitive>,
-    pub animator: Option<Animator>,
-    pub text: Option<Text>,
+    pub collider: Rect,
+
+    pub move_speed: f32,
+    pub jump_speed: f32,
+    pub velocity: Vec2<f32>,
+
+    pub max_health: f32,
+    pub current_health: f32,
+
+    pub weapon: Weapon,
 }
 
-impl Entity {
-    pub fn new(position: Vec2<f32>) -> Self {
+impl Humanoid {
+    pub fn new(
+        position: Vec2<f32>,
+        collider: Rect,
+        move_speed: f32,
+        jump_speed: f32,
+        max_health: f32,
+        weapon: Weapon,
+    ) -> Self {
         Self {
-            states: EntityState::Idle as u32,
             position,
-            collider: None,
-            kinematic: None,
-            health: None,
-            weapon: None,
-            bullet: None,
-            draw_primitive: None,
-            animator: None,
-            text: None,
+            collider,
+            move_speed,
+            jump_speed,
+            velocity: Vec2::zeros(),
+            max_health,
+            current_health: max_health,
+            weapon,
         }
     }
 
     pub fn get_collider(&self) -> Rect {
-        self.collider
-            .as_ref()
-            .unwrap()
-            .with_bot_center(self.position)
-    }
-
-    pub fn get_draw_primitive_size(&self) -> Vec2<f32> {
-        self.draw_primitive.as_ref().unwrap().rect.get_size()
-    }
-
-    pub fn set_draw_primitive_color(&mut self, color: Color) {
-        self.draw_primitive.as_mut().unwrap().color = Some(color);
+        self.collider.with_bot_center(self.position)
     }
 
     pub fn try_shoot(
@@ -68,33 +65,28 @@ impl Entity {
         target: Vec2<f32>,
         time: f32,
         is_player_friendly: bool,
-    ) -> Option<Entity> {
-        let weapon = self.weapon.as_mut().unwrap();
+    ) -> Option<Bullet> {
+        let weapon = &mut self.weapon;
         let can_shoot =
             (time - weapon.last_shoot_time) >= weapon.shoot_period;
-        let bullet = if can_shoot {
-            weapon.last_shoot_time = time;
-            let position = self.position;
-            let velocity =
-                (target - position).with_len(weapon.bullet_speed);
-            let mut bullet = Entity::new(position);
-            bullet.bullet = Some(Bullet {
-                damage: weapon.bullet_damage,
-                is_player_friendly,
-            });
-            bullet.kinematic = Some(Kinematic::with_velocity(velocity));
-            bullet.draw_primitive = Some(DrawPrimitive::from_rect(
-                Rect::from_center(Vec2::zeros(), Vec2::new(0.1, 0.1)),
-                Space::World,
-                Color::red(1.0),
-            ));
 
-            Some(bullet)
-        } else {
-            None
-        };
+        if !can_shoot {
+            return None;
+        }
 
-        bullet
+        weapon.last_shoot_time = time;
+        let pivot = self.position + weapon.pivot;
+        let direction = target - pivot;
+        let start_position = pivot + direction.with_len(weapon.length);
+        let velocity = direction.with_len(weapon.bullet_speed);
+
+        Some(Bullet::new(
+            start_position,
+            velocity,
+            weapon.bullet_damage,
+            weapon.bullet_max_travel_distance,
+            is_player_friendly,
+        ))
     }
 
     /*
@@ -112,125 +104,123 @@ impl Entity {
         animator.update(dt);
     }
     */
-
-    pub fn get_text_rect(&self) -> Rect {
-        let text = self.text.as_ref().unwrap();
-        let first = text.draw_primitives[0].rect;
-        let last =
-            text.draw_primitives[text.draw_primitives.len() - 1].rect;
-
-        Rect {
-            bot_left: first.bot_left,
-            top_right: last.top_right,
-        }
-        .translate(self.position)
-    }
-
-    pub fn set_text_color(&mut self, color: Color) {
-        self.text.as_mut().unwrap().change_color(color);
-    }
-}
-
-#[derive(Clone, Copy)]
-pub struct Kinematic {
-    pub move_speed: f32,
-    pub jump_speed: f32,
-    pub velocity: Vec2<f32>,
-}
-
-impl Kinematic {
-    pub fn new(move_speed: f32, jump_speed: f32) -> Self {
-        Self {
-            move_speed,
-            jump_speed,
-            velocity: Vec2::zeros(),
-        }
-    }
-
-    pub fn with_velocity(velocity: Vec2<f32>) -> Self {
-        Self {
-            move_speed: 0.0,
-            jump_speed: 0.0,
-            velocity,
-        }
-    }
-}
-
-#[derive(Clone, Copy)]
-pub struct Health {
-    pub max: f32,
-    pub current: f32,
-}
-
-impl Health {
-    pub fn new(max: f32) -> Self {
-        Self { max, current: max }
-    }
-
-    pub fn receive_damage(&mut self, value: f32) {
-        self.current = (self.current - value).max(0.0);
-    }
-
-    pub fn is_dead(&self) -> bool {
-        self.current <= 0.0
-    }
-
-    pub fn get_draw_primitives(
-        &self,
-        position: Vec2<f32>,
-    ) -> [DrawPrimitive; 2] {
-        let alive_color = Color::new(0.0, 1.0, 0.0, 1.0);
-        let dead_color = Color::new(1.0, 0.0, 0.0, 1.0);
-        let ratio = self.current / self.max;
-        let color = alive_color.lerp(&dead_color, ratio);
-        let bar_size = Vec2::new(1.0, 0.13);
-        let border_size = Vec2::new(0.03, 0.03);
-
-        let background_rect = Rect::from_bot_center(position, bar_size);
-        let background_primitive = DrawPrimitive::from_rect(
-            background_rect,
-            Space::World,
-            Color::gray(0.2, 1.0),
-        );
-
-        let bot_left = background_rect.bot_left + border_size;
-        let mut bar_size = bar_size - border_size.scale(2.0);
-        bar_size.x *= ratio;
-        let health_rect = Rect::from_bot_left(bot_left, bar_size);
-        let health_primitive =
-            DrawPrimitive::from_rect(health_rect, Space::World, color);
-
-        [background_primitive, health_primitive]
-    }
 }
 
 #[derive(Clone, Copy)]
 pub struct Weapon {
+    pub pivot: Vec2<f32>,
+    pub length: f32,
     pub last_shoot_time: f32,
     pub shoot_period: f32,
     pub bullet_speed: f32,
     pub bullet_damage: f32,
+    pub bullet_max_travel_distance: f32,
 }
 
 impl Weapon {
     pub fn new(
+        pivot: Vec2<f32>,
+        length: f32,
         shoot_period: f32,
         bullet_speed: f32,
         bullet_damage: f32,
+        bullet_max_travel_distance: f32,
     ) -> Self {
         Self {
+            pivot,
+            length,
             last_shoot_time: -shoot_period,
             shoot_period,
             bullet_speed,
             bullet_damage,
+            bullet_max_travel_distance,
         }
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct Bullet {
+    pub position: Vec2<f32>,
+    pub start_position: Vec2<f32>,
+    pub velocity: Vec2<f32>,
     pub damage: f32,
+    pub max_travel_distance: f32,
     pub is_player_friendly: bool,
+}
+
+impl Bullet {
+    pub fn new(
+        start_position: Vec2<f32>,
+        velocity: Vec2<f32>,
+        damage: f32,
+        max_travel_distance: f32,
+        is_player_friendly: bool,
+    ) -> Self {
+        Self {
+            position: start_position,
+            start_position,
+            velocity,
+            damage,
+            max_travel_distance,
+            is_player_friendly,
+        }
+    }
+}
+
+pub struct Shaft {
+    collider: Rect,
+}
+
+impl Shaft {
+    pub fn new(width: f32, height: f32) -> Self {
+        let collider =
+            Rect::from_bot_center(Vec2::zeros(), Vec2::new(width, height));
+
+        Self { collider }
+    }
+
+    pub fn get_collider(&self) -> Rect {
+        self.collider
+    }
+}
+
+pub struct Floor {
+    pub y: f32,
+    pub idx: usize,
+    collider: Rect,
+}
+
+impl Floor {
+    pub fn new(y: f32, idx: usize, width: f32, height: f32) -> Self {
+        let collider =
+            Rect::from_bot_center(Vec2::zeros(), Vec2::new(width, height));
+
+        Self { y, idx, collider }
+    }
+
+    pub fn get_collider(&self) -> Rect {
+        self.collider.translate(Vec2::new(0.0, self.y))
+    }
+}
+
+pub struct Lift {
+    pub y: f32,
+    pub speed: f32,
+
+    collider: Rect,
+}
+
+impl Lift {
+    pub fn new(y: f32, width: f32, height: f32, speed: f32) -> Self {
+        let collider =
+            Rect::from_bot_center(Vec2::zeros(), Vec2::new(width, height));
+
+        Self { y, speed, collider }
+    }
+
+    pub fn get_collider(&self) -> Rect {
+        self.collider.translate(Vec2::new(0.0, self.y))
+    }
 }
 
 #[derive(Eq, Hash, PartialEq, Clone)]
@@ -304,11 +294,13 @@ impl Animator {
 
 #[derive(Clone)]
 pub struct Text {
-    pub draw_primitives: Vec<DrawPrimitive>,
+    pub position: Vec2<f32>,
+    draw_primitives: Vec<DrawPrimitive>,
 }
 
 impl Text {
-    pub fn from_glyph_atlas(
+    pub fn new(
+        position: Vec2<f32>,
         glyph_atlas: &GlyphAtlas,
         space: Space,
         origin: Origin,
@@ -370,10 +362,32 @@ impl Text {
             .map(|p| p.translate(offset))
             .collect();
 
-        Self { draw_primitives }
+        Self {
+            position,
+            draw_primitives,
+        }
     }
 
-    pub fn change_color(&mut self, color: Color) {
+    pub fn get_bound_rect(&self) -> Rect {
+        let first = self.draw_primitives[0].rect;
+        let last =
+            self.draw_primitives[self.draw_primitives.len() - 1].rect;
+
+        Rect {
+            bot_left: first.bot_left,
+            top_right: last.top_right,
+        }
+        .translate(self.position)
+    }
+
+    pub fn get_draw_primitives(&self) -> Vec<DrawPrimitive> {
+        self.draw_primitives
+            .iter()
+            .map(|p| p.translate(self.position))
+            .collect()
+    }
+
+    pub fn set_color(&mut self, color: Color) {
         for primitive in self.draw_primitives.iter_mut() {
             primitive.color = Some(color);
         }

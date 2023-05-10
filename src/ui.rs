@@ -35,7 +35,7 @@ pub struct Element {
 
 pub struct UI {
     pub file_path: &'static str,
-    pub id_to_entity: HashMap<String, Entity>,
+    pub id_to_text: HashMap<String, Text>,
 }
 
 impl UI {
@@ -46,37 +46,37 @@ impl UI {
         let data = fs::read_to_string(file_path).unwrap();
         let elements: Vec<Element> = serde_json::from_str(&data).unwrap();
 
-        let mut id_to_entity = HashMap::new();
+        let mut id_to_text = HashMap::new();
         for element in elements {
             let position_config = element.position;
             let origin =
                 Origin::from_str(&position_config.origin, Vec2::zeros());
 
             let position = Vec2::new(position_config.x, position_config.y);
-            let mut entity = Entity::new(position);
 
-            if let Some(text_config) = element.text {
-                entity.text = Some(Text::from_glyph_atlas(
+            let text = if let Some(text_config) = element.text {
+                Text::new(
+                    position,
                     &glyph_atlas,
                     Space::Screen,
                     origin,
                     text_config.string,
                     Color::new(1.0, 0.0, 0.0, 1.0),
                     text_config.scale,
-                ));
+                )
             } else {
                 panic!(
                     "UI element {:?} doesn't have a text field",
                     element.id
                 );
-            }
+            };
 
-            id_to_entity.insert(element.id, entity);
+            id_to_text.insert(element.id, text);
         }
 
         Self {
             file_path,
-            id_to_entity,
+            id_to_text,
         }
     }
 
@@ -92,10 +92,10 @@ impl UI {
         let cursor_pos = cursor_pos - window_size.scale(0.5);
 
         let mut event = None;
-        for (id, entity) in self.id_to_entity.iter_mut() {
-            let rect = entity.get_text_rect();
+        for (id, text) in self.id_to_text.iter_mut() {
+            let rect = text.get_bound_rect();
             if rect.check_if_contains(cursor_pos) {
-                entity.set_text_color(Color::yellow(1.0));
+                text.set_color(Color::yellow(1.0));
 
                 let id = id.clone();
                 if input.lmb_press_pos.is_some() {
@@ -106,7 +106,7 @@ impl UI {
                     event = Some(UIEvent::Hover(id));
                 }
             } else {
-                entity.set_text_color(Color::red(1.0));
+                text.set_color(Color::red(1.0));
             }
         }
 

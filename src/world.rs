@@ -27,13 +27,13 @@ pub struct World {
     pub gravity: f32,
 
     pub camera: Camera,
-    pub shaft: Entity,
-    pub lift: Entity,
-    pub player: Entity,
-    pub enemies: Vec<Vec<Entity>>,
-    pub bullets: Vec<Entity>,
+    pub shaft: Shaft,
+    pub lift: Lift,
+    pub player: Humanoid,
+    pub enemies: Vec<Vec<Humanoid>>,
+    pub bullets: Vec<Bullet>,
 
-    pub floors: Vec<Entity>,
+    pub floors: Vec<Floor>,
 
     pub game_over_ui: UI,
     pub game_over_ui_last_modified: u64,
@@ -50,37 +50,34 @@ impl World {
         let mut floors = Vec::with_capacity(n_floors as usize);
         let mut enemies = Vec::with_capacity(n_floors as usize);
         for floor_idx in 0..n_floors {
-            let floor = create_floor_entity(floor_idx);
-            let floor_y = floor.position.y;
+            let floor = create_floor(floor_idx);
+            let floor_y = floor.y;
             floors.push(floor);
 
-            let n_enemies = 0;
+            let n_enemies = 4;
             let mut floor_enemies = Vec::with_capacity(n_enemies);
-            /*
             for enemy_idx in 0..n_enemies {
                 let side = if enemy_idx % 2 == 1 { -1.0 } else { 1.0 };
                 let x = (2.0 + 2.0 * enemy_idx as f32) * side;
                 let position = Vec2::new(x, floor_y);
-                let destroyer =
-                    create_infantryman_entity(position, &sprite_atlas);
+                let enemy = create_enemy(position);
 
-                floor_enemies.push(destroyer);
+                floor_enemies.push(enemy);
             }
-            */
 
             enemies.push(floor_enemies);
         }
 
-        let bullets: Vec<Entity> = Vec::with_capacity(1024);
+        let bullets: Vec<Bullet> = Vec::with_capacity(1024);
 
         let idx = (n_floors / 2) as usize;
         let mut lift = create_lift_entity(idx);
-        let shaft = create_shaft_entity(n_floors);
+        let shaft = create_shaft(n_floors);
 
-        let position = Vec2::new(0.0, lift.position.y);
-        let mut player = create_player_entity(position, &sprite_atlas);
+        let position = Vec2::new(0.0, lift.y);
+        let mut player = create_player(position);
 
-        let camera = Camera::new(Vec2::new(0.0, lift.position.y));
+        let camera = Camera::new(Vec2::new(0.0, lift.y));
 
         let game_over_ui = create_default_game_over_ui(&glyph_atlas);
         let game_over_ui_last_modified =
@@ -119,7 +116,6 @@ impl World {
             Play => {
                 self.update_free_camera(input);
                 self.update_lift(dt, input);
-                self.update_floors();
                 self.time += dt;
             }
             GameOver => {
@@ -150,7 +146,7 @@ impl World {
 
         let mut target = None;
         if let Some(floor_idx) = self.get_lift_floor_idx() {
-            let shaft_width = self.shaft.get_draw_primitive_size().x;
+            let shaft_width = self.shaft.get_collider().get_size().x;
             let is_enemy_in_lift =
                 self.enemies[floor_idx].iter().any(|enemy| {
                     let collider = enemy.get_collider();
@@ -192,38 +188,40 @@ impl World {
         */
     }
 
-    pub fn update_floors(&mut self) {
-        let lift_floor_idx = self.get_lift_floor_idx_f();
-        for (idx, floor) in self.floors.iter_mut().enumerate() {
-            let gray = 0.5
-                - (0.6 * (idx as f32 - lift_floor_idx).abs()).powf(2.0);
-            floor.set_draw_primitive_color(Color::gray(gray, 1.0));
-        }
-    }
+    pub fn update_enemies(&mut self, dt: f32) {
+        let floor_idx = if let Some(idx) = self.get_lift_floor_idx() {
+            idx
+        } else {
+            return;
+        };
 
-    pub fn update_enemies(&mut self, dt: f32) {}
+        self.enemies[floor_idx] = self.enemies[floor_idx]
+            .iter()
+            .filter(|e| e.current_health > 0.0)
+            .map(|e| e.clone())
+            .collect();
+    }
 
     pub fn update_player(&mut self, dt: f32, input: &Input) {
         let position = &mut self.player.position;
-        let kinematic = self.player.kinematic.as_mut().unwrap();
-        let floor_y = self.lift.position.y;
+        let floor_y = self.lift.y;
         let is_on_floor = (position.y - floor_y).abs() < 1e-4;
 
         // Update horizontal velocity
         let mut velocity_x = 0.0;
-        let mut velocity_y = kinematic.velocity.y;
+        let mut velocity_y = self.player.velocity.y;
 
         use Keyaction::*;
         if input.is_action(Right) {
-            velocity_x += kinematic.move_speed;
+            velocity_x += self.player.move_speed;
         }
         if input.is_action(Left) {
-            velocity_x -= kinematic.move_speed;
+            velocity_x -= self.player.move_speed;
         }
 
         // Update vertical velocity (jump or gravity)
         if input.is_action(Up) && is_on_floor {
-            velocity_y = kinematic.jump_speed;
+            velocity_y = self.player.jump_speed;
         } else if is_on_floor {
             velocity_y = 0.0;
         } else {
@@ -231,10 +229,10 @@ impl World {
         }
 
         // Update kinematic with new velocity
-        kinematic.velocity = Vec2::new(velocity_x, velocity_y);
+        self.player.velocity = Vec2::new(velocity_x, velocity_y);
 
         // Apply kinematic
-        let step = kinematic.velocity.scale(dt);
+        let step = self.player.velocity.scale(dt);
         *position += step;
         position.y = position.y.max(floor_y);
 
@@ -254,26 +252,41 @@ impl World {
     }
 
     pub fn update_bullets(&mut self, dt: f32) {
-        let floor = if let Some(floor) = self.get_lift_floor() {
-            floor
+        let floor_idx = if let Some(idx) = self.get_lift_floor_idx() {
+            idx
         } else {
             return;
         };
 
-        let floor_rect = floor.collider.unwrap().translate(floor.position);
-        let mut bullets = Vec::with_capacity(self.bullets.len());
+        let floor = &self.floors[floor_idx];
+        let floor_enemies = &mut self.enemies[floor_idx];
 
-        for idx in 0..self.bullets.len() {
-            let bullet = &mut self.bullets[idx];
-            let kinematic = bullet.kinematic.as_mut().unwrap();
-            let step = kinematic.velocity.scale(dt);
+        let floor_collider = floor.get_collider();
+        let mut new_bullets = Vec::with_capacity(self.bullets.len());
+
+        'bullet: for bullet in self.bullets.iter_mut() {
+            let distance_traveled =
+                (bullet.position - bullet.start_position).len();
+            if distance_traveled > bullet.max_travel_distance {
+                continue 'bullet;
+            }
+
+            let step = bullet.velocity.scale(dt);
             bullet.position += step;
-            if floor_rect.check_if_contains(bullet.position) {
-                bullets.push(bullet.clone());
+            if floor_collider.check_if_contains(bullet.position) {
+                for enemy in floor_enemies.iter_mut() {
+                    let collider = enemy.get_collider();
+                    if collider.check_if_contains(bullet.position) {
+                        enemy.current_health -= bullet.damage;
+                        continue 'bullet;
+                    }
+                }
+
+                new_bullets.push(bullet.clone());
             }
         }
 
-        self.bullets = bullets;
+        self.bullets = new_bullets;
     }
 
     fn update_free_camera(&mut self, input: &Input) {
@@ -315,11 +328,11 @@ impl World {
     }
 
     pub fn get_floor_height(&self) -> f32 {
-        self.floors[0].get_draw_primitive_size().y
+        self.floors[0].get_collider().get_height()
     }
 
     pub fn get_lift_floor_idx_f(&self) -> f32 {
-        self.lift.position.y / self.get_floor_height()
+        self.lift.y / self.get_floor_height()
     }
 
     pub fn get_lift_floor_idx(&self) -> Option<usize> {
@@ -335,10 +348,10 @@ impl World {
         let idx = self.get_lift_floor_idx_f().round() as usize;
         let floor = &self.floors[idx];
 
-        (floor.position.y / self.get_floor_height()).floor() as usize
+        (floor.y / self.get_floor_height()).floor() as usize
     }
 
-    pub fn get_lift_floor(&self) -> Option<&Entity> {
+    pub fn get_lift_floor(&self) -> Option<&Floor> {
         if let Some(idx) = self.get_lift_floor_idx() {
             return Some(&self.floors[idx]);
         }
