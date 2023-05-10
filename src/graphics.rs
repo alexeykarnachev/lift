@@ -87,6 +87,7 @@ pub enum AnimationMode {
     Once,
 }
 
+#[derive(Clone)]
 pub struct AnimatedSprite {
     pub name: &'static str,
     pub sprite_duration: f32,

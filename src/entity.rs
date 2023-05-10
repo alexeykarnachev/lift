@@ -8,21 +8,25 @@ use crate::vec::*;
 use std::collections::HashMap;
 use std::fs;
 
-#[derive(PartialEq, Debug)]
+#[repr(u32)]
+#[derive(Debug)]
 pub enum EntityState {
-    Idle,
-    Moving,
-    Attacking,
-    Dead,
+    Idle = 1 << 0,
+    Move = 1 << 1,
+    Jump = 1 << 2,
+    Attack = 1 << 3,
+    Dead = 1 << 4,
 }
 
+#[derive(Clone)]
 pub struct Entity {
-    pub state: EntityState,
+    pub states: u32,
     pub position: Vec2<f32>,
     pub collider: Option<Rect>,
     pub kinematic: Option<Kinematic>,
     pub health: Option<Health>,
     pub weapon: Option<Weapon>,
+    pub bullet: Option<Bullet>,
     pub draw_primitive: Option<DrawPrimitive>,
     pub animator: Option<Animator>,
     pub text: Option<Text>,
@@ -31,12 +35,13 @@ pub struct Entity {
 impl Entity {
     pub fn new(position: Vec2<f32>) -> Self {
         Self {
-            state: EntityState::Idle,
+            states: EntityState::Idle as u32,
             position,
             collider: None,
             kinematic: None,
             health: None,
             weapon: None,
+            bullet: None,
             draw_primitive: None,
             animator: None,
             text: None,
@@ -58,37 +63,55 @@ impl Entity {
         self.draw_primitive.as_mut().unwrap().color = Some(color);
     }
 
+    pub fn try_shoot(
+        &mut self,
+        target: Vec2<f32>,
+        time: f32,
+        is_player_friendly: bool,
+    ) -> Option<Entity> {
+        let weapon = self.weapon.as_mut().unwrap();
+        let can_shoot =
+            (time - weapon.last_shoot_time) >= weapon.shoot_period;
+        let bullet = if can_shoot {
+            weapon.last_shoot_time = time;
+            let position = self.position;
+            let velocity =
+                (target - position).with_len(weapon.bullet_speed);
+            let mut bullet = Entity::new(position);
+            bullet.bullet = Some(Bullet {
+                damage: weapon.bullet_damage,
+                is_player_friendly,
+            });
+            bullet.kinematic = Some(Kinematic::with_velocity(velocity));
+            bullet.draw_primitive = Some(DrawPrimitive::from_rect(
+                Rect::from_center(Vec2::zeros(), Vec2::new(0.1, 0.1)),
+                Space::World,
+                Color::red(1.0),
+            ));
+
+            Some(bullet)
+        } else {
+            None
+        };
+
+        bullet
+    }
+
+    /*
     pub fn update_animator(&mut self, dt: f32) {
         use AnimationType::*;
         let animator = self.animator.as_mut().unwrap();
         match self.state {
             EntityState::Idle => animator.play(Idle),
             EntityState::Moving => animator.play(Move),
+            EntityState::Jumpint => animator.play(Jump),
             EntityState::Attacking => animator.play(Attack),
             EntityState::Dead => animator.play(Die),
         }
 
         animator.update(dt);
     }
-
-    pub fn can_be_attacked(&self) -> bool {
-        let hp = self.health.as_ref().unwrap().current;
-
-        hp > 0.0
-    }
-
-    pub fn can_attack(&self) -> bool {
-        self.state != EntityState::Dead
-    }
-
-    pub fn receive_damage(&mut self, value: f32) {
-        let mut health = self.health.as_mut().unwrap();
-        health.receive_damage(value);
-
-        if health.is_dead() {
-            self.state = EntityState::Dead;
-        }
-    }
+    */
 
     pub fn get_text_rect(&self) -> Rect {
         let text = self.text.as_ref().unwrap();
@@ -108,22 +131,32 @@ impl Entity {
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct Kinematic {
-    pub max_speed: f32,
-    pub speed: f32,
-    pub target: Option<Vec2<f32>>,
+    pub move_speed: f32,
+    pub jump_speed: f32,
+    pub velocity: Vec2<f32>,
 }
 
 impl Kinematic {
-    pub fn new(max_speed: f32) -> Self {
+    pub fn new(move_speed: f32, jump_speed: f32) -> Self {
         Self {
-            max_speed,
-            speed: 0.0,
-            target: None,
+            move_speed,
+            jump_speed,
+            velocity: Vec2::zeros(),
+        }
+    }
+
+    pub fn with_velocity(velocity: Vec2<f32>) -> Self {
+        Self {
+            move_speed: 0.0,
+            jump_speed: 0.0,
+            velocity,
         }
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct Health {
     pub max: f32,
     pub current: f32,
@@ -141,9 +174,7 @@ impl Health {
     pub fn is_dead(&self) -> bool {
         self.current <= 0.0
     }
-}
 
-impl Health {
     pub fn get_draw_primitives(
         &self,
         position: Vec2<f32>,
@@ -173,29 +204,36 @@ impl Health {
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct Weapon {
-    pub range: f32,
-    pub speed: f32,
-    pub damage: f32,
-    pub cooldown: f32,
+    pub last_shoot_time: f32,
+    pub shoot_period: f32,
+    pub bullet_speed: f32,
+    pub bullet_damage: f32,
 }
 
 impl Weapon {
-    pub fn new(range: f32, speed: f32, damage: f32) -> Self {
+    pub fn new(
+        shoot_period: f32,
+        bullet_speed: f32,
+        bullet_damage: f32,
+    ) -> Self {
         Self {
-            range,
-            speed,
-            damage,
-            cooldown: 0.0,
+            last_shoot_time: -shoot_period,
+            shoot_period,
+            bullet_speed,
+            bullet_damage,
         }
-    }
-
-    pub fn is_ready(&self) -> bool {
-        self.cooldown >= 1.0 / self.speed
     }
 }
 
-#[derive(Eq, Hash, PartialEq)]
+#[derive(Clone, Copy)]
+pub struct Bullet {
+    pub damage: f32,
+    pub is_player_friendly: bool,
+}
+
+#[derive(Eq, Hash, PartialEq, Clone)]
 pub enum AnimationType {
     Default_,
     Idle,
@@ -205,6 +243,7 @@ pub enum AnimationType {
     Die,
 }
 
+#[derive(Clone)]
 pub struct Animator {
     pub rect: Rect,
     pub flip: bool,
@@ -263,6 +302,7 @@ impl Animator {
     }
 }
 
+#[derive(Clone)]
 pub struct Text {
     pub draw_primitives: Vec<DrawPrimitive>,
 }

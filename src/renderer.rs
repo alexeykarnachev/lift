@@ -142,6 +142,10 @@ impl Renderer {
             draw_entity(enemy, &mut self.primitives);
         }
 
+        for bullet in world.bullets.iter() {
+            draw_entity(bullet, &mut self.primitives);
+        }
+
         if world.state == WorldState::GameOver {
             for (_, entity) in world.game_over_ui.id_to_entity.iter() {
                 draw_entity(entity, &mut self.primitives);

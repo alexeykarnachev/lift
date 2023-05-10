@@ -54,6 +54,7 @@ pub fn create_floor_entity(idx: usize) -> Entity {
 
     let mut entity = Entity::new(position);
     entity.draw_primitive = Some(primitive);
+    entity.collider = Some(rect);
 
     entity
 }
@@ -68,11 +69,7 @@ pub fn create_lift_entity(floor_idx: usize) -> Entity {
         Space::World,
         Color::gray(0.6, 1.0),
     );
-    let kinematic = Kinematic {
-        max_speed: 2.0,
-        speed: 0.0,
-        target: None,
-    };
+    let kinematic = Kinematic::new(2.0, 0.0);
 
     let mut entity = Entity::new(position);
     entity.kinematic = Some(kinematic);
@@ -87,9 +84,9 @@ pub fn create_player_entity(
 ) -> Entity {
     let collider =
         Rect::from_bot_center(Vec2::zeros(), Vec2::new(0.5, 1.0));
-    let kinematic = Kinematic::new(1.0);
+    let kinematic = Kinematic::new(4.0, 4.0);
     let health = Health::new(2000.0);
-    let weapon = Weapon::new(2.0, 2.0, 500.0);
+    let weapon = Weapon::new(0.1, 10.0, 100.0);
     let primitive = DrawPrimitive::from_rect(
         collider,
         Space::World,

@@ -2,6 +2,7 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 #![allow(unused_imports)]
+#![allow(unused_assignments)]
 
 use crate::entity::*;
 use crate::graphics::*;
@@ -22,11 +23,15 @@ pub enum WorldState {
 pub struct World {
     pub state: WorldState,
 
+    pub time: f32,
+    pub gravity: f32,
+
     pub camera: Camera,
     pub shaft: Entity,
     pub lift: Entity,
     pub player: Entity,
     pub enemies: Vec<Vec<Entity>>,
+    pub bullets: Vec<Entity>,
 
     pub floors: Vec<Entity>,
 
@@ -66,15 +71,15 @@ impl World {
             enemies.push(floor_enemies);
         }
 
+        let bullets: Vec<Entity> = Vec::with_capacity(1024);
+
         let idx = (n_floors / 2) as usize;
         let mut lift = create_lift_entity(idx);
         let shaft = create_shaft_entity(n_floors);
 
         let position = Vec2::new(0.0, lift.position.y);
         let mut player = create_player_entity(position, &sprite_atlas);
-        player.kinematic = None;
 
-        let state = WorldState::Play;
         let camera = Camera::new(Vec2::new(0.0, lift.position.y));
 
         let game_over_ui = create_default_game_over_ui(&glyph_atlas);
@@ -82,12 +87,15 @@ impl World {
             get_last_modified(game_over_ui.file_path);
 
         Self {
-            state,
+            state: WorldState::Play,
+            time: 0.0,
+            gravity: 9.8,
             camera,
             shaft,
             lift,
             player,
             enemies,
+            bullets,
             floors,
             game_over_ui,
             game_over_ui_last_modified,
@@ -102,6 +110,7 @@ impl World {
         self.camera.aspect =
             input.window_size.x as f32 / input.window_size.y as f32;
 
+        self.update_bullets(dt);
         self.update_enemies(dt);
         self.update_player(dt, input);
 
@@ -111,6 +120,7 @@ impl World {
                 self.update_free_camera(input);
                 self.update_lift(dt, input);
                 self.update_floors();
+                self.time += dt;
             }
             GameOver => {
                 self.update_game_over_menu(input);
@@ -163,6 +173,7 @@ impl World {
             }
         }
 
+        /*
         let kinematic = self.lift.kinematic.as_mut().unwrap();
         if let Some(target) = target {
             kinematic.target = Some(target);
@@ -178,6 +189,7 @@ impl World {
                 position.y += step * diff.signum();
             }
         }
+        */
     }
 
     pub fn update_floors(&mut self) {
@@ -192,9 +204,76 @@ impl World {
     pub fn update_enemies(&mut self, dt: f32) {}
 
     pub fn update_player(&mut self, dt: f32, input: &Input) {
-        let foo = input.key_is_down[Keyaction::Right as usize];
-        let bar = input.key_is_down[Keyaction::Up as usize];
-        println!("{:?}", foo && bar);
+        let position = &mut self.player.position;
+        let kinematic = self.player.kinematic.as_mut().unwrap();
+        let floor_y = self.lift.position.y;
+        let is_on_floor = (position.y - floor_y).abs() < 1e-4;
+
+        // Update horizontal velocity
+        let mut velocity_x = 0.0;
+        let mut velocity_y = kinematic.velocity.y;
+
+        use Keyaction::*;
+        if input.is_action(Right) {
+            velocity_x += kinematic.move_speed;
+        }
+        if input.is_action(Left) {
+            velocity_x -= kinematic.move_speed;
+        }
+
+        // Update vertical velocity (jump or gravity)
+        if input.is_action(Up) && is_on_floor {
+            velocity_y = kinematic.jump_speed;
+        } else if is_on_floor {
+            velocity_y = 0.0;
+        } else {
+            velocity_y -= self.gravity * dt;
+        }
+
+        // Update kinematic with new velocity
+        kinematic.velocity = Vec2::new(velocity_x, velocity_y);
+
+        // Apply kinematic
+        let step = kinematic.velocity.scale(dt);
+        *position += step;
+        position.y = position.y.max(floor_y);
+
+        // Shoot
+        if input.lmb_is_down {
+            let target = window_to_world(
+                &self.camera,
+                input.window_size,
+                input.cursor_pos,
+            );
+            if let Some(bullet) =
+                self.player.try_shoot(target, self.time, true)
+            {
+                self.bullets.push(bullet);
+            }
+        }
+    }
+
+    pub fn update_bullets(&mut self, dt: f32) {
+        let floor = if let Some(floor) = self.get_lift_floor() {
+            floor
+        } else {
+            return;
+        };
+
+        let floor_rect = floor.collider.unwrap().translate(floor.position);
+        let mut bullets = Vec::with_capacity(self.bullets.len());
+
+        for idx in 0..self.bullets.len() {
+            let bullet = &mut self.bullets[idx];
+            let kinematic = bullet.kinematic.as_mut().unwrap();
+            let step = kinematic.velocity.scale(dt);
+            bullet.position += step;
+            if floor_rect.check_if_contains(bullet.position) {
+                bullets.push(bullet.clone());
+            }
+        }
+
+        self.bullets = bullets;
     }
 
     fn update_free_camera(&mut self, input: &Input) {
@@ -330,51 +409,6 @@ pub fn world_to_screen(
     );
 
     window_pos
-}
-
-fn attack(entity: &mut Entity, target: &mut Entity, dt: f32) {
-    if !entity.can_attack() {
-        return;
-    }
-
-    if !target.can_be_attacked() {
-        entity.state = EntityState::Idle;
-        return;
-    }
-
-    let target_position = &target.position;
-    let target_collider = target.collider.as_ref().unwrap();
-    let target_width = target_collider.get_width();
-    let target_health = target.health.as_mut().unwrap();
-
-    let mut position = &mut entity.position;
-    let weapon = entity.weapon.as_mut().unwrap();
-    let collider = entity.collider.as_ref().unwrap();
-    let width = collider.get_width();
-    let animator = entity.animator.as_mut().unwrap();
-
-    let dist = target_position.x - position.x;
-    let attack_dist = weapon.range + 0.5 * (target_width + width);
-    let can_reach = dist.abs() < attack_dist;
-    let mut damage = 0.0;
-    if let (Some(kinematic), false) =
-        (entity.kinematic.as_mut(), can_reach)
-    {
-        kinematic.speed = kinematic.max_speed * dist.signum();
-        let step = dt * kinematic.speed;
-        position.x += step;
-        entity.state = EntityState::Moving;
-    } else if weapon.is_ready() && can_reach {
-        weapon.cooldown = 0.0;
-        damage += weapon.damage;
-        entity.state = EntityState::Attacking;
-    } else if !can_reach {
-        entity.state = EntityState::Idle;
-    }
-
-    weapon.cooldown += dt;
-    animator.flip = dist < 0.0;
-    target.receive_damage(damage);
 }
 
 fn get_last_modified(file_path: &str) -> u64 {

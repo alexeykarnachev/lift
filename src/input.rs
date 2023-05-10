@@ -3,6 +3,7 @@ use sdl2::event::{Event, WindowEvent};
 use sdl2::keyboard::Keycode;
 use sdl2::mouse::MouseButton;
 
+#[derive(Debug)]
 pub enum Keyaction {
     Left,
     Right,
@@ -173,5 +174,11 @@ impl Input {
         self.accum.lmb_press_pos = None;
         self.accum.rmb_press_pos = None;
         self.accum.wheel_d = 0;
+    }
+
+    pub fn is_action(&self, action: Keyaction) -> bool {
+        let idx = action as usize;
+
+        self.key_is_down[idx]
     }
 }
