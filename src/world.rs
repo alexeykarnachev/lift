@@ -210,7 +210,18 @@ impl World {
             return;
         };
 
-        let enemies = &self.enemies[floor_idx];
+        let enemies = &mut self.enemies[floor_idx];
+        let target = self.player.get_center();
+        let is_player_alive = !self.player.check_flag(Flag::Dead);
+
+        use Flag::*;
+        for enemy in enemies.iter_mut().filter(|e| !e.check_flag(Dead)) {
+            if is_player_alive && enemy.check_if_can_reach_target(target) {
+                if let Some(bullet) = enemy.try_shoot(target, self.time) {
+                    self.bullets.push(bullet);
+                }
+            }
+        }
     }
 
     pub fn update_player(&mut self, dt: f32, input: &Input) {
@@ -274,6 +285,7 @@ impl World {
         let floor_collider = floor.get_collider();
         let mut new_bullets = Vec::with_capacity(self.bullets.len());
 
+        use Flag::*;
         'bullet: for bullet in self.bullets.iter_mut() {
             let distance_traveled =
                 (bullet.position - bullet.start_position).len();
@@ -283,14 +295,18 @@ impl World {
 
             let step = bullet.velocity.scale(dt);
             bullet.position += step;
-            if floor_collider.check_if_contains(bullet.position) {
-                for enemy in floor_enemies
-                    .iter_mut()
-                    .filter(|e| !e.check_flag(Flag::Dead))
-                {
-                    let collider = enemy.get_collider();
-                    if collider.check_if_contains(bullet.position) {
-                        enemy.receive_damage(bullet.damage);
+            if floor_collider.collide_with_point(bullet.position) {
+                if bullet.is_player_friendly {
+                    for enemy in floor_enemies
+                        .iter_mut()
+                        .filter(|e| !e.check_flag(Dead))
+                    {
+                        if enemy.try_receive_bullet_damage(bullet) {
+                            continue 'bullet;
+                        }
+                    }
+                } else if !self.player.check_flag(Dead) {
+                    if self.player.try_receive_bullet_damage(bullet) {
                         continue 'bullet;
                     }
                 }

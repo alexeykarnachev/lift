@@ -94,7 +94,7 @@ impl UI {
         let mut event = None;
         for (id, text) in self.id_to_text.iter_mut() {
             let rect = text.get_bound_rect();
-            if rect.check_if_contains(cursor_pos) {
+            if rect.collide_with_point(cursor_pos) {
                 text.set_color(Color::yellow(1.0));
 
                 let id = id.clone();

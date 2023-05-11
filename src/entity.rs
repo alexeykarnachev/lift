@@ -19,7 +19,7 @@ pub enum Flag {
 pub struct Humanoid {
     pub flags: u64,
     pub position: Vec2<f32>,
-    pub collider: Rect,
+    collider: Rect,
 
     pub move_speed: f32,
     pub jump_speed: f32,
@@ -28,7 +28,7 @@ pub struct Humanoid {
     max_health: f32,
     current_health: f32,
 
-    pub weapon: Weapon,
+    weapon: Weapon,
 }
 
 impl Humanoid {
@@ -60,11 +60,26 @@ impl Humanoid {
         self.collider.with_bot_center(self.position)
     }
 
+    pub fn get_center(&self) -> Vec2<f32> {
+        self.get_collider().get_center()
+    }
+
     pub fn receive_damage(&mut self, value: f32) {
         self.current_health -= value;
         if self.current_health <= 0.0 {
             self.set_flag(Flag::Dead);
         }
+    }
+
+    pub fn try_receive_bullet_damage(&mut self, bullet: &Bullet) -> bool {
+        let self_collider = self.get_collider();
+        let bullet_collider = bullet.get_collider();
+        if self_collider.collide_with_rect(bullet_collider) {
+            self.receive_damage(bullet.damage);
+            return true;
+        }
+
+        false
     }
 
     pub fn get_health_ratio(&self) -> f32 {
@@ -88,15 +103,24 @@ impl Humanoid {
         let pivot = self.position + weapon.pivot;
         let direction = target - pivot;
         let start_position = pivot + direction.with_len(weapon.length);
+        let collider =
+            Rect::from_center(Vec2::zeros(), Vec2::new(0.1, 0.1));
         let velocity = direction.with_len(weapon.bullet_speed);
 
         Some(Bullet::new(
             start_position,
+            collider,
             velocity,
             weapon.bullet_damage,
             weapon.bullet_max_travel_distance,
             self.check_flag(Flag::Player),
         ))
+    }
+
+    pub fn check_if_can_reach_target(&self, target: Vec2<f32>) -> bool {
+        let distance = (target - self.position).len();
+
+        distance <= self.weapon.bullet_max_travel_distance
     }
 
     pub fn check_flag(&self, flag: Flag) -> bool {
@@ -159,6 +183,7 @@ impl Weapon {
 #[derive(Clone, Copy)]
 pub struct Bullet {
     pub position: Vec2<f32>,
+    collider: Rect,
     pub start_position: Vec2<f32>,
     pub velocity: Vec2<f32>,
     pub damage: f32,
@@ -169,6 +194,7 @@ pub struct Bullet {
 impl Bullet {
     pub fn new(
         start_position: Vec2<f32>,
+        collider: Rect,
         velocity: Vec2<f32>,
         damage: f32,
         max_travel_distance: f32,
@@ -176,12 +202,17 @@ impl Bullet {
     ) -> Self {
         Self {
             position: start_position,
+            collider,
             start_position,
             velocity,
             damage,
             max_travel_distance,
             is_player_friendly,
         }
+    }
+
+    pub fn get_collider(&self) -> Rect {
+        self.collider.with_center(self.position)
     }
 }
 

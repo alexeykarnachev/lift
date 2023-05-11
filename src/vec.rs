@@ -315,11 +315,26 @@ impl Rect {
         left_dist.min(right_dist)
     }
 
-    pub fn check_if_contains(&self, p: Vec2<f32>) -> bool {
+    pub fn collide_with_point(&self, p: Vec2<f32>) -> bool {
         p.x > self.bot_left.x
             && p.x < self.top_right.x
             && p.y > self.bot_left.y
             && p.y < self.top_right.y
+    }
+
+    pub fn collide_with_rect(&self, rect: Rect) -> bool {
+        let sum_width = self.get_width() + rect.get_width();
+        let sum_height = self.get_height() + rect.get_height();
+
+        let min_x = self.bot_left.x.min(rect.bot_left.x);
+        let max_x = self.top_right.x.max(rect.top_right.x);
+        let min_y = self.bot_left.y.min(rect.bot_left.y);
+        let max_y = self.top_right.y.max(rect.top_right.y);
+
+        let width = max_x - min_x;
+        let height = max_y - min_y;
+
+        width < sum_width && height < sum_height
     }
 
     pub fn to_xywh(&self) -> [f32; 4] {

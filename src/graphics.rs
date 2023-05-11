@@ -405,7 +405,7 @@ pub fn draw_humanoid(
 }
 
 pub fn draw_bullet(bullet: &Bullet, draw_queue: &mut Vec<DrawPrimitive>) {
-    let rect = Rect::from_center(bullet.position, Vec2::new(0.2, 0.2));
+    let rect = bullet.get_collider();
     draw_queue.push(DrawPrimitive::from_rect(
         rect,
         Space::World,
