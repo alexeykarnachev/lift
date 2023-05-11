@@ -216,10 +216,21 @@ impl World {
 
         use Flag::*;
         for enemy in enemies.iter_mut().filter(|e| !e.check_flag(Dead)) {
-            if is_player_alive && enemy.check_if_can_reach_target(target) {
+            if !is_player_alive {
+                continue;
+            }
+
+            if enemy.check_if_can_reach_target(target) {
                 if let Some(bullet) = enemy.try_shoot(target, self.time) {
                     self.bullets.push(bullet);
                 }
+            } else {
+                let mut velocity_x = (target.x - enemy.position.x)
+                    .signum()
+                    * enemy.move_speed;
+                enemy.velocity = Vec2::new(velocity_x, 0.0);
+                let step = enemy.velocity.scale(dt);
+                enemy.position += step;
             }
         }
     }
