@@ -28,7 +28,8 @@ pub struct Humanoid {
     max_health: f32,
     current_health: f32,
 
-    weapon: Weapon,
+    melee_weapon: Option<MeleeWeapon>,
+    range_weapon: Option<RangeWeapon>,
 
     pub score: u32,
 }
@@ -41,7 +42,8 @@ impl Humanoid {
         move_speed: f32,
         jump_speed: f32,
         max_health: f32,
-        weapon: Weapon,
+        melee_weapon: Option<MeleeWeapon>,
+        range_weapon: Option<RangeWeapon>,
     ) -> Self {
         let flags = Flag::Player as u64 * is_player as u64;
 
@@ -54,7 +56,8 @@ impl Humanoid {
             velocity: Vec2::zeros(),
             max_health,
             current_health: max_health,
-            weapon,
+            melee_weapon,
+            range_weapon,
             score: 0,
         }
     }
@@ -89,41 +92,82 @@ impl Humanoid {
         self.current_health / self.max_health
     }
 
-    pub fn try_shoot(
+    pub fn step_to(&mut self, target: Vec2<f32>, dt: f32) {
+        let direction = (target.x - self.position.x).signum();
+        let mut velocity_x = direction * self.move_speed;
+        self.velocity = Vec2::new(velocity_x, 0.0);
+        let step = self.velocity.scale(dt);
+        self.position += step;
+    }
+
+    pub fn try_attack_by_melee(
+        &mut self,
+        target: Vec2<f32>,
+        time: f32,
+    ) -> Option<f32> {
+        let weapon = if let Some(weapon) = self.melee_weapon.as_mut() {
+            weapon
+        } else {
+            return None;
+        };
+
+        let can_attack =
+            (time - weapon.last_attack_time) >= weapon.attack_period;
+
+        if !can_attack {
+            return None;
+        }
+
+        weapon.last_attack_time = time;
+
+        Some(weapon.damage)
+    }
+
+    pub fn try_attack_by_range(
         &mut self,
         target: Vec2<f32>,
         time: f32,
     ) -> Option<Bullet> {
-        let weapon = &mut self.weapon;
-        let can_shoot =
-            (time - weapon.last_shoot_time) >= weapon.shoot_period;
+        let weapon = if let Some(weapon) = self.range_weapon.as_mut() {
+            weapon
+        } else {
+            return None;
+        };
 
-        if !can_shoot {
+        let can_attack =
+            (time - weapon.last_attack_time) >= weapon.attack_period;
+
+        if !can_attack {
             return None;
         }
 
-        weapon.last_shoot_time = time;
+        weapon.last_attack_time = time;
         let pivot = self.position + weapon.pivot;
         let direction = target - pivot;
-        let start_position = pivot + direction.with_len(weapon.length);
+        let position = pivot + direction.with_len(weapon.length);
         let collider =
-            Rect::from_center(Vec2::zeros(), Vec2::new(0.1, 0.1));
+            Rect::from_center(Vec2::zeros(), Vec2::new(0.2, 0.2));
         let velocity = direction.with_len(weapon.bullet_speed);
 
         Some(Bullet::new(
-            start_position,
+            position,
             collider,
             velocity,
             weapon.bullet_damage,
-            weapon.bullet_max_travel_distance,
             self.check_flag(Flag::Player),
         ))
     }
 
-    pub fn check_if_can_reach_target(&self, target: Vec2<f32>) -> bool {
-        let distance = (target - self.position).len();
+    pub fn check_if_can_reach_by_melee(&self, target: Vec2<f32>) -> bool {
+        if let Some(weapon) = self.melee_weapon {
+            (target - self.position).len() <= weapon.length
+        } else {
+            false
+        }
+    }
 
-        distance <= self.weapon.bullet_max_travel_distance
+    pub fn check_if_can_reach_by_range(&self, target: Vec2<f32>) -> bool {
+        self.range_weapon.is_some()
     }
 
     pub fn check_flag(&self, flag: Flag) -> bool {
@@ -152,33 +196,56 @@ impl Humanoid {
 }
 
 #[derive(Clone, Copy)]
-pub struct Weapon {
+pub struct RangeWeapon {
     pub pivot: Vec2<f32>,
     pub length: f32,
-    pub last_shoot_time: f32,
-    pub shoot_period: f32,
+    pub last_attack_time: f32,
+    pub attack_period: f32,
     pub bullet_speed: f32,
     pub bullet_damage: f32,
-    pub bullet_max_travel_distance: f32,
 }
 
-impl Weapon {
+impl RangeWeapon {
     pub fn new(
         pivot: Vec2<f32>,
         length: f32,
-        shoot_period: f32,
+        attack_period: f32,
         bullet_speed: f32,
         bullet_damage: f32,
-        bullet_max_travel_distance: f32,
     ) -> Self {
         Self {
             pivot,
             length,
-            last_shoot_time: -shoot_period,
-            shoot_period,
+            last_attack_time: -attack_period,
+            attack_period,
             bullet_speed,
             bullet_damage,
-            bullet_max_travel_distance,
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct MeleeWeapon {
+    pub pivot: Vec2<f32>,
+    pub length: f32,
+    pub last_attack_time: f32,
+    pub attack_period: f32,
+    pub damage: f32,
+}
+
+impl MeleeWeapon {
+    pub fn new(
+        pivot: Vec2<f32>,
+        length: f32,
+        attack_period: f32,
+        damage: f32,
+    ) -> Self {
+        Self {
+            pivot,
+            length,
+            last_attack_time: -attack_period,
+            attack_period,
+            damage,
         }
     }
 }
@@ -187,29 +254,24 @@ impl Weapon {
 pub struct Bullet {
     pub position: Vec2<f32>,
     collider: Rect,
-    pub start_position: Vec2<f32>,
     pub velocity: Vec2<f32>,
     pub damage: f32,
-    pub max_travel_distance: f32,
     pub is_player_friendly: bool,
 }
 
 impl Bullet {
     pub fn new(
-        start_position: Vec2<f32>,
+        position: Vec2<f32>,
         collider: Rect,
         velocity: Vec2<f32>,
         damage: f32,
-        max_travel_distance: f32,
         is_player_friendly: bool,
     ) -> Self {
         Self {
-            position: start_position,
+            position,
             collider,
-            start_position,
             velocity,
             damage,
-            max_travel_distance,
             is_player_friendly,
         }
     }

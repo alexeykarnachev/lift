@@ -227,17 +227,20 @@ impl World {
                 continue;
             }
 
-            if enemy.check_if_can_reach_target(target) {
-                if let Some(bullet) = enemy.try_shoot(target, self.time) {
+            if enemy.check_if_can_reach_by_melee(target) {
+                if let Some(damage) =
+                    enemy.try_attack_by_melee(target, self.time)
+                {
+                    self.player.receive_damage(damage);
+                }
+            } else if enemy.check_if_can_reach_by_range(target) {
+                if let Some(bullet) =
+                    enemy.try_attack_by_range(target, self.time)
+                {
                     self.bullets.push(bullet);
                 }
             } else {
-                let mut velocity_x = (target.x - enemy.position.x)
-                    .signum()
-                    * enemy.move_speed;
-                enemy.velocity = Vec2::new(velocity_x, 0.0);
-                let step = enemy.velocity.scale(dt);
-                enemy.position += step;
+                enemy.step_to(target, dt);
             }
         }
     }
@@ -283,7 +286,8 @@ impl World {
                 input.window_size,
                 input.cursor_pos,
             );
-            if let Some(bullet) = self.player.try_shoot(target, self.time)
+            if let Some(bullet) =
+                self.player.try_attack_by_range(target, self.time)
             {
                 self.bullets.push(bullet);
             }
@@ -305,12 +309,6 @@ impl World {
 
         use Flag::*;
         'bullet: for bullet in self.bullets.iter_mut() {
-            let distance_traveled =
-                (bullet.position - bullet.start_position).len();
-            if distance_traveled > bullet.max_travel_distance {
-                continue 'bullet;
-            }
-
             let step = bullet.velocity.scale(dt);
             bullet.position += step;
             if floor_collider.collide_with_point(bullet.position) {
