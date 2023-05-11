@@ -149,6 +149,10 @@ impl Renderer {
         world.bullets.iter().for_each(|bullet| {
             draw_bullet(bullet, &mut self.primitives);
         });
+
+        if world.state == WorldState::GameOver {
+            draw_ui(&world.game_over_ui, &mut self.primitives);
+        }
     }
 
     fn bind_screen_framebuffer(&self) {

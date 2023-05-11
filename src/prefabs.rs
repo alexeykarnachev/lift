@@ -20,8 +20,8 @@ pub fn create_default_glyph_atlas() -> GlyphAtlas {
     GlyphAtlas::from_ttf("./assets/fonts/Montserrat-Bold.ttf", 62.0)
 }
 
-pub fn create_default_game_over_ui(glyph_atlas: &GlyphAtlas) -> UI {
-    UI::from_file("./assets/ui/game_over.json", glyph_atlas)
+pub fn create_default_game_over_ui() -> UI {
+    UI::new("./assets/ui/game_over.json")
 }
 
 pub fn create_shaft(n_floors: usize) -> Shaft {
@@ -47,7 +47,7 @@ pub fn create_player(position: Vec2<f32>) -> Humanoid {
     let weapon =
         Weapon::new(Vec2::new(0.0, 0.7), 0.5, 0.1, 30.0, 100.0, 8.0);
 
-    Humanoid::new(true, position, collider, 4.0, 5.0, 100000.0, weapon)
+    Humanoid::new(true, position, collider, 4.0, 5.0, 1000.0, weapon)
 }
 
 pub fn create_enemy(position: Vec2<f32>) -> Humanoid {

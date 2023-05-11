@@ -4,7 +4,7 @@
         "position": {
             "origin": "Center",
             "x": 0.0,
-            "y": 200.0
+            "y": 0.5
         },
         "text": {
             "string": "Game Over",
@@ -16,7 +16,7 @@
         "position": {
             "origin": "Center",
             "x": 0.0,
-            "y": 75.0
+            "y": 0.2
         },
         "text": {
             "string": "Restart",

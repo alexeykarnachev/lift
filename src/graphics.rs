@@ -3,6 +3,7 @@
 #![allow(unused_variables)]
 
 use crate::entity::*;
+use crate::ui::*;
 use crate::vec::{Origin, Rect, Vec2};
 use fontdue::Font;
 use fontdue::Metrics;
@@ -444,4 +445,12 @@ pub fn draw_lift(lift: &Lift, draw_queue: &mut Vec<DrawPrimitive>) {
         Space::World,
         Color::gray(0.6, 1.0),
     ));
+}
+
+pub fn draw_text(text: &Text, draw_queue: &mut Vec<DrawPrimitive>) {
+    draw_queue.extend_from_slice(&text.get_draw_primitives());
+}
+
+pub fn draw_ui(ui: &UI, draw_queue: &mut Vec<DrawPrimitive>) {
+    ui.texts.iter().for_each(|t| draw_text(t, draw_queue));
 }

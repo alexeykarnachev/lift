@@ -76,7 +76,7 @@ impl World {
 
         let camera = Camera::new(Vec2::new(0.0, lift.y));
 
-        let game_over_ui = create_default_game_over_ui(&glyph_atlas);
+        let mut game_over_ui = create_default_game_over_ui();
         let game_over_ui_last_modified =
             get_last_modified(game_over_ui.file_path);
 
@@ -105,13 +105,12 @@ impl World {
         self.camera.aspect =
             input.window_size.x as f32 / input.window_size.y as f32;
 
-        self.update_bullets(dt);
-        self.update_enemies(dt);
-        self.update_player(dt, input);
-
         use WorldState::*;
         match self.state {
             Play => {
+                self.update_bullets(dt);
+                self.update_enemies(dt);
+                self.update_player(dt, input);
                 self.update_free_camera(input);
                 self.update_lift(dt, input);
                 self.update_spawners(dt);
@@ -125,14 +124,18 @@ impl World {
             }
             Quit => {}
         }
+
+        use Flag::*;
+        if self.player.check_flag(Dead) && self.state == Play {
+            self.state = GameOver;
+        }
     }
 
     fn hot_reload(&mut self) {
         let game_over_ui_last_modified =
             get_last_modified(self.game_over_ui.file_path);
         if game_over_ui_last_modified != self.game_over_ui_last_modified {
-            self.game_over_ui =
-                create_default_game_over_ui(&self.glyph_atlas);
+            self.game_over_ui = create_default_game_over_ui();
         }
     }
 
@@ -353,7 +356,9 @@ impl World {
     }
 
     fn update_game_over_menu(&mut self, input: &Input) {
-        if let Some(event) = self.game_over_ui.process_input(input) {
+        if let Some(event) =
+            self.game_over_ui.update(input, &self.glyph_atlas)
+        {
             match event {
                 UIEvent::LMBPress(id) => match id.as_str() {
                     "restart" => self.state = WorldState::Restart,

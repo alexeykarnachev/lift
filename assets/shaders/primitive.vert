@@ -19,13 +19,13 @@ out vec2 vs_uv;
 vec2 project(vec2 pos, Camera camera) {
     vec2 proj = pos;
 
-    if (a_space == 1) {  // World space -> View space
+    if (a_space == 1) {  // World space
         proj -= camera.world_xywh.xy;
     }
 
-    if (a_space == 1 || a_space == 2) {
+    if (a_space == 1 || a_space == 2) { // World/Camera space
         proj /= 0.5 * camera.world_xywh.zw;
-    } else if (a_space == 3) {
+    } else if (a_space == 3) { // Screen space
         proj /= 0.5 * screen_size;
     }
 

@@ -399,7 +399,7 @@ impl Text {
         scale: f32,
     ) -> Self {
         let mut draw_primitives = Vec::new();
-        let mut position = Vec2::zeros();
+        let mut cursor_position = Vec2::zeros();
         for (_, c) in string.char_indices() {
             let glyph = glyph_atlas.get_glyph(c);
             let sprite = Sprite {
@@ -409,7 +409,7 @@ impl Text {
                 h: glyph.metrics.height as f32,
                 scale,
             };
-            let mut primitive_position = position;
+            let mut primitive_position = cursor_position;
             primitive_position.x += glyph.metrics.xmin as f32 * scale;
             primitive_position.y += glyph.metrics.ymin as f32 * scale;
             let mut primitive = DrawPrimitive::from_sprite(
@@ -423,8 +423,8 @@ impl Text {
             .translate(primitive_position);
             draw_primitives.push(primitive);
 
-            position.x += glyph.metrics.advance_width * scale;
-            position.y += glyph.metrics.advance_height * scale;
+            cursor_position.x += glyph.metrics.advance_width * scale;
+            cursor_position.y += glyph.metrics.advance_height * scale;
         }
 
         let bot_left = draw_primitives[0].rect.bot_left;
