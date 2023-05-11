@@ -29,6 +29,8 @@ pub struct Humanoid {
     current_health: f32,
 
     weapon: Weapon,
+
+    pub score: u32,
 }
 
 impl Humanoid {
@@ -53,6 +55,7 @@ impl Humanoid {
             max_health,
             current_health: max_health,
             weapon,
+            score: 0,
         }
     }
 

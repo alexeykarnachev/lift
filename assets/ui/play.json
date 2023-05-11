@@ -7,7 +7,7 @@
             "y": 0.95
         },
         "text": {
-            "string": "Score: 0.0",
+            "string": "Score:",
             "font_size": 28
         }
     }

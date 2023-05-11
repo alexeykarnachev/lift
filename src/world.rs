@@ -320,6 +320,9 @@ impl World {
                         .filter(|e| !e.check_flag(Dead))
                     {
                         if enemy.try_receive_bullet_damage(bullet) {
+                            if enemy.check_flag(Dead) {
+                                self.player.score += 100;
+                            }
                             continue 'bullet;
                         }
                     }
@@ -360,7 +363,9 @@ impl World {
     }
 
     fn update_play_ui(&mut self, input: &Input) {
-        _ = self.play_ui.update(input, &self.glyph_atlas)
+        let score = format!("Score: {}", self.player.score);
+        self.play_ui.set_element_text("score", &score);
+        _ = self.play_ui.update(input, &self.glyph_atlas);
     }
 
     fn update_game_over_ui(&mut self, input: &Input) {
