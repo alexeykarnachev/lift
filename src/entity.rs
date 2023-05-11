@@ -395,13 +395,14 @@ impl Text {
         space: Space,
         origin: Origin,
         string: String,
+        font_size: u32,
         color: Color,
         scale: f32,
     ) -> Self {
         let mut draw_primitives = Vec::new();
         let mut cursor_position = Vec2::zeros();
         for (_, c) in string.char_indices() {
-            let glyph = glyph_atlas.get_glyph(c);
+            let glyph = glyph_atlas.get_glyph(c, font_size);
             let sprite = Sprite {
                 x: glyph.x,
                 y: glyph.y,

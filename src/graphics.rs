@@ -272,12 +272,16 @@ pub struct GlyphAtlas {
     pub font: Font,
     pub size: [u32; 2],
     pub image: Vec<u8>,
-
-    glyphs: Vec<Glyph>,
+    font_size_to_glyphs: HashMap<u32, Vec<Glyph>>,
 }
 
 impl GlyphAtlas {
-    pub fn from_ttf(file_path: &str, font_size: f32) -> Self {
+    pub fn from_ttf(file_path: &str, font_sizes: &[u32]) -> Self {
+        let mut font_size_to_glyphs = HashMap::<u32, Vec<Glyph>>::new();
+        for font_size in font_sizes {
+            font_size_to_glyphs.insert(*font_size, Vec::new());
+        }
+
         let font_bytes = fs::read(file_path).unwrap();
         let font =
             Font::from_bytes(font_bytes, fontdue::FontSettings::default())
@@ -287,17 +291,22 @@ impl GlyphAtlas {
         let mut bitmaps = Vec::new();
         let mut max_glyph_width = 0;
         let mut max_glyph_height = 0;
+
         for u in 32..127 {
             let ch = char::from_u32(u).unwrap();
-            let (metric, bitmap) = font.rasterize(ch, font_size);
 
-            assert!(bitmap.len() == metric.width * metric.height);
+            for font_size in font_sizes {
+                let (metric, bitmap) =
+                    font.rasterize(ch, *font_size as f32);
 
-            metrics.push(metric);
-            bitmaps.push(bitmap);
+                assert!(bitmap.len() == metric.width * metric.height);
 
-            max_glyph_width = max_glyph_width.max(metric.width);
-            max_glyph_height = max_glyph_height.max(metric.height);
+                metrics.push(metric);
+                bitmaps.push(bitmap);
+
+                max_glyph_width = max_glyph_width.max(metric.width);
+                max_glyph_height = max_glyph_height.max(metric.height);
+            }
         }
 
         let n_glyphs = metrics.len();
@@ -306,18 +315,19 @@ impl GlyphAtlas {
         let image_height = max_glyph_height * n_glyphs_per_row;
         let image_width = max_glyph_width * n_glyphs_per_row;
         let mut image = vec![0u8; image_width * image_height];
-        let mut glyphs = Vec::new();
         for i_glyph in 0..n_glyphs {
             let ir = (i_glyph / n_glyphs_per_row) * max_glyph_height;
             let ic = (i_glyph % n_glyphs_per_row) * max_glyph_width;
-
             let metric = &metrics[i_glyph];
             let glyph = Glyph {
                 x: ic as f32,
                 y: (image_height - ir) as f32,
                 metrics: *metric,
             };
-            glyphs.push(glyph);
+            let font_size_idx = i_glyph % font_sizes.len();
+            let font_size = font_sizes[font_size_idx];
+            font_size_to_glyphs.get_mut(&font_size).unwrap().push(glyph);
+
             let bitmap = &bitmaps[i_glyph];
             assert!(bitmap.len() == metric.width * metric.height);
 
@@ -347,17 +357,19 @@ impl GlyphAtlas {
             font,
             size: [image_width as u32, image_height as u32],
             image: flipped_image,
-            glyphs,
+            font_size_to_glyphs,
         }
     }
 
-    pub fn get_glyph(&self, c: char) -> Glyph {
+    pub fn get_glyph(&self, c: char, font_size: u32) -> Glyph {
+        let glyphs = self.font_size_to_glyphs.get(&font_size).unwrap();
+
         let mut idx = c as usize;
         if idx < 32 || idx > 126 {
             idx = 63; // Question mark
         }
 
-        self.glyphs[idx - 32]
+        glyphs[idx - 32]
     }
 }
 

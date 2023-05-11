@@ -17,7 +17,11 @@ pub fn create_default_sprite_atlas() -> SpriteAtlas {
 }
 
 pub fn create_default_glyph_atlas() -> GlyphAtlas {
-    GlyphAtlas::from_ttf("./assets/fonts/Montserrat-Bold.ttf", 62.0)
+    // Typical font sizes: 3, 7, 9, 12, 16, 21, 28, 37, 50, 67, 89, 119, 159
+    GlyphAtlas::from_ttf(
+        "./assets/fonts/Montserrat-Bold.ttf",
+        &[16, 28, 67, 119],
+    )
 }
 
 pub fn create_default_game_over_ui() -> UI {

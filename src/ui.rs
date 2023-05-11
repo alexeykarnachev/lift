@@ -14,7 +14,7 @@ pub enum UIEvent {
 #[derive(Deserialize, Debug, Clone)]
 pub struct TextConfig {
     string: String,
-    scale: f32,
+    font_size: u32,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -93,8 +93,9 @@ impl UI {
                     Space::Screen,
                     origin,
                     text_config.string.clone(),
+                    text_config.font_size,
                     Color::new(1.0, 0.0, 0.0, 1.0),
-                    text_config.scale,
+                    1.0,
                 )
             } else {
                 panic!(
