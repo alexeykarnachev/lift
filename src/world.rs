@@ -36,6 +36,7 @@ pub struct World {
 
     pub floors: Vec<Floor>,
 
+    pub play_ui: UI,
     pub game_over_ui: UI,
     pub game_over_ui_last_modified: u64,
 
@@ -76,6 +77,7 @@ impl World {
 
         let camera = Camera::new(Vec2::new(0.0, lift.y));
 
+        let play_ui = create_default_play_ui();
         let mut game_over_ui = create_default_game_over_ui();
         let game_over_ui_last_modified =
             get_last_modified(game_over_ui.file_path);
@@ -92,6 +94,7 @@ impl World {
             spawners,
             bullets,
             floors,
+            play_ui,
             game_over_ui,
             game_over_ui_last_modified,
             sprite_atlas,
@@ -108,6 +111,7 @@ impl World {
         use WorldState::*;
         match self.state {
             Play => {
+                self.update_play_ui(input);
                 self.update_bullets(dt);
                 self.update_enemies(dt);
                 self.update_player(dt, input);
@@ -117,7 +121,7 @@ impl World {
                 self.time += dt;
             }
             GameOver => {
-                self.update_game_over_menu(input);
+                self.update_game_over_ui(input);
             }
             Restart => {
                 *self = Self::new();
@@ -355,7 +359,11 @@ impl World {
         }
     }
 
-    fn update_game_over_menu(&mut self, input: &Input) {
+    fn update_play_ui(&mut self, input: &Input) {
+        _ = self.play_ui.update(input, &self.glyph_atlas)
+    }
+
+    fn update_game_over_ui(&mut self, input: &Input) {
         if let Some(event) =
             self.game_over_ui.update(input, &self.glyph_atlas)
         {

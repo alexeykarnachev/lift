@@ -314,7 +314,7 @@ impl GlyphAtlas {
             let metric = &metrics[i_glyph];
             let glyph = Glyph {
                 x: ic as f32,
-                y: (image_height - ir - 1) as f32,
+                y: (image_height - ir) as f32,
                 metrics: *metric,
             };
             glyphs.push(glyph);

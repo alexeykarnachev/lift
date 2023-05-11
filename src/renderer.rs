@@ -121,7 +121,7 @@ impl Renderer {
                 glow::RED,
                 glow::UNSIGNED_BYTE,
                 Some(&world.glyph_atlas.image),
-                glow::NEAREST,
+                glow::LINEAR,
             );
             self.primitive_renderer.glyph_atlas_tex = Some(tex);
         }
@@ -150,7 +150,10 @@ impl Renderer {
             draw_bullet(bullet, &mut self.primitives);
         });
 
-        if world.state == WorldState::GameOver {
+        use WorldState::*;
+        if world.state == Play {
+            draw_ui(&world.play_ui, &mut self.primitives);
+        } else if world.state == GameOver {
             draw_ui(&world.game_over_ui, &mut self.primitives);
         }
     }

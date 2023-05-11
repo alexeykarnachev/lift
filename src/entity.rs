@@ -436,13 +436,16 @@ impl Text {
                 p + Vec2::new(0.5 * (bot_left.x - top_right.x), 0.0)
             }
             Origin::BotLeft(p) => p,
+            Origin::TopLeft(p) => {
+                p + Vec2::new(0.0, bot_left.y - top_right.y)
+            }
             Origin::LeftCenter(p) => {
-                p + Vec2::new(0.0, 0.5 * (-bot_left.y + top_right.y))
+                p + Vec2::new(0.0, 0.5 * (bot_left.y - top_right.y))
             }
             Origin::RightCenter(p) => {
                 p + Vec2::new(
                     bot_left.x - top_right.x,
-                    0.5 * (-bot_left.y + top_right.y),
+                    0.5 * (bot_left.y - top_right.y),
                 )
             }
         };

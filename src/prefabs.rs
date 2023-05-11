@@ -24,6 +24,10 @@ pub fn create_default_game_over_ui() -> UI {
     UI::new("./assets/ui/game_over.json")
 }
 
+pub fn create_default_play_ui() -> UI {
+    UI::new("./assets/ui/play.json")
+}
+
 pub fn create_shaft(n_floors: usize) -> Shaft {
     Shaft::new(SHAFT_WIDTH, n_floors as f32 * FLOOR_HEIGHT)
 }
