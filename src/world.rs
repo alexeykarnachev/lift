@@ -31,6 +31,7 @@ pub struct World {
     pub lift: Lift,
     pub player: Humanoid,
     pub enemies: Vec<Vec<Humanoid>>,
+    pub spawners: Vec<Vec<Spawner>>,
     pub bullets: Vec<Bullet>,
 
     pub floors: Vec<Floor>,
@@ -47,25 +48,21 @@ impl World {
         let n_floors = 16;
         let sprite_atlas = create_default_sprite_atlas();
         let glyph_atlas = create_default_glyph_atlas();
-        let mut floors = Vec::with_capacity(n_floors as usize);
-        let mut enemies = Vec::with_capacity(n_floors as usize);
+
+        let mut floors = Vec::with_capacity(n_floors);
+        let mut enemies = Vec::with_capacity(n_floors);
+        let mut spawners = Vec::with_capacity(n_floors);
         for floor_idx in 0..n_floors {
             let floor = create_floor(floor_idx);
-            let floor_y = floor.y;
-            floors.push(floor);
+            let floor_enemies = Vec::with_capacity(128);
+            let mut floor_spawners = Vec::with_capacity(1024);
 
-            let n_enemies = 4;
-            let mut floor_enemies = Vec::with_capacity(n_enemies);
-            for enemy_idx in 0..n_enemies {
-                let side = if enemy_idx % 2 == 1 { -1.0 } else { 1.0 };
-                let x = (2.0 + 2.0 * enemy_idx as f32) * side;
-                let position = Vec2::new(x, floor_y);
-                let enemy = create_enemy(position);
-
-                floor_enemies.push(enemy);
-            }
+            floor_spawners.push(create_spawner(Vec2::new(-8.0, floor.y)));
+            floor_spawners.push(create_spawner(Vec2::new(8.0, floor.y)));
 
             enemies.push(floor_enemies);
+            spawners.push(floor_spawners);
+            floors.push(floor);
         }
 
         let bullets: Vec<Bullet> = Vec::with_capacity(1024);
@@ -92,6 +89,7 @@ impl World {
             lift,
             player,
             enemies,
+            spawners,
             bullets,
             floors,
             game_over_ui,
@@ -116,6 +114,7 @@ impl World {
             Play => {
                 self.update_free_camera(input);
                 self.update_lift(dt, input);
+                self.update_spawners(dt);
                 self.time += dt;
             }
             GameOver => {
@@ -188,6 +187,22 @@ impl World {
         */
     }
 
+    pub fn update_spawners(&mut self, dt: f32) {
+        let floor_idx = if let Some(idx) = self.get_lift_floor_idx() {
+            idx
+        } else {
+            return;
+        };
+
+        let floor_spawners = &mut self.spawners[floor_idx];
+        let floor_enemies = &mut self.enemies[floor_idx];
+        for spawner in floor_spawners.iter_mut() {
+            if let Some(humanoid) = spawner.update(dt) {
+                floor_enemies.push(humanoid);
+            }
+        }
+    }
+
     pub fn update_enemies(&mut self, dt: f32) {
         let floor_idx = if let Some(idx) = self.get_lift_floor_idx() {
             idx
@@ -195,11 +210,7 @@ impl World {
             return;
         };
 
-        self.enemies[floor_idx] = self.enemies[floor_idx]
-            .iter()
-            .filter(|e| e.current_health > 0.0)
-            .map(|e| e.clone())
-            .collect();
+        let enemies = &self.enemies[floor_idx];
     }
 
     pub fn update_player(&mut self, dt: f32, input: &Input) {
@@ -243,8 +254,7 @@ impl World {
                 input.window_size,
                 input.cursor_pos,
             );
-            if let Some(bullet) =
-                self.player.try_shoot(target, self.time, true)
+            if let Some(bullet) = self.player.try_shoot(target, self.time)
             {
                 self.bullets.push(bullet);
             }
@@ -274,10 +284,13 @@ impl World {
             let step = bullet.velocity.scale(dt);
             bullet.position += step;
             if floor_collider.check_if_contains(bullet.position) {
-                for enemy in floor_enemies.iter_mut() {
+                for enemy in floor_enemies
+                    .iter_mut()
+                    .filter(|e| !e.check_flag(Flag::Dead))
+                {
                     let collider = enemy.get_collider();
                     if collider.check_if_contains(bullet.position) {
-                        enemy.current_health -= bullet.damage;
+                        enemy.receive_damage(bullet.damage);
                         continue 'bullet;
                     }
                 }

@@ -47,7 +47,7 @@ pub fn create_player(position: Vec2<f32>) -> Humanoid {
     let weapon =
         Weapon::new(Vec2::new(0.0, 0.7), 0.5, 0.1, 30.0, 100.0, 8.0);
 
-    Humanoid::new(position, collider, 4.0, 5.0, 1000.0, weapon)
+    Humanoid::new(true, position, collider, 4.0, 5.0, 1000.0, weapon)
 }
 
 pub fn create_enemy(position: Vec2<f32>) -> Humanoid {
@@ -56,5 +56,11 @@ pub fn create_enemy(position: Vec2<f32>) -> Humanoid {
     let weapon =
         Weapon::new(Vec2::new(0.0, 0.7), 0.5, 0.1, 30.0, 100.0, 8.0);
 
-    Humanoid::new(position, collider, 4.0, 5.0, 1000.0, weapon)
+    Humanoid::new(false, position, collider, 4.0, 5.0, 1000.0, weapon)
+}
+
+pub fn create_spawner(position: Vec2<f32>) -> Spawner {
+    let humanoid = create_enemy(position);
+
+    Spawner::new(position, 5.0, 10, humanoid)
 }

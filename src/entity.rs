@@ -8,20 +8,16 @@ use crate::vec::*;
 use std::collections::HashMap;
 use std::fs;
 
-/*
-#[repr(u32)]
+#[repr(u64)]
 #[derive(Debug)]
-pub enum EntityState {
-    Idle = 1 << 0,
-    Move = 1 << 1,
-    Jump = 1 << 2,
-    Attack = 1 << 3,
-    Dead = 1 << 4,
+pub enum Flag {
+    Dead = 1 << 0,
+    Player = 1 << 1,
 }
-*/
 
 #[derive(Clone)]
 pub struct Humanoid {
+    pub flags: u64,
     pub position: Vec2<f32>,
     pub collider: Rect,
 
@@ -29,14 +25,15 @@ pub struct Humanoid {
     pub jump_speed: f32,
     pub velocity: Vec2<f32>,
 
-    pub max_health: f32,
-    pub current_health: f32,
+    max_health: f32,
+    current_health: f32,
 
     pub weapon: Weapon,
 }
 
 impl Humanoid {
     pub fn new(
+        is_player: bool,
         position: Vec2<f32>,
         collider: Rect,
         move_speed: f32,
@@ -44,7 +41,10 @@ impl Humanoid {
         max_health: f32,
         weapon: Weapon,
     ) -> Self {
+        let flags = Flag::Player as u64 * is_player as u64;
+
         Self {
+            flags,
             position,
             collider,
             move_speed,
@@ -60,11 +60,21 @@ impl Humanoid {
         self.collider.with_bot_center(self.position)
     }
 
+    pub fn receive_damage(&mut self, value: f32) {
+        self.current_health -= value;
+        if self.current_health <= 0.0 {
+            self.set_flag(Flag::Dead);
+        }
+    }
+
+    pub fn get_health_ratio(&self) -> f32 {
+        self.current_health / self.max_health
+    }
+
     pub fn try_shoot(
         &mut self,
         target: Vec2<f32>,
         time: f32,
-        is_player_friendly: bool,
     ) -> Option<Bullet> {
         let weapon = &mut self.weapon;
         let can_shoot =
@@ -85,8 +95,16 @@ impl Humanoid {
             velocity,
             weapon.bullet_damage,
             weapon.bullet_max_travel_distance,
-            is_player_friendly,
+            self.check_flag(Flag::Player),
         ))
+    }
+
+    pub fn check_flag(&self, flag: Flag) -> bool {
+        (self.flags & flag as u64) != 0
+    }
+
+    pub fn set_flag(&mut self, flag: Flag) {
+        self.flags |= flag as u64
     }
 
     /*
@@ -220,6 +238,47 @@ impl Lift {
 
     pub fn get_collider(&self) -> Rect {
         self.collider.translate(Vec2::new(0.0, self.y))
+    }
+}
+
+pub struct Spawner {
+    position: Vec2<f32>,
+    spawn_period: f32,
+    n_to_spawn: usize,
+    humanoid_to_spawn: Humanoid,
+    countdown: f32,
+}
+
+impl Spawner {
+    pub fn new(
+        position: Vec2<f32>,
+        spawn_period: f32,
+        n_to_spawn: usize,
+        humanoid_to_spawn: Humanoid,
+    ) -> Self {
+        Self {
+            position,
+            spawn_period,
+            n_to_spawn,
+            humanoid_to_spawn,
+            countdown: 0.0,
+        }
+    }
+
+    pub fn update(&mut self, dt: f32) -> Option<Humanoid> {
+        let humanoid = if (self.countdown <= 0.0) && self.n_to_spawn > 0 {
+            self.countdown += self.spawn_period;
+            self.n_to_spawn -= 1;
+            let mut humanoid = self.humanoid_to_spawn.clone();
+            humanoid.position = self.position;
+
+            Some(humanoid)
+        } else {
+            None
+        };
+
+        self.countdown -= dt;
+        humanoid
     }
 }
 
