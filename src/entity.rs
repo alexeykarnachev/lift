@@ -104,6 +104,20 @@ impl Entity {
         false
     }
 
+    pub fn try_receive_melee_attack_damage(
+        &mut self,
+        melee_attack: &MeleeAttack,
+    ) -> bool {
+        let self_collider = self.get_collider();
+        let attack_collider = melee_attack.get_collider();
+        if self_collider.collide_with_rect(attack_collider) {
+            self.receive_damage(melee_attack.damage);
+            return true;
+        }
+
+        false
+    }
+
     pub fn get_health_ratio(&self) -> f32 {
         self.current_health / self.max_health
     }
@@ -113,23 +127,123 @@ impl Entity {
             direction.clamp(-1.0, 1.0) * self.move_speed * dt;
     }
 
-    pub fn can_jump(&self, time: f32) -> bool {
-        (time - self.last_jump_time) >= self.jump_period
-    }
-
-    pub fn try_jump_to(&mut self, target: Vec2<f32>, time: f32) {
-        if !self.can_jump(time) {
-            return;
-        }
-
+    pub fn jump_to(&mut self, target: Vec2<f32>, time: f32) {
         self.velocity +=
             (target - self.position).with_len(self.jump_speed);
         self.last_jump_time = time;
     }
 
-    pub fn try_jump_at_angle(&mut self, angle: f32, time: f32) {
+    pub fn jump_at_angle(&mut self, angle: f32, time: f32) {
         let target = self.position + Vec2::new(angle.cos(), angle.sin());
-        self.try_jump_to(target, time);
+        self.jump_to(target, time);
+    }
+
+    pub fn attack_by_melee(&mut self, time: f32) -> MeleeAttack {
+        let weapon = self.melee_weapon.as_mut().unwrap();
+        weapon.last_attack_time = time;
+
+        let collider = Rect::from_center(
+            weapon.pivot,
+            Vec2::new(weapon.length, weapon.length),
+        );
+
+        MeleeAttack::new(
+            self.position,
+            collider,
+            weapon.damage,
+            self.check_flag(Flag::Player),
+        )
+    }
+
+    pub fn attack_by_range(
+        &mut self,
+        target: Vec2<f32>,
+        time: f32,
+    ) -> Bullet {
+        let weapon = self.range_weapon.as_mut().unwrap();
+        weapon.last_attack_time = time;
+
+        let pivot = self.position + weapon.pivot;
+        let direction = target - pivot;
+        let position = pivot + direction.with_len(weapon.length);
+        let collider =
+            Rect::from_center(Vec2::zeros(), Vec2::new(0.2, 0.2));
+        let velocity = direction.with_len(weapon.bullet_speed);
+
+        Bullet::new(
+            position,
+            collider,
+            velocity,
+            weapon.bullet_damage,
+            self.check_flag(Flag::Player),
+        )
+    }
+
+    pub fn check_if_on_floor(&self, floor_y: f32) -> bool {
+        (self.position.y - floor_y).abs() < 1e-4
+    }
+
+    pub fn check_if_attacking(&self, time: f32) -> bool {
+        let mut is_attacking = if let Some(weapon) = self.melee_weapon {
+            weapon.is_attacking(time)
+        } else {
+            false
+        };
+
+        is_attacking |= if let Some(weapon) = self.range_weapon {
+            weapon.is_attacking(time)
+        } else {
+            false
+        };
+
+        is_attacking
+    }
+
+    pub fn check_if_can_jump(&self, floor_y: f32, time: f32) -> bool {
+        !self.check_if_attacking(time)
+            && self.check_if_on_floor(floor_y)
+            && (time - self.last_jump_time) >= self.jump_period
+    }
+
+    pub fn check_if_can_step(&self, time: f32) -> bool {
+        !self.check_if_attacking(time)
+    }
+
+    pub fn check_if_can_reach_by_melee(
+        &self,
+        target: Rect,
+        time: f32,
+    ) -> bool {
+        if let Some(weapon) = self.melee_weapon {
+            let collider = Rect::from_center(
+                weapon.pivot + self.position,
+                Vec2::new(weapon.length, weapon.length),
+            );
+            !self.check_if_attacking(time)
+                && collider.collide_with_rect(target)
+        } else {
+            false
+        }
+    }
+
+    pub fn check_if_can_reach_by_range(
+        &self,
+        target: Vec2<f32>,
+        time: f32,
+    ) -> bool {
+        if let Some(weapon) = self.range_weapon {
+            !self.check_if_attacking(time)
+        } else {
+            false
+        }
+    }
+
+    pub fn check_flag(&self, flag: Flag) -> bool {
+        (self.flags & flag as u64) != 0
+    }
+
+    pub fn set_flag(&mut self, flag: Flag) {
+        self.flags |= flag as u64
     }
 
     pub fn update_kinematic(
@@ -172,74 +286,6 @@ impl Entity {
             self.position.y -= up_offset;
             self.velocity.y = 0.0;
         }
-    }
-
-    pub fn try_attack_by_melee(&mut self, time: f32) -> Option<f32> {
-        let weapon = self.melee_weapon.as_mut().unwrap();
-        let can_attack =
-            (time - weapon.last_attack_time) >= weapon.attack_period;
-
-        if !can_attack {
-            return None;
-        }
-
-        weapon.last_attack_time = time;
-
-        Some(weapon.damage)
-    }
-
-    pub fn try_attack_by_range(
-        &mut self,
-        target: Vec2<f32>,
-        time: f32,
-    ) -> Option<Bullet> {
-        let weapon = self.range_weapon.as_mut().unwrap();
-        let can_attack =
-            (time - weapon.last_attack_time) >= weapon.attack_period;
-
-        if !can_attack {
-            return None;
-        }
-
-        weapon.last_attack_time = time;
-        let pivot = self.position + weapon.pivot;
-        let direction = target - pivot;
-        let position = pivot + direction.with_len(weapon.length);
-        let collider =
-            Rect::from_center(Vec2::zeros(), Vec2::new(0.2, 0.2));
-        let velocity = direction.with_len(weapon.bullet_speed);
-
-        Some(Bullet::new(
-            position,
-            collider,
-            velocity,
-            weapon.bullet_damage,
-            self.check_flag(Flag::Player),
-        ))
-    }
-
-    pub fn check_if_on_floor(&self, floor_y: f32) -> bool {
-        (self.position.y - floor_y).abs() < 1e-4
-    }
-
-    pub fn check_if_can_reach_by_melee(&self, target: Vec2<f32>) -> bool {
-        if let Some(weapon) = self.melee_weapon {
-            (target - self.position).len() <= weapon.length
-        } else {
-            false
-        }
-    }
-
-    pub fn check_if_can_reach_by_range(&self, target: Vec2<f32>) -> bool {
-        self.range_weapon.is_some()
-    }
-
-    pub fn check_flag(&self, flag: Flag) -> bool {
-        (self.flags & flag as u64) != 0
-    }
-
-    pub fn set_flag(&mut self, flag: Flag) {
-        self.flags |= flag as u64
     }
 
     /*
@@ -286,6 +332,10 @@ impl RangeWeapon {
             bullet_damage,
         }
     }
+
+    pub fn is_attacking(&self, time: f32) -> bool {
+        (time - self.last_attack_time) < self.attack_period
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -312,6 +362,10 @@ impl MeleeWeapon {
             damage,
         }
     }
+
+    pub fn is_attacking(&self, time: f32) -> bool {
+        (time - self.last_attack_time) < self.attack_period
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -335,6 +389,34 @@ impl Bullet {
             position,
             collider,
             velocity,
+            damage,
+            is_player_friendly,
+        }
+    }
+
+    pub fn get_collider(&self) -> Rect {
+        self.collider.with_center(self.position)
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct MeleeAttack {
+    pub position: Vec2<f32>,
+    collider: Rect,
+    pub damage: f32,
+    pub is_player_friendly: bool,
+}
+
+impl MeleeAttack {
+    pub fn new(
+        position: Vec2<f32>,
+        collider: Rect,
+        damage: f32,
+        is_player_friendly: bool,
+    ) -> Self {
+        Self {
+            position,
+            collider,
             damage,
             is_player_friendly,
         }

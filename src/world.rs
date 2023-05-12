@@ -33,6 +33,7 @@ pub struct World {
     pub player: Entity,
     pub enemies: Vec<Vec<Entity>>,
     pub spawners: Vec<Vec<Spawner>>,
+    pub melee_attacks: Vec<MeleeAttack>,
     pub bullets: Vec<Bullet>,
 
     pub floors: Vec<Floor>,
@@ -69,7 +70,8 @@ impl World {
             floors.push(floor);
         }
 
-        let bullets: Vec<Bullet> = Vec::with_capacity(1024);
+        let melee_attacks: Vec<MeleeAttack> = Vec::with_capacity(256);
+        let bullets: Vec<Bullet> = Vec::with_capacity(256);
 
         let idx = (n_floors / 2) as usize;
         let mut lift = create_lift_entity(idx);
@@ -95,6 +97,7 @@ impl World {
             player,
             enemies,
             spawners,
+            melee_attacks,
             bullets,
             floors,
             play_ui,
@@ -116,6 +119,7 @@ impl World {
             Play => {
                 self.update_play_ui(input);
                 self.update_bullets(dt);
+                self.update_melee_attacks(dt);
                 self.update_enemies(dt);
                 self.update_player(dt, input);
                 self.update_free_camera(input);
@@ -225,7 +229,9 @@ impl World {
 
         let enemies = &mut self.enemies[floor_idx];
         let floor_collider = self.floors[floor_idx].get_collider();
+        let floor_y = floor_collider.get_y_min();
         let target = self.player.get_center();
+        let player_collider = self.player.get_collider();
         let is_player_alive = !self.player.check_flag(Dead);
 
         for enemy in enemies.iter_mut().filter(|e| !e.check_flag(Dead)) {
@@ -234,27 +240,24 @@ impl World {
             }
 
             let position = enemy.position;
-            let is_on_floor =
-                enemy.check_if_on_floor(floor_collider.get_y_min());
 
             match enemy.behaviour {
                 Rat => {
-                    if enemy.check_if_can_reach_by_melee(target) {
-                        if let Some(damage) =
-                            enemy.try_attack_by_melee(self.time)
-                        {
-                            self.player.receive_damage(damage);
-                        }
-                    } else if enemy.can_jump(self.time)
-                        && is_on_floor
+                    if enemy.check_if_can_reach_by_melee(
+                        player_collider,
+                        self.time,
+                    ) {
+                        let attack = enemy.attack_by_melee(self.time);
+                        self.melee_attacks.push(attack);
+                    } else if enemy.check_if_can_jump(floor_y, self.time)
                         && position.dist_to(target) <= 2.0
                     {
                         let mut angle = PI * 0.1;
                         if target.x - position.x < 0.0 {
                             angle = PI - angle;
                         }
-                        enemy.try_jump_at_angle(angle, self.time);
-                    } else if is_on_floor {
+                        enemy.jump_at_angle(angle, self.time);
+                    } else if enemy.check_if_can_step(self.time) {
                         enemy.immediate_step(target.x - position.x, dt);
                     }
                 }
@@ -277,8 +280,7 @@ impl World {
             self.lift.get_collider()
         };
 
-        let is_on_floor =
-            self.player.check_if_on_floor(floor_collider.get_y_min());
+        let floor_y = floor_collider.get_y_min();
         let position = &mut self.player.position;
 
         use Keyaction::*;
@@ -289,8 +291,10 @@ impl World {
             self.player.immediate_step(-1.0, dt)
         }
 
-        if is_on_floor && input.is_action(Up) {
-            self.player.try_jump_at_angle(PI * 0.5, self.time);
+        if input.is_action(Up)
+            && self.player.check_if_can_jump(floor_y, self.time)
+        {
+            self.player.jump_at_angle(PI * 0.5, self.time);
         }
 
         self.player
@@ -303,9 +307,9 @@ impl World {
                 input.window_size,
                 input.cursor_pos,
             );
-            if let Some(bullet) =
-                self.player.try_attack_by_range(target, self.time)
-            {
+            if self.player.check_if_can_reach_by_range(target, self.time) {
+                let bullet =
+                    self.player.attack_by_range(target, self.time);
                 self.bullets.push(bullet);
             }
         }
@@ -352,6 +356,42 @@ impl World {
         }
 
         self.bullets = new_bullets;
+    }
+
+    pub fn update_melee_attacks(&mut self, dt: f32) {
+        let floor_idx = if let Some(idx) = self.get_lift_floor_idx() {
+            idx
+        } else {
+            return;
+        };
+
+        let floor = &self.floors[floor_idx];
+        let floor_enemies = &mut self.enemies[floor_idx];
+
+        let floor_collider = floor.get_collider();
+
+        use Flag::*;
+        'attack: for attack in self.melee_attacks.iter() {
+            if attack.is_player_friendly {
+                for enemy in floor_enemies
+                    .iter_mut()
+                    .filter(|e| !e.check_flag(Dead))
+                {
+                    if enemy.try_receive_melee_attack_damage(attack) {
+                        if enemy.check_flag(Dead) {
+                            self.player.score += 100;
+                        }
+                        continue 'attack;
+                    }
+                }
+            } else if !self.player.check_flag(Dead) {
+                if self.player.try_receive_melee_attack_damage(attack) {
+                    continue 'attack;
+                }
+            }
+        }
+
+        self.melee_attacks.clear();
     }
 
     fn update_free_camera(&mut self, input: &Input) {
