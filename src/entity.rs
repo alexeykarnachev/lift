@@ -15,14 +15,25 @@ pub enum Flag {
     Player = 1 << 1,
 }
 
+#[derive(Clone, Debug)]
+pub enum Behaviour {
+    Player,
+    Rat,
+}
+
 #[derive(Clone)]
-pub struct Humanoid {
+pub struct Entity {
     pub flags: u64,
+    pub behaviour: Behaviour,
     pub position: Vec2<f32>,
     collider: Rect,
 
     pub move_speed: f32,
+
     pub jump_speed: f32,
+    pub jump_period: f32,
+    last_jump_time: f32,
+
     pub velocity: Vec2<f32>,
 
     max_health: f32,
@@ -34,13 +45,15 @@ pub struct Humanoid {
     pub score: u32,
 }
 
-impl Humanoid {
+impl Entity {
     pub fn new(
         is_player: bool,
+        behaviour: Behaviour,
         position: Vec2<f32>,
         collider: Rect,
         move_speed: f32,
         jump_speed: f32,
+        jump_period: f32,
         max_health: f32,
         melee_weapon: Option<MeleeWeapon>,
         range_weapon: Option<RangeWeapon>,
@@ -49,10 +62,13 @@ impl Humanoid {
 
         Self {
             flags,
+            behaviour,
             position,
             collider,
             move_speed,
             jump_speed,
+            jump_period,
+            last_jump_time: -jump_period,
             velocity: Vec2::zeros(),
             max_health,
             current_health: max_health,
@@ -92,25 +108,63 @@ impl Humanoid {
         self.current_health / self.max_health
     }
 
-    pub fn step_to(&mut self, target: Vec2<f32>, dt: f32) {
-        let direction = (target.x - self.position.x).signum();
-        let mut velocity_x = direction * self.move_speed;
-        self.velocity = Vec2::new(velocity_x, 0.0);
-        let step = self.velocity.scale(dt);
-        self.position += step;
+    pub fn immediate_step_to(&mut self, target: Vec2<f32>, dt: f32) {
+        let side = (target.x - self.position.x).signum();
+        self.position.x += side * self.move_speed * dt;
     }
 
-    pub fn try_attack_by_melee(
+    pub fn can_jump(&self, time: f32) -> bool {
+        (time - self.last_jump_time) >= self.jump_period
+    }
+
+    pub fn try_jump_to(&mut self, target: Vec2<f32>, time: f32) {
+        if !self.can_jump(time) {
+            return;
+        }
+
+        self.velocity +=
+            (target - self.position).with_len(self.jump_speed);
+        self.last_jump_time = time;
+    }
+
+    pub fn try_jump_at_angle(
         &mut self,
         target: Vec2<f32>,
+        angle: f32,
         time: f32,
-    ) -> Option<f32> {
-        let weapon = if let Some(weapon) = self.melee_weapon.as_mut() {
-            weapon
-        } else {
-            return None;
-        };
+    ) {
+        let side = (target.x - self.position.x).signum();
+        let mut angle = angle;
+        if side == -1.0 {
+            angle = std::f32::consts::PI - angle;
+        }
+        let target = self.position + Vec2::new(angle.cos(), angle.sin());
+        self.try_jump_to(target, time);
+    }
 
+    pub fn update_kinematic(
+        &mut self,
+        gravity: f32,
+        floor_y: f32,
+        dt: f32,
+    ) {
+        let was_on_floor = self.check_if_on_floor(floor_y);
+        self.position += self.velocity.scale(dt);
+        self.position.y = self.position.y.max(floor_y);
+        let is_on_floor = self.check_if_on_floor(floor_y);
+
+        if is_on_floor {
+            if !was_on_floor {
+                self.velocity.x = 0.0;
+            }
+            self.velocity.y = 0.0;
+        } else {
+            self.velocity.y -= gravity * dt;
+        }
+    }
+
+    pub fn try_attack_by_melee(&mut self, time: f32) -> Option<f32> {
+        let weapon = self.melee_weapon.as_mut().unwrap();
         let can_attack =
             (time - weapon.last_attack_time) >= weapon.attack_period;
 
@@ -128,12 +182,7 @@ impl Humanoid {
         target: Vec2<f32>,
         time: f32,
     ) -> Option<Bullet> {
-        let weapon = if let Some(weapon) = self.range_weapon.as_mut() {
-            weapon
-        } else {
-            return None;
-        };
-
+        let weapon = self.range_weapon.as_mut().unwrap();
         let can_attack =
             (time - weapon.last_attack_time) >= weapon.attack_period;
 
@@ -156,6 +205,10 @@ impl Humanoid {
             weapon.bullet_damage,
             self.check_flag(Flag::Player),
         ))
+    }
+
+    pub fn check_if_on_floor(&self, floor_y: f32) -> bool {
+        (self.position.y - floor_y).abs() < 1e-4
     }
 
     pub fn check_if_can_reach_by_melee(&self, target: Vec2<f32>) -> bool {
@@ -341,7 +394,7 @@ pub struct Spawner {
     position: Vec2<f32>,
     spawn_period: f32,
     n_to_spawn: usize,
-    humanoid_to_spawn: Humanoid,
+    entity_to_spawn: Entity,
     countdown: f32,
 }
 
@@ -350,31 +403,31 @@ impl Spawner {
         position: Vec2<f32>,
         spawn_period: f32,
         n_to_spawn: usize,
-        humanoid_to_spawn: Humanoid,
+        entity_to_spawn: Entity,
     ) -> Self {
         Self {
             position,
             spawn_period,
             n_to_spawn,
-            humanoid_to_spawn,
+            entity_to_spawn,
             countdown: 0.0,
         }
     }
 
-    pub fn update(&mut self, dt: f32) -> Option<Humanoid> {
-        let humanoid = if (self.countdown <= 0.0) && self.n_to_spawn > 0 {
+    pub fn update(&mut self, dt: f32) -> Option<Entity> {
+        let entity = if (self.countdown <= 0.0) && self.n_to_spawn > 0 {
             self.countdown += self.spawn_period;
             self.n_to_spawn -= 1;
-            let mut humanoid = self.humanoid_to_spawn.clone();
-            humanoid.position = self.position;
+            let mut entity = self.entity_to_spawn.clone();
+            entity.position = self.position;
 
-            Some(humanoid)
+            Some(entity)
         } else {
             None
         };
 
         self.countdown -= dt;
-        humanoid
+        entity
     }
 }
 

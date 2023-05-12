@@ -373,16 +373,13 @@ impl GlyphAtlas {
     }
 }
 
-pub fn draw_humanoid(
-    humanoid: &Humanoid,
-    draw_queue: &mut Vec<DrawPrimitive>,
-) {
-    if humanoid.check_flag(Flag::Dead) {
+pub fn draw_entity(entity: &Entity, draw_queue: &mut Vec<DrawPrimitive>) {
+    if entity.check_flag(Flag::Dead) {
         return;
     }
 
     // Main primitive
-    let rect = humanoid.get_collider();
+    let rect = entity.get_collider();
     draw_queue.push(DrawPrimitive::from_rect(
         rect,
         Space::World,
@@ -392,7 +389,7 @@ pub fn draw_humanoid(
     // Healthbar
     let alive_color = Color::new(0.0, 1.0, 0.0, 1.0);
     let dead_color = Color::new(1.0, 0.0, 0.0, 1.0);
-    let ratio = humanoid.get_health_ratio();
+    let ratio = entity.get_health_ratio();
     let color = alive_color.lerp(&dead_color, ratio);
     let bar_size = Vec2::new(1.0, 0.13);
     let border_size = Vec2::new(0.03, 0.03);

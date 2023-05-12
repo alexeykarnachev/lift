@@ -139,11 +139,11 @@ impl Renderer {
         });
         draw_shaft(&world.shaft, &mut self.primitives);
         draw_lift(&world.lift, &mut self.primitives);
-        draw_humanoid(&world.player, &mut self.primitives);
+        draw_entity(&world.player, &mut self.primitives);
 
         let floor_idx = world.get_lift_nearest_floor_idx();
         world.enemies[floor_idx].iter().for_each(|enemy| {
-            draw_humanoid(enemy, &mut self.primitives);
+            draw_entity(enemy, &mut self.primitives);
         });
 
         world.bullets.iter().for_each(|bullet| {

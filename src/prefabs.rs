@@ -49,46 +49,48 @@ pub fn create_lift_entity(floor_idx: usize) -> Lift {
     )
 }
 
-pub fn create_player(position: Vec2<f32>) -> Humanoid {
+pub fn create_player(position: Vec2<f32>) -> Entity {
     let collider =
         Rect::from_bot_center(Vec2::zeros(), Vec2::new(0.5, 1.0));
     let range_weapon =
         RangeWeapon::new(Vec2::new(0.0, 0.7), 0.5, 0.5, 30.0, 100.0);
 
-    Humanoid::new(
+    Entity::new(
         true,
+        Behaviour::Player,
         position,
         collider,
         4.0,
         5.0,
+        0.0,
         5000.0,
         None,
         Some(range_weapon),
     )
 }
 
-pub fn create_enemy(position: Vec2<f32>) -> Humanoid {
+pub fn create_rat(position: Vec2<f32>) -> Entity {
     let collider =
         Rect::from_bot_center(Vec2::zeros(), Vec2::new(0.3, 0.2));
-    // let range_weapon =
-    //     RangeWeapon::new(Vec2::new(0.0, 0.1), 0.5, 1.0, 30.0, 8.0);
     let melee_weapon =
         MeleeWeapon::new(Vec2::new(0.0, 0.1), 1.0, 1.0, 100.0);
 
-    Humanoid::new(
+    Entity::new(
         false,
+        Behaviour::Rat,
         position,
         collider,
-        1.5,
-        5.0,
+        2.0,
+        8.0,
+        2.0,
         1000.0,
         Some(melee_weapon),
         None,
     )
 }
 
-pub fn create_spawner(position: Vec2<f32>) -> Spawner {
-    let humanoid = create_enemy(position);
+pub fn create_rat_spawner(position: Vec2<f32>) -> Spawner {
+    let entity = create_rat(position);
 
-    Spawner::new(position, 5.0, 1, humanoid)
+    Spawner::new(position, 5.0, 1, entity)
 }

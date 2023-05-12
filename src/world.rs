@@ -10,6 +10,7 @@ use crate::input::*;
 use crate::prefabs::*;
 use crate::ui::*;
 use crate::vec::*;
+use std::f32::consts::PI;
 use std::fs;
 
 #[derive(PartialEq, Debug)]
@@ -29,8 +30,8 @@ pub struct World {
     pub camera: Camera,
     pub shaft: Shaft,
     pub lift: Lift,
-    pub player: Humanoid,
-    pub enemies: Vec<Vec<Humanoid>>,
+    pub player: Entity,
+    pub enemies: Vec<Vec<Entity>>,
     pub spawners: Vec<Vec<Spawner>>,
     pub bullets: Vec<Bullet>,
 
@@ -58,8 +59,10 @@ impl World {
             let floor_enemies = Vec::with_capacity(128);
             let mut floor_spawners = Vec::with_capacity(1024);
 
-            floor_spawners.push(create_spawner(Vec2::new(-8.0, floor.y)));
-            floor_spawners.push(create_spawner(Vec2::new(8.0, floor.y)));
+            floor_spawners
+                .push(create_rat_spawner(Vec2::new(-8.0, floor.y)));
+            floor_spawners
+                .push(create_rat_spawner(Vec2::new(8.0, floor.y)));
 
             enemies.push(floor_enemies);
             spawners.push(floor_spawners);
@@ -204,13 +207,16 @@ impl World {
         let floor_spawners = &mut self.spawners[floor_idx];
         let floor_enemies = &mut self.enemies[floor_idx];
         for spawner in floor_spawners.iter_mut() {
-            if let Some(humanoid) = spawner.update(dt) {
-                floor_enemies.push(humanoid);
+            if let Some(entity) = spawner.update(dt) {
+                floor_enemies.push(entity);
             }
         }
     }
 
     pub fn update_enemies(&mut self, dt: f32) {
+        use Behaviour::*;
+        use Flag::*;
+
         let floor_idx = if let Some(idx) = self.get_lift_floor_idx() {
             idx
         } else {
@@ -218,37 +224,55 @@ impl World {
         };
 
         let enemies = &mut self.enemies[floor_idx];
+        let floor_y = self.lift.y;
         let target = self.player.get_center();
-        let is_player_alive = !self.player.check_flag(Flag::Dead);
+        let is_player_alive = !self.player.check_flag(Dead);
 
-        use Flag::*;
         for enemy in enemies.iter_mut().filter(|e| !e.check_flag(Dead)) {
             if !is_player_alive {
                 continue;
             }
 
-            if enemy.check_if_can_reach_by_melee(target) {
-                if let Some(damage) =
-                    enemy.try_attack_by_melee(target, self.time)
-                {
-                    self.player.receive_damage(damage);
+            let position = enemy.position;
+            let is_on_floor = enemy.check_if_on_floor(floor_y);
+
+            match enemy.behaviour {
+                Rat => {
+                    if enemy.check_if_can_reach_by_melee(target) {
+                        if let Some(damage) =
+                            enemy.try_attack_by_melee(self.time)
+                        {
+                            self.player.receive_damage(damage);
+                        }
+                    } else if enemy.can_jump(self.time)
+                        && is_on_floor
+                        && position.dist_to(target) <= 2.0
+                    {
+                        enemy.try_jump_at_angle(
+                            target,
+                            PI * 0.1,
+                            self.time,
+                        );
+                    } else if is_on_floor {
+                        enemy.immediate_step_to(target, dt);
+                    }
                 }
-            } else if enemy.check_if_can_reach_by_range(target) {
-                if let Some(bullet) =
-                    enemy.try_attack_by_range(target, self.time)
-                {
-                    self.bullets.push(bullet);
+                _ => {
+                    panic!(
+                        "Enemy behaviour: {:?} is not implemented",
+                        enemy.behaviour
+                    )
                 }
-            } else {
-                enemy.step_to(target, dt);
             }
+
+            enemy.update_kinematic(self.gravity, floor_y, dt);
         }
     }
 
     pub fn update_player(&mut self, dt: f32, input: &Input) {
-        let position = &mut self.player.position;
         let floor_y = self.lift.y;
-        let is_on_floor = (position.y - floor_y).abs() < 1e-4;
+        let is_on_floor = self.player.check_if_on_floor(floor_y);
+        let position = &mut self.player.position;
 
         // Update horizontal velocity
         let mut velocity_x = 0.0;
@@ -263,7 +287,7 @@ impl World {
         }
 
         // Update vertical velocity (jump or gravity)
-        if input.is_action(Up) && is_on_floor {
+        if is_on_floor && input.is_action(Up) {
             velocity_y = self.player.jump_speed;
         } else if is_on_floor {
             velocity_y = 0.0;
