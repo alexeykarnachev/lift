@@ -324,6 +324,22 @@ impl Rect {
         left_dist.min(right_dist)
     }
 
+    pub fn get_y_min(&self) -> f32 {
+        self.bot_left.y
+    }
+
+    pub fn get_y_max(&self) -> f32 {
+        self.top_right.y
+    }
+
+    pub fn get_x_min(&self) -> f32 {
+        self.bot_left.x
+    }
+
+    pub fn get_x_max(&self) -> f32 {
+        self.top_right.x
+    }
+
     pub fn collide_with_point(&self, p: Vec2<f32>) -> bool {
         p.x > self.bot_left.x
             && p.x < self.top_right.x

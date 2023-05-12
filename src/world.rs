@@ -224,7 +224,7 @@ impl World {
         };
 
         let enemies = &mut self.enemies[floor_idx];
-        let floor_y = self.lift.y;
+        let floor_collider = self.floors[floor_idx].get_collider();
         let target = self.player.get_center();
         let is_player_alive = !self.player.check_flag(Dead);
 
@@ -234,7 +234,8 @@ impl World {
             }
 
             let position = enemy.position;
-            let is_on_floor = enemy.check_if_on_floor(floor_y);
+            let is_on_floor =
+                enemy.check_if_on_floor(floor_collider.get_y_min());
 
             match enemy.behaviour {
                 Rat => {
@@ -248,13 +249,13 @@ impl World {
                         && is_on_floor
                         && position.dist_to(target) <= 2.0
                     {
-                        enemy.try_jump_at_angle(
-                            target,
-                            PI * 0.1,
-                            self.time,
-                        );
+                        let mut angle = PI * 0.1;
+                        if target.x - position.x < 0.0 {
+                            angle = PI - angle;
+                        }
+                        enemy.try_jump_at_angle(angle, self.time);
                     } else if is_on_floor {
-                        enemy.immediate_step_to(target, dt);
+                        enemy.immediate_step(target.x - position.x, dt);
                     }
                 }
                 _ => {
@@ -265,43 +266,35 @@ impl World {
                 }
             }
 
-            enemy.update_kinematic(self.gravity, floor_y, dt);
+            enemy.update_kinematic(self.gravity, floor_collider, dt);
         }
     }
 
     pub fn update_player(&mut self, dt: f32, input: &Input) {
-        let floor_y = self.lift.y;
-        let is_on_floor = self.player.check_if_on_floor(floor_y);
-        let position = &mut self.player.position;
+        let floor_collider = if let Some(floor) = self.get_lift_floor() {
+            floor.get_collider()
+        } else {
+            self.lift.get_collider()
+        };
 
-        // Update horizontal velocity
-        let mut velocity_x = 0.0;
-        let mut velocity_y = self.player.velocity.y;
+        let is_on_floor =
+            self.player.check_if_on_floor(floor_collider.get_y_min());
+        let position = &mut self.player.position;
 
         use Keyaction::*;
         if input.is_action(Right) {
-            velocity_x += self.player.move_speed;
+            self.player.immediate_step(1.0, dt)
         }
         if input.is_action(Left) {
-            velocity_x -= self.player.move_speed;
+            self.player.immediate_step(-1.0, dt)
         }
 
-        // Update vertical velocity (jump or gravity)
         if is_on_floor && input.is_action(Up) {
-            velocity_y = self.player.jump_speed;
-        } else if is_on_floor {
-            velocity_y = 0.0;
-        } else {
-            velocity_y -= self.gravity * dt;
+            self.player.try_jump_at_angle(PI * 0.5, self.time);
         }
 
-        // Update kinematic with new velocity
-        self.player.velocity = Vec2::new(velocity_x, velocity_y);
-
-        // Apply kinematic
-        let step = self.player.velocity.scale(dt);
-        *position += step;
-        position.y = position.y.max(floor_y);
+        self.player
+            .update_kinematic(self.gravity, floor_collider, dt);
 
         // Shoot
         if input.lmb_is_down {

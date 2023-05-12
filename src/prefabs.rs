@@ -61,7 +61,7 @@ pub fn create_player(position: Vec2<f32>) -> Entity {
         position,
         collider,
         4.0,
-        5.0,
+        10.0,
         0.0,
         5000.0,
         None,
@@ -92,5 +92,5 @@ pub fn create_rat(position: Vec2<f32>) -> Entity {
 pub fn create_rat_spawner(position: Vec2<f32>) -> Spawner {
     let entity = create_rat(position);
 
-    Spawner::new(position, 5.0, 1, entity)
+    Spawner::new(position, 5.0, 4, entity)
 }

@@ -108,9 +108,9 @@ impl Entity {
         self.current_health / self.max_health
     }
 
-    pub fn immediate_step_to(&mut self, target: Vec2<f32>, dt: f32) {
-        let side = (target.x - self.position.x).signum();
-        self.position.x += side * self.move_speed * dt;
+    pub fn immediate_step(&mut self, direction: f32, dt: f32) {
+        self.position.x +=
+            direction.clamp(-1.0, 1.0) * self.move_speed * dt;
     }
 
     pub fn can_jump(&self, time: f32) -> bool {
@@ -127,17 +127,7 @@ impl Entity {
         self.last_jump_time = time;
     }
 
-    pub fn try_jump_at_angle(
-        &mut self,
-        target: Vec2<f32>,
-        angle: f32,
-        time: f32,
-    ) {
-        let side = (target.x - self.position.x).signum();
-        let mut angle = angle;
-        if side == -1.0 {
-            angle = std::f32::consts::PI - angle;
-        }
+    pub fn try_jump_at_angle(&mut self, angle: f32, time: f32) {
         let target = self.position + Vec2::new(angle.cos(), angle.sin());
         self.try_jump_to(target, time);
     }
@@ -145,9 +135,10 @@ impl Entity {
     pub fn update_kinematic(
         &mut self,
         gravity: f32,
-        floor_y: f32,
+        floor_collider: Rect,
         dt: f32,
     ) {
+        let floor_y = floor_collider.get_y_min();
         let was_on_floor = self.check_if_on_floor(floor_y);
         self.position += self.velocity.scale(dt);
         self.position.y = self.position.y.max(floor_y);
@@ -160,6 +151,26 @@ impl Entity {
             self.velocity.y = 0.0;
         } else {
             self.velocity.y -= gravity * dt;
+        }
+
+        let self_collider = self.get_collider();
+        let left_offset =
+            floor_collider.get_x_min() - self_collider.get_x_min();
+        if left_offset > 0.0 {
+            self.position.x += left_offset
+        }
+
+        let right_offset =
+            self_collider.get_x_max() - floor_collider.get_x_max();
+        if right_offset > 0.0 {
+            self.position.x -= right_offset;
+        }
+
+        let up_offset =
+            self_collider.get_y_max() - floor_collider.get_y_max();
+        if up_offset > 0.0 {
+            self.position.y -= up_offset;
+            self.velocity.y = 0.0;
         }
     }
 
