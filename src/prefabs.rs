@@ -66,14 +66,42 @@ pub fn create_player(position: Vec2<f32>) -> Entity {
         5000.0,
         None,
         Some(range_weapon),
+        None,
     )
 }
 
-pub fn create_rat(position: Vec2<f32>) -> Entity {
+pub fn create_rat(
+    position: Vec2<f32>,
+    sprite_atlas: &SpriteAtlas,
+) -> Entity {
+    use AnimationMode::*;
+    use AnimationType::*;
+
     let collider =
         Rect::from_bot_center(Vec2::zeros(), Vec2::new(0.3, 0.2));
     let melee_weapon =
         MeleeWeapon::new(Vec2::new(0.0, 0.1), 1.0, 1.0, 100.0);
+
+    let scale = 0.05;
+    let mut animator = Animator::new(AnimatedSprite::new(
+        sprite_atlas,
+        "rat_idle",
+        0.5,
+        Repeat,
+        scale,
+    ));
+    animator.add(
+        Idle,
+        AnimatedSprite::new(sprite_atlas, "rat_idle", 0.5, Repeat, scale),
+    );
+    animator.add(
+        Jump,
+        AnimatedSprite::new(sprite_atlas, "rat_jump", 0.5, Once, scale),
+    );
+    animator.add(
+        Move,
+        AnimatedSprite::new(sprite_atlas, "rat_move", 0.5, Repeat, scale),
+    );
 
     Entity::new(
         false,
@@ -86,11 +114,15 @@ pub fn create_rat(position: Vec2<f32>) -> Entity {
         1000.0,
         Some(melee_weapon),
         None,
+        Some(animator),
     )
 }
 
-pub fn create_rat_spawner(position: Vec2<f32>) -> Spawner {
-    let entity = create_rat(position);
+pub fn create_rat_spawner(
+    position: Vec2<f32>,
+    sprite_atlas: &SpriteAtlas,
+) -> Spawner {
+    let entity = create_rat(position, sprite_atlas);
 
-    Spawner::new(position, 5.0, 4, entity)
+    Spawner::new(position, 5.0, 1, entity)
 }

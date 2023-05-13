@@ -58,7 +58,7 @@
   "app": "http://www.aseprite.org/",
   "version": "1.3-rc2-x64",
   "image": "rat_move.png",
-  "format": "I8",
+  "format": "RGBA8888",
   "size": { "w": 174, "h": 14 },
   "scale": "1",
   "frameTags": [

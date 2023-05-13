@@ -84,14 +84,13 @@ impl SpriteAtlas {
 #[derive(Copy, Clone)]
 pub enum AnimationMode {
     Repeat,
-    RepeatFrom(usize),
     Once,
 }
 
 #[derive(Clone)]
 pub struct AnimatedSprite {
     pub name: &'static str,
-    pub sprite_duration: f32,
+    pub duration: f32,
     pub animation_mode: AnimationMode,
     pub scale: f32,
     cycle: f32,
@@ -103,17 +102,17 @@ impl AnimatedSprite {
     pub fn new(
         sprite_atlas: &SpriteAtlas,
         name: &'static str,
+        duration: f32,
         animation_mode: AnimationMode,
         scale: f32,
     ) -> Self {
         let frames = sprite_atlas.sprites.get(name).unwrap_or_else(|| {
             panic!("There is no such sprite in the sprite atlas: {}", name)
         });
-        let sprite_duration = sprite_atlas.sprite_duration;
 
         Self {
             name,
-            sprite_duration,
+            duration,
             animation_mode,
             scale,
             cycle: 0.0,
@@ -121,12 +120,14 @@ impl AnimatedSprite {
         }
     }
 
+    pub fn reset(&mut self) {
+        self.cycle = 0.0;
+    }
+
     pub fn update(&mut self, dt: f32) {
         use AnimationMode::*;
 
-        let n_frames = self.frames.len() as f32;
-        let full_cycle_duration = self.sprite_duration * n_frames;
-        self.cycle += dt / full_cycle_duration;
+        self.cycle += dt / self.duration;
 
         match self.animation_mode {
             Once => {
@@ -135,11 +136,6 @@ impl AnimatedSprite {
             Repeat => {
                 self.cycle -= self.cycle.floor();
             }
-            RepeatFrom(idx) => {
-                if self.cycle > 1.0 {
-                    self.cycle = idx as f32 / n_frames;
-                }
-            }
         }
 
         assert!(self.cycle <= 1.0);
@@ -147,7 +143,7 @@ impl AnimatedSprite {
 
     pub fn get_current_frame(&self) -> Sprite {
         let max_idx = (self.frames.len() - 1) as f32;
-        let frame_idx = (self.cycle * max_idx) as usize;
+        let frame_idx = (self.cycle * max_idx).round() as usize;
 
         let mut frame = self.frames[frame_idx];
         frame.scale = self.scale;
@@ -378,13 +374,18 @@ pub fn draw_entity(entity: &Entity, draw_queue: &mut Vec<DrawPrimitive>) {
         return;
     }
 
-    // Main primitive
     let rect = entity.get_collider();
-    draw_queue.push(DrawPrimitive::from_rect(
-        rect,
-        Space::World,
-        Color::new(0.6, 0.8, 0.2, 1.0),
-    ));
+    // Main primitive
+    if let Some(animator) = entity.animator.as_ref() {
+        let origin = Origin::BotCenter(entity.position);
+        draw_queue.push(animator.get_draw_primitive(origin));
+    } else {
+        draw_queue.push(DrawPrimitive::from_rect(
+            rect,
+            Space::World,
+            Color::new(0.6, 0.8, 0.2, 1.0),
+        ));
+    }
 
     // Healthbar
     let alive_color = Color::new(0.0, 1.0, 0.0, 1.0);

@@ -42,6 +42,8 @@ pub struct Entity {
     melee_weapon: Option<MeleeWeapon>,
     range_weapon: Option<RangeWeapon>,
 
+    pub animator: Option<Animator>,
+
     pub score: u32,
 }
 
@@ -57,6 +59,7 @@ impl Entity {
         max_health: f32,
         melee_weapon: Option<MeleeWeapon>,
         range_weapon: Option<RangeWeapon>,
+        animator: Option<Animator>,
     ) -> Self {
         let flags = Flag::Player as u64 * is_player as u64;
 
@@ -74,6 +77,7 @@ impl Entity {
             current_health: max_health,
             melee_weapon,
             range_weapon,
+            animator,
             score: 0,
         }
     }
@@ -205,8 +209,8 @@ impl Entity {
             && (time - self.last_jump_time) >= self.jump_period
     }
 
-    pub fn check_if_can_step(&self, time: f32) -> bool {
-        !self.check_if_attacking(time)
+    pub fn check_if_can_step(&self, floor_y: f32, time: f32) -> bool {
+        !self.check_if_attacking(time) && self.check_if_on_floor(floor_y)
     }
 
     pub fn check_if_can_reach_by_melee(
@@ -288,21 +292,11 @@ impl Entity {
         }
     }
 
-    /*
     pub fn update_animator(&mut self, dt: f32) {
-        use AnimationType::*;
-        let animator = self.animator.as_mut().unwrap();
-        match self.state {
-            EntityState::Idle => animator.play(Idle),
-            EntityState::Moving => animator.play(Move),
-            EntityState::Jumpint => animator.play(Jump),
-            EntityState::Attacking => animator.play(Attack),
-            EntityState::Dead => animator.play(Die),
+        if let Some(animator) = self.animator.as_mut() {
+            animator.update(dt);
         }
-
-        animator.update(dt);
     }
-    */
 }
 
 #[derive(Clone, Copy)]
@@ -524,32 +518,31 @@ impl Spawner {
     }
 }
 
-#[derive(Eq, Hash, PartialEq, Clone)]
+#[derive(Eq, Hash, PartialEq, Clone, Copy, Debug)]
 pub enum AnimationType {
     Default_,
     Idle,
     Move,
     Attack,
+    Jump,
     Hurt,
     Die,
 }
 
 #[derive(Clone)]
 pub struct Animator {
-    pub rect: Rect,
     pub flip: bool,
-    animation_type: AnimationType,
+    pub animation_type: AnimationType,
     animation_to_sprite: HashMap<AnimationType, AnimatedSprite>,
 }
 
 impl Animator {
-    pub fn new(rect: Rect, default_sprite: AnimatedSprite) -> Self {
+    pub fn new(default_sprite: AnimatedSprite) -> Self {
         let mut animation_to_sprite = HashMap::new();
         animation_to_sprite
             .insert(AnimationType::Default_, default_sprite);
 
         Self {
-            rect,
             flip: false,
             animation_type: AnimationType::Default_,
             animation_to_sprite,
@@ -565,10 +558,17 @@ impl Animator {
     }
 
     pub fn play(&mut self, animation_type: AnimationType) {
+        if self.animation_type != animation_type {
+            self.animation_to_sprite
+                .get_mut(&animation_type)
+                .unwrap()
+                .reset();
+        }
+
         self.animation_type = animation_type;
     }
 
-    pub fn get_draw_primitive(&self) -> DrawPrimitive {
+    pub fn get_draw_primitive(&self, origin: Origin) -> DrawPrimitive {
         let mut sprite = self
             .animation_to_sprite
             .get(&self.animation_type)
@@ -577,7 +577,7 @@ impl Animator {
 
         DrawPrimitive::from_sprite(
             Space::World,
-            Origin::BotCenter(Vec2::zeros()),
+            origin,
             sprite,
             None,
             self.flip,

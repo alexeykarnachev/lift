@@ -97,14 +97,50 @@
     "spriteSourceSize": { "x": 2, "y": 0, "w": 29, "h": 13 },
     "sourceSize": { "w": 32, "h": 16 },
     "duration": 50
+   },
+   {
+    "filename": "rat_jump.11",
+    "frame": { "x": 341, "y": 0, "w": 31, "h": 15 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 2, "y": 0, "w": 29, "h": 13 },
+    "sourceSize": { "w": 32, "h": 16 },
+    "duration": 50
+   },
+   {
+    "filename": "rat_jump.12",
+    "frame": { "x": 372, "y": 0, "w": 31, "h": 15 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 2, "y": 0, "w": 29, "h": 13 },
+    "sourceSize": { "w": 32, "h": 16 },
+    "duration": 50
+   },
+   {
+    "filename": "rat_jump.13",
+    "frame": { "x": 403, "y": 0, "w": 31, "h": 15 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 2, "y": 0, "w": 29, "h": 13 },
+    "sourceSize": { "w": 32, "h": 16 },
+    "duration": 50
+   },
+   {
+    "filename": "rat_jump.14",
+    "frame": { "x": 434, "y": 0, "w": 31, "h": 15 },
+    "rotated": false,
+    "trimmed": true,
+    "spriteSourceSize": { "x": 2, "y": 0, "w": 29, "h": 13 },
+    "sourceSize": { "w": 32, "h": 16 },
+    "duration": 50
    }
  ],
  "meta": {
   "app": "http://www.aseprite.org/",
   "version": "1.3-rc2-x64",
   "image": "rat_jump.png",
-  "format": "I8",
-  "size": { "w": 341, "h": 15 },
+  "format": "RGBA8888",
+  "size": { "w": 465, "h": 15 },
   "scale": "1",
   "frameTags": [
   ],

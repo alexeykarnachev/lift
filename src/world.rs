@@ -60,10 +60,12 @@ impl World {
             let floor_enemies = Vec::with_capacity(128);
             let mut floor_spawners = Vec::with_capacity(1024);
 
-            floor_spawners
-                .push(create_rat_spawner(Vec2::new(-8.0, floor.y)));
-            floor_spawners
-                .push(create_rat_spawner(Vec2::new(8.0, floor.y)));
+            // floor_spawners
+            //     .push(create_rat_spawner(Vec2::new(-8.0, floor.y), &sprite_atlas));
+            floor_spawners.push(create_rat_spawner(
+                Vec2::new(8.0, floor.y),
+                &sprite_atlas,
+            ));
 
             enemies.push(floor_enemies);
             spawners.push(floor_spawners);
@@ -218,6 +220,7 @@ impl World {
     }
 
     pub fn update_enemies(&mut self, dt: f32) {
+        use AnimationType::*;
         use Behaviour::*;
         use Flag::*;
 
@@ -240,6 +243,8 @@ impl World {
             }
 
             let position = enemy.position;
+            let mut animation =
+                enemy.animator.as_ref().unwrap().animation_type;
 
             match enemy.behaviour {
                 Rat => {
@@ -249,6 +254,7 @@ impl World {
                     ) {
                         let attack = enemy.attack_by_melee(self.time);
                         self.melee_attacks.push(attack);
+                        // animation = Attack;
                     } else if enemy.check_if_can_jump(floor_y, self.time)
                         && position.dist_to(target) <= 2.0
                     {
@@ -257,8 +263,19 @@ impl World {
                             angle = PI - angle;
                         }
                         enemy.jump_at_angle(angle, self.time);
-                    } else if enemy.check_if_can_step(self.time) {
+                        animation = Jump;
+                    } else if enemy.check_if_can_step(floor_y, self.time) {
                         enemy.immediate_step(target.x - position.x, dt);
+                        animation = Move;
+                    } else if enemy.check_if_on_floor(floor_y) {
+                        animation = Idle;
+                    }
+
+                    let is_on_floor = enemy.check_if_on_floor(floor_y);
+                    let animator = enemy.animator.as_mut().unwrap();
+                    animator.play(animation);
+                    if is_on_floor {
+                        animator.flip = target.x > position.x;
                     }
                 }
                 _ => {
@@ -270,6 +287,7 @@ impl World {
             }
 
             enemy.update_kinematic(self.gravity, floor_collider, dt);
+            enemy.update_animator(dt);
         }
     }
 
