@@ -8,14 +8,7 @@ use crate::vec::*;
 use std::collections::HashMap;
 use std::fs;
 
-#[repr(u64)]
-#[derive(Debug)]
-pub enum Flag {
-    Dead = 1 << 0,
-    Player = 1 << 1,
-}
-
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Behaviour {
     Player,
     Rat {
@@ -26,7 +19,6 @@ pub enum Behaviour {
 
 #[derive(Clone)]
 pub struct Entity {
-    pub flags: u64,
     pub behaviour: Behaviour,
     pub position: Vec2<f32>,
     collider: Rect,
@@ -64,10 +56,7 @@ impl Entity {
         range_weapon: Option<RangeWeapon>,
         animator: Option<Animator>,
     ) -> Self {
-        let flags = Flag::Player as u64 * is_player as u64;
-
         Self {
-            flags,
             behaviour,
             position,
             collider,
@@ -95,9 +84,6 @@ impl Entity {
 
     pub fn receive_damage(&mut self, value: f32) {
         self.current_health -= value;
-        if self.current_health <= 0.0 {
-            self.set_flag(Flag::Dead);
-        }
     }
 
     pub fn try_receive_bullet_damage(&mut self, bullet: &Bullet) -> bool {
@@ -169,7 +155,7 @@ impl Entity {
             collider,
             weapon.damage,
             attack_delay,
-            self.check_flag(Flag::Player),
+            self.check_if_player(),
         )
     }
 
@@ -193,12 +179,20 @@ impl Entity {
             collider,
             velocity,
             weapon.bullet_damage,
-            self.check_flag(Flag::Player),
+            self.check_if_player(),
         )
+    }
+
+    pub fn check_if_player(&self) -> bool {
+        self.behaviour == Behaviour::Player
     }
 
     pub fn check_if_on_floor(&self, floor_y: f32) -> bool {
         (self.position.y - floor_y).abs() < 1e-4
+    }
+
+    pub fn check_if_dead(&self) -> bool {
+        self.current_health <= 0.0
     }
 
     pub fn check_if_attacking(&self, time: f32) -> bool {
@@ -275,14 +269,6 @@ impl Entity {
         } else {
             false
         }
-    }
-
-    pub fn check_flag(&self, flag: Flag) -> bool {
-        (self.flags & flag as u64) != 0
-    }
-
-    pub fn set_flag(&mut self, flag: Flag) {
-        self.flags |= flag as u64
     }
 
     pub fn update_kinematic(
@@ -587,7 +573,7 @@ pub enum AnimationType {
     MeleeAttack,
     Jump,
     Hurt,
-    Die,
+    Death,
 }
 
 #[derive(Clone)]

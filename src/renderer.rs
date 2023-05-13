@@ -151,7 +151,7 @@ impl Renderer {
         });
 
         world.melee_attacks.iter().for_each(|attack| {
-            draw_melee_attack(attack, &mut self.primitives);
+            // draw_melee_attack(attack, &mut self.primitives);
         });
 
         use WorldState::*;

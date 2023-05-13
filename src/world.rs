@@ -138,8 +138,7 @@ impl World {
             Quit => {}
         }
 
-        use Flag::*;
-        if self.player.check_flag(Dead) && self.state == Play {
+        if self.player.check_if_dead() && self.state == Play {
             self.state = GameOver;
         }
     }
@@ -222,7 +221,6 @@ impl World {
     pub fn update_enemies(&mut self, dt: f32) {
         use AnimationType::*;
         use Behaviour::*;
-        use Flag::*;
 
         let floor_idx = if let Some(idx) = self.get_lift_floor_idx() {
             idx
@@ -235,9 +233,9 @@ impl World {
         let floor_y = floor_collider.get_y_min();
         let target = self.player.get_center();
         let player_collider = self.player.get_collider();
-        let is_player_alive = !self.player.check_flag(Dead);
+        let is_player_alive = !self.player.check_if_dead();
 
-        for enemy in enemies.iter_mut().filter(|e| !e.check_flag(Dead)) {
+        for enemy in enemies.iter_mut() {
             if !is_player_alive {
                 continue;
             }
@@ -250,7 +248,9 @@ impl World {
                     max_jump_distance,
                 } => {
                     let dist_to_target = position.dist_to(target);
-                    if enemy.check_if_can_reach_by_melee(
+                    if enemy.check_if_dead() {
+                        enemy.play_animation(Death);
+                    } else if enemy.check_if_can_reach_by_melee(
                         player_collider,
                         self.time,
                     ) {
@@ -280,10 +280,11 @@ impl World {
                         enemy.play_animation(Idle);
                     }
 
-                    let is_on_floor = enemy.check_if_on_floor(floor_y);
+                    let can_flip = enemy.check_if_on_floor(floor_y)
+                        && !enemy.check_if_dead();
                     let animator = enemy.animator.as_mut().unwrap();
-                    if is_on_floor {
-                        animator.flip = target.x > position.x;
+                    if can_flip {
+                        animator.flip = target.x > position.x
                     }
                 }
                 _ => {
@@ -354,7 +355,6 @@ impl World {
         let floor_collider = floor.get_collider();
         let mut new_bullets = Vec::with_capacity(self.bullets.len());
 
-        use Flag::*;
         'bullet: for bullet in self.bullets.iter_mut() {
             let step = bullet.velocity.scale(dt);
             bullet.position += step;
@@ -362,16 +362,16 @@ impl World {
                 if bullet.is_player_friendly {
                     for enemy in floor_enemies
                         .iter_mut()
-                        .filter(|e| !e.check_flag(Dead))
+                        .filter(|e| !e.check_if_dead())
                     {
                         if enemy.try_receive_bullet_damage(bullet) {
-                            if enemy.check_flag(Dead) {
+                            if enemy.check_if_dead() {
                                 self.player.score += 100;
                             }
                             continue 'bullet;
                         }
                     }
-                } else if !self.player.check_flag(Dead) {
+                } else if !self.player.check_if_dead() {
                     if self.player.try_receive_bullet_damage(bullet) {
                         continue 'bullet;
                     }
@@ -398,7 +398,6 @@ impl World {
         let mut new_melee_attacks =
             Vec::with_capacity(self.melee_attacks.len());
 
-        use Flag::*;
         'attack: for attack in self.melee_attacks.iter_mut() {
             attack.delay -= dt;
             if attack.delay > 0.0 {
@@ -407,18 +406,17 @@ impl World {
             }
 
             if attack.is_player_friendly {
-                for enemy in floor_enemies
-                    .iter_mut()
-                    .filter(|e| !e.check_flag(Dead))
+                for enemy in
+                    floor_enemies.iter_mut().filter(|e| !e.check_if_dead())
                 {
                     if enemy.try_receive_melee_attack_damage(attack) {
-                        if enemy.check_flag(Dead) {
+                        if enemy.check_if_dead() {
                             self.player.score += 100;
                         }
                         continue 'attack;
                     }
                 }
-            } else if !self.player.check_flag(Dead) {
+            } else if !self.player.check_if_dead() {
                 if self.player.try_receive_melee_attack_damage(attack) {
                     continue 'attack;
                 }

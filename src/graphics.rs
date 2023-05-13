@@ -374,10 +374,6 @@ impl GlyphAtlas {
 }
 
 pub fn draw_entity(entity: &Entity, draw_queue: &mut Vec<DrawPrimitive>) {
-    if entity.check_flag(Flag::Dead) {
-        return;
-    }
-
     let rect = entity.get_collider();
     // Main primitive
     if let Some(animator) = entity.animator.as_ref() {
@@ -389,6 +385,10 @@ pub fn draw_entity(entity: &Entity, draw_queue: &mut Vec<DrawPrimitive>) {
             Space::World,
             Color::new(0.6, 0.8, 0.2, 1.0),
         ));
+    }
+
+    if entity.check_if_dead() {
+        return;
     }
 
     // Healthbar
