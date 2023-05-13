@@ -1,19 +1,19 @@
 { "frames": [
    {
     "filename": "rat_idle.0",
-    "frame": { "x": 0, "y": 0, "w": 26, "h": 12 },
+    "frame": { "x": 0, "y": 0, "w": 34, "h": 18 },
     "rotated": false,
-    "trimmed": true,
-    "spriteSourceSize": { "x": 7, "y": 3, "w": 24, "h": 10 },
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 32, "h": 16 },
     "sourceSize": { "w": 32, "h": 16 },
     "duration": 100
    },
    {
     "filename": "rat_idle.1",
-    "frame": { "x": 26, "y": 0, "w": 26, "h": 12 },
+    "frame": { "x": 34, "y": 0, "w": 34, "h": 18 },
     "rotated": false,
-    "trimmed": true,
-    "spriteSourceSize": { "x": 7, "y": 3, "w": 24, "h": 10 },
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 32, "h": 16 },
     "sourceSize": { "w": 32, "h": 16 },
     "duration": 100
    }
@@ -23,7 +23,7 @@
   "version": "1.3-rc2-x64",
   "image": "rat_idle.png",
   "format": "RGBA8888",
-  "size": { "w": 52, "h": 12 },
+  "size": { "w": 68, "h": 18 },
   "scale": "1",
   "frameTags": [
   ],
