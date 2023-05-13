@@ -150,6 +150,10 @@ impl Renderer {
             draw_bullet(bullet, &mut self.primitives);
         });
 
+        world.melee_attacks.iter().for_each(|attack| {
+            draw_melee_attack(attack, &mut self.primitives);
+        });
+
         use WorldState::*;
         if world.state == Play {
             draw_ui(&world.play_ui, &mut self.primitives);

@@ -243,37 +243,45 @@ impl World {
             }
 
             let position = enemy.position;
-            let mut animation =
-                enemy.animator.as_ref().unwrap().animation_type;
 
             match enemy.behaviour {
-                Rat => {
+                Rat {
+                    min_jump_distance,
+                    max_jump_distance,
+                } => {
+                    let dist_to_target = position.dist_to(target);
                     if enemy.check_if_can_reach_by_melee(
                         player_collider,
                         self.time,
                     ) {
-                        let attack = enemy.attack_by_melee(self.time);
+                        let attack = if enemy.check_if_on_floor(floor_y) {
+                            enemy.play_animation(MeleeAttack);
+                            enemy.attack_by_melee(self.time, None)
+                        } else {
+                            enemy.attack_by_melee(self.time, Some(0.0))
+                        };
                         self.melee_attacks.push(attack);
-                        // animation = Attack;
                     } else if enemy.check_if_can_jump(floor_y, self.time)
-                        && position.dist_to(target) <= 2.0
+                        && dist_to_target <= max_jump_distance
+                        && dist_to_target >= min_jump_distance
                     {
                         let mut angle = PI * 0.1;
                         if target.x - position.x < 0.0 {
                             angle = PI - angle;
                         }
                         enemy.jump_at_angle(angle, self.time);
-                        animation = Jump;
+                        enemy.play_animation(Jump);
                     } else if enemy.check_if_can_step(floor_y, self.time) {
                         enemy.immediate_step(target.x - position.x, dt);
-                        animation = Move;
-                    } else if enemy.check_if_on_floor(floor_y) {
-                        animation = Idle;
+                        enemy.play_animation(Move);
+                    } else if enemy.check_if_on_floor(floor_y)
+                        && enemy.check_if_cooling_down(self.time)
+                    {
+                        enemy.play_animation(Idle);
                     }
 
                     let is_on_floor = enemy.check_if_on_floor(floor_y);
                     let animator = enemy.animator.as_mut().unwrap();
-                    animator.play(animation);
                     if is_on_floor {
                         animator.flip = target.x > position.x;
                     }
@@ -387,9 +395,17 @@ impl World {
         let floor_enemies = &mut self.enemies[floor_idx];
 
         let floor_collider = floor.get_collider();
+        let mut new_melee_attacks =
+            Vec::with_capacity(self.melee_attacks.len());
 
         use Flag::*;
-        'attack: for attack in self.melee_attacks.iter() {
+        'attack: for attack in self.melee_attacks.iter_mut() {
+            attack.delay -= dt;
+            if attack.delay > 0.0 {
+                new_melee_attacks.push(attack.clone());
+                continue 'attack;
+            }
+
             if attack.is_player_friendly {
                 for enemy in floor_enemies
                     .iter_mut()
@@ -409,7 +425,7 @@ impl World {
             }
         }
 
-        self.melee_attacks.clear();
+        self.melee_attacks = new_melee_attacks;
     }
 
     fn update_free_camera(&mut self, input: &Input) {

@@ -53,7 +53,7 @@ pub fn create_player(position: Vec2<f32>) -> Entity {
     let collider =
         Rect::from_bot_center(Vec2::zeros(), Vec2::new(0.5, 1.0));
     let range_weapon =
-        RangeWeapon::new(Vec2::new(0.0, 0.7), 0.5, 0.5, 30.0, 100.0);
+        RangeWeapon::new(Vec2::new(0.0, 0.7), 0.5, 0.5, 0.0, 30.0, 100.0);
 
     Entity::new(
         true,
@@ -80,7 +80,11 @@ pub fn create_rat(
     let collider =
         Rect::from_bot_center(Vec2::zeros(), Vec2::new(0.3, 0.2));
     let melee_weapon =
-        MeleeWeapon::new(Vec2::new(0.0, 0.1), 1.0, 1.0, 100.0);
+        MeleeWeapon::new(Vec2::new(0.0, 0.1), 1.7, 0.5, 1.0, 500.0);
+    let behaviour = Behaviour::Rat {
+        min_jump_distance: 2.0,
+        max_jump_distance: 3.25,
+    };
 
     let scale = 0.05;
     let mut animator = Animator::new(AnimatedSprite::new(
@@ -102,10 +106,20 @@ pub fn create_rat(
         Move,
         AnimatedSprite::new(sprite_atlas, "rat_move", 0.5, Repeat, scale),
     );
+    animator.add(
+        MeleeAttack,
+        AnimatedSprite::new(
+            sprite_atlas,
+            "rat_melee_attack",
+            0.5,
+            Once,
+            scale,
+        ),
+    );
 
     Entity::new(
         false,
-        Behaviour::Rat,
+        behaviour,
         position,
         collider,
         2.0,

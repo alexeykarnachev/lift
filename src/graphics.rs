@@ -81,7 +81,7 @@ impl SpriteAtlas {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum AnimationMode {
     Repeat,
     Once,
@@ -122,6 +122,10 @@ impl AnimatedSprite {
 
     pub fn reset(&mut self) {
         self.cycle = 0.0;
+    }
+
+    pub fn is_finished(&self) -> bool {
+        self.animation_mode == AnimationMode::Once && self.cycle == 1.0
     }
 
     pub fn update(&mut self, dt: f32) {
@@ -421,6 +425,18 @@ pub fn draw_bullet(bullet: &Bullet, draw_queue: &mut Vec<DrawPrimitive>) {
         rect,
         Space::World,
         Color::red(1.0),
+    ));
+}
+
+pub fn draw_melee_attack(
+    attack: &MeleeAttack,
+    draw_queue: &mut Vec<DrawPrimitive>,
+) {
+    let rect = attack.get_collider();
+    draw_queue.push(DrawPrimitive::from_rect(
+        rect,
+        Space::World,
+        Color::yellow(0.5),
     ));
 }
 

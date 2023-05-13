@@ -18,7 +18,10 @@ pub enum Flag {
 #[derive(Clone, Debug)]
 pub enum Behaviour {
     Player,
-    Rat,
+    Rat {
+        min_jump_distance: f32,
+        max_jump_distance: f32,
+    },
 }
 
 #[derive(Clone)]
@@ -142,7 +145,11 @@ impl Entity {
         self.jump_to(target, time);
     }
 
-    pub fn attack_by_melee(&mut self, time: f32) -> MeleeAttack {
+    pub fn attack_by_melee(
+        &mut self,
+        time: f32,
+        attack_delay: Option<f32>,
+    ) -> MeleeAttack {
         let weapon = self.melee_weapon.as_mut().unwrap();
         weapon.last_attack_time = time;
 
@@ -151,10 +158,17 @@ impl Entity {
             Vec2::new(weapon.length, weapon.length),
         );
 
+        let attack_delay = if let Some(delay) = attack_delay {
+            delay
+        } else {
+            weapon.attack_duration
+        };
+
         MeleeAttack::new(
             self.position,
             collider,
             weapon.damage,
+            attack_delay,
             self.check_flag(Flag::Player),
         )
     }
@@ -203,14 +217,33 @@ impl Entity {
         is_attacking
     }
 
+    pub fn check_if_cooling_down(&self, time: f32) -> bool {
+        let mut is_attacking = if let Some(weapon) = self.melee_weapon {
+            weapon.is_cooling_down(time)
+        } else {
+            false
+        };
+
+        is_attacking |= if let Some(weapon) = self.range_weapon {
+            weapon.is_cooling_down(time)
+        } else {
+            false
+        };
+
+        is_attacking
+    }
+
     pub fn check_if_can_jump(&self, floor_y: f32, time: f32) -> bool {
         !self.check_if_attacking(time)
+            && !self.check_if_cooling_down(time)
             && self.check_if_on_floor(floor_y)
             && (time - self.last_jump_time) >= self.jump_period
     }
 
     pub fn check_if_can_step(&self, floor_y: f32, time: f32) -> bool {
-        !self.check_if_attacking(time) && self.check_if_on_floor(floor_y)
+        !self.check_if_attacking(time)
+            && !self.check_if_cooling_down(time)
+            && self.check_if_on_floor(floor_y)
     }
 
     pub fn check_if_can_reach_by_melee(
@@ -224,6 +257,7 @@ impl Entity {
                 Vec2::new(weapon.length, weapon.length),
             );
             !self.check_if_attacking(time)
+                && !self.check_if_cooling_down(time)
                 && collider.collide_with_rect(target)
         } else {
             false
@@ -237,6 +271,7 @@ impl Entity {
     ) -> bool {
         if let Some(weapon) = self.range_weapon {
             !self.check_if_attacking(time)
+                && !self.check_if_cooling_down(time)
         } else {
             false
         }
@@ -297,6 +332,11 @@ impl Entity {
             animator.update(dt);
         }
     }
+
+    pub fn play_animation(&mut self, animation_type: AnimationType) {
+        let animator = self.animator.as_mut().unwrap();
+        animator.play(animation_type);
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -304,7 +344,8 @@ pub struct RangeWeapon {
     pub pivot: Vec2<f32>,
     pub length: f32,
     pub last_attack_time: f32,
-    pub attack_period: f32,
+    pub attack_duration: f32,
+    pub attack_cooldown: f32,
     pub bullet_speed: f32,
     pub bullet_damage: f32,
 }
@@ -313,22 +354,30 @@ impl RangeWeapon {
     pub fn new(
         pivot: Vec2<f32>,
         length: f32,
-        attack_period: f32,
+        attack_duration: f32,
+        attack_cooldown: f32,
         bullet_speed: f32,
         bullet_damage: f32,
     ) -> Self {
         Self {
             pivot,
             length,
-            last_attack_time: -attack_period,
-            attack_period,
+            last_attack_time: -(attack_duration + attack_cooldown),
+            attack_duration,
+            attack_cooldown,
             bullet_speed,
             bullet_damage,
         }
     }
 
     pub fn is_attacking(&self, time: f32) -> bool {
-        (time - self.last_attack_time) < self.attack_period
+        (time - self.last_attack_time) < self.attack_duration
+    }
+
+    pub fn is_cooling_down(&self, time: f32) -> bool {
+        !self.is_attacking(time)
+            && (time - self.last_attack_time)
+                < self.attack_duration + self.attack_cooldown
     }
 }
 
@@ -337,7 +386,8 @@ pub struct MeleeWeapon {
     pub pivot: Vec2<f32>,
     pub length: f32,
     pub last_attack_time: f32,
-    pub attack_period: f32,
+    pub attack_duration: f32,
+    pub attack_cooldown: f32,
     pub damage: f32,
 }
 
@@ -345,20 +395,28 @@ impl MeleeWeapon {
     pub fn new(
         pivot: Vec2<f32>,
         length: f32,
-        attack_period: f32,
+        attack_duration: f32,
+        attack_cooldown: f32,
         damage: f32,
     ) -> Self {
         Self {
             pivot,
             length,
-            last_attack_time: -attack_period,
-            attack_period,
+            last_attack_time: -(attack_duration + attack_cooldown),
+            attack_duration,
+            attack_cooldown,
             damage,
         }
     }
 
     pub fn is_attacking(&self, time: f32) -> bool {
-        (time - self.last_attack_time) < self.attack_period
+        (time - self.last_attack_time) < self.attack_duration
+    }
+
+    pub fn is_cooling_down(&self, time: f32) -> bool {
+        !self.is_attacking(time)
+            && (time - self.last_attack_time)
+                < self.attack_duration + self.attack_cooldown
     }
 }
 
@@ -398,6 +456,7 @@ pub struct MeleeAttack {
     pub position: Vec2<f32>,
     collider: Rect,
     pub damage: f32,
+    pub delay: f32,
     pub is_player_friendly: bool,
 }
 
@@ -406,12 +465,14 @@ impl MeleeAttack {
         position: Vec2<f32>,
         collider: Rect,
         damage: f32,
+        delay: f32,
         is_player_friendly: bool,
     ) -> Self {
         Self {
             position,
             collider,
             damage,
+            delay,
             is_player_friendly,
         }
     }
@@ -523,7 +584,7 @@ pub enum AnimationType {
     Default_,
     Idle,
     Move,
-    Attack,
+    MeleeAttack,
     Jump,
     Hurt,
     Die,
