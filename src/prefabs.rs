@@ -59,11 +59,13 @@ pub fn create_player(position: Vec2<f32>) -> Entity {
         true,
         Behaviour::Player,
         position,
+        true,
         collider,
         4.0,
         10.0,
         0.0,
         5000.0,
+        None,
         None,
         Some(range_weapon),
         None,
@@ -125,15 +127,48 @@ pub fn create_rat(
         false,
         behaviour,
         position,
+        true,
         collider,
         2.0,
         8.0,
         2.0,
         1000.0,
+        None,
         Some(melee_weapon),
         None,
         Some(animator),
     )
+}
+
+pub fn create_bat(position: Vec2<f32>) -> Entity {
+    let collider =
+        Rect::from_top_center(Vec2::zeros(), Vec2::new(0.3, 0.3));
+    let melee_weapon =
+        MeleeWeapon::new(Vec2::new(0.0, 0.1), 1.7, 0.5, 1.0, 500.0);
+    let behaviour = Behaviour::Bat;
+    let healing = Healing::new(100.0, 5.0, 5.0);
+
+    Entity::new(
+        false,
+        behaviour,
+        position,
+        false,
+        collider,
+        2.5,
+        8.0,
+        2.0,
+        1000.0,
+        Some(healing),
+        Some(melee_weapon),
+        None,
+        None,
+    )
+}
+
+pub fn create_bat_spawner(position: Vec2<f32>) -> Spawner {
+    let entity = create_bat(position);
+
+    Spawner::new(position, 5.0, 1, entity)
 }
 
 pub fn create_rat_spawner(

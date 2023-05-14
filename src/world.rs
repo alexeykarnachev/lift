@@ -57,15 +57,20 @@ impl World {
         let mut spawners = Vec::with_capacity(n_floors);
         for floor_idx in 0..n_floors {
             let floor = create_floor(floor_idx);
+            let floor_collider = floor.get_collider();
             let floor_enemies = Vec::with_capacity(128);
             let mut floor_spawners = Vec::with_capacity(1024);
 
             // floor_spawners
             //     .push(create_rat_spawner(Vec2::new(-8.0, floor.y), &sprite_atlas));
-            floor_spawners.push(create_rat_spawner(
-                Vec2::new(8.0, floor.y),
-                &sprite_atlas,
-            ));
+            // floor_spawners.push(create_rat_spawner(
+            //     Vec2::new(8.0, floor_collider.get_y_min()),
+            //     &sprite_atlas,
+            // ));
+            floor_spawners.push(create_bat_spawner(Vec2::new(
+                8.0,
+                floor_collider.get_y_max(),
+            )));
 
             enemies.push(floor_enemies);
             spawners.push(floor_spawners);
@@ -182,24 +187,6 @@ impl World {
                 target = Some(Vec2::new(0.0, target_y));
             }
         }
-
-        /*
-        let kinematic = self.lift.kinematic.as_mut().unwrap();
-        if let Some(target) = target {
-            kinematic.target = Some(target);
-        }
-
-        let position = &mut self.lift.position;
-        if let Some(target) = kinematic.target {
-            let diff = target.y - position.y;
-            let step = dt * kinematic.max_speed;
-            if step >= diff.abs() {
-                position.y = target.y;
-            } else {
-                position.y += step * diff.signum();
-            }
-        }
-        */
     }
 
     pub fn update_spawners(&mut self, dt: f32) {
@@ -231,6 +218,7 @@ impl World {
         let enemies = &mut self.enemies[floor_idx];
         let floor_collider = self.floors[floor_idx].get_collider();
         let floor_y = floor_collider.get_y_min();
+        let ceil_y = floor_collider.get_y_max();
         let target = self.player.get_center();
         let player_collider = self.player.get_collider();
         let is_player_alive = !self.player.check_if_dead();
@@ -240,14 +228,14 @@ impl World {
                 continue;
             }
 
-            let position = enemy.position;
+            let position = enemy.get_center();
+            let dist_to_target = position.dist_to(target);
 
             match enemy.behaviour {
                 Rat {
                     min_jump_distance,
                     max_jump_distance,
                 } => {
-                    let dist_to_target = position.dist_to(target);
                     if enemy.check_if_dead() {
                         enemy.play_animation(Death);
                     } else if enemy.check_if_can_reach_by_melee(
@@ -272,7 +260,8 @@ impl World {
                         enemy.jump_at_angle(angle, self.time);
                         enemy.play_animation(Jump);
                     } else if enemy.check_if_can_step(floor_y, self.time) {
-                        enemy.immediate_step(target.x - position.x, dt);
+                        let direction = (target - position).with_y(0.0);
+                        enemy.immediate_step(direction, dt);
                         enemy.play_animation(Move);
                     } else if enemy.check_if_on_floor(floor_y)
                         && enemy.check_if_cooling_down(self.time)
@@ -287,6 +276,28 @@ impl World {
                         animator.flip = target.x > position.x
                     }
                 }
+                Bat => {
+                    let deviation =
+                        Vec2::from_angle(self.time * 4.0).scale(0.5);
+                    if enemy.check_if_dead() {
+                        enemy.apply_gravity = true;
+                        // enemy.play_animation(Death);
+                    } else if enemy.get_health_ratio() < 0.6
+                        && enemy.check_if_can_start_healing()
+                    {
+                        if enemy.check_if_on_ceil(ceil_y) {
+                            enemy.force_start_healing();
+                        } else {
+                            let direction =
+                                Vec2::new(0.0, 1.0) + deviation;
+                            enemy.immediate_step(direction, dt);
+                        }
+                    } else if !enemy.check_if_healing() {
+                        let direction =
+                            (target - position).norm() + deviation;
+                        enemy.immediate_step(direction, dt);
+                    }
+                }
                 _ => {
                     panic!(
                         "Enemy behaviour: {:?} is not implemented",
@@ -295,8 +306,7 @@ impl World {
                 }
             }
 
-            enemy.update_kinematic(self.gravity, floor_collider, dt);
-            enemy.update_animator(dt);
+            enemy.update(self.gravity, floor_collider, dt);
         }
     }
 
@@ -312,10 +322,10 @@ impl World {
 
         use Keyaction::*;
         if input.is_action(Right) {
-            self.player.immediate_step(1.0, dt)
+            self.player.immediate_step(Vec2::new(1.0, 0.0), dt)
         }
         if input.is_action(Left) {
-            self.player.immediate_step(-1.0, dt)
+            self.player.immediate_step(Vec2::new(-1.0, 0.0), dt)
         }
 
         if input.is_action(Up)
@@ -324,8 +334,7 @@ impl World {
             self.player.jump_at_angle(PI * 0.5, self.time);
         }
 
-        self.player
-            .update_kinematic(self.gravity, floor_collider, dt);
+        self.player.update(self.gravity, floor_collider, dt);
 
         // Shoot
         if input.lmb_is_down {

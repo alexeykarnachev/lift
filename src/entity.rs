@@ -15,12 +15,14 @@ pub enum Behaviour {
         min_jump_distance: f32,
         max_jump_distance: f32,
     },
+    Bat,
 }
 
 #[derive(Clone)]
 pub struct Entity {
     pub behaviour: Behaviour,
     pub position: Vec2<f32>,
+    pub apply_gravity: bool,
     collider: Rect,
 
     pub move_speed: f32,
@@ -34,6 +36,7 @@ pub struct Entity {
     max_health: f32,
     current_health: f32,
 
+    healing: Option<Healing>,
     melee_weapon: Option<MeleeWeapon>,
     range_weapon: Option<RangeWeapon>,
 
@@ -47,11 +50,13 @@ impl Entity {
         is_player: bool,
         behaviour: Behaviour,
         position: Vec2<f32>,
+        apply_gravity: bool,
         collider: Rect,
         move_speed: f32,
         jump_speed: f32,
         jump_period: f32,
         max_health: f32,
+        healing: Option<Healing>,
         melee_weapon: Option<MeleeWeapon>,
         range_weapon: Option<RangeWeapon>,
         animator: Option<Animator>,
@@ -59,14 +64,16 @@ impl Entity {
         Self {
             behaviour,
             position,
+            apply_gravity,
             collider,
             move_speed,
             jump_speed,
             jump_period,
-            last_jump_time: -jump_period,
+            last_jump_time: -f32::INFINITY,
             velocity: Vec2::zeros(),
             max_health,
             current_health: max_health,
+            healing,
             melee_weapon,
             range_weapon,
             animator,
@@ -75,7 +82,7 @@ impl Entity {
     }
 
     pub fn get_collider(&self) -> Rect {
-        self.collider.with_bot_center(self.position)
+        self.collider.translate(self.position)
     }
 
     pub fn get_center(&self) -> Vec2<f32> {
@@ -115,9 +122,9 @@ impl Entity {
         self.current_health / self.max_health
     }
 
-    pub fn immediate_step(&mut self, direction: f32, dt: f32) {
-        self.position.x +=
-            direction.clamp(-1.0, 1.0) * self.move_speed * dt;
+    pub fn immediate_step(&mut self, direction: Vec2<f32>, dt: f32) {
+        let step = direction.norm().with_len(self.move_speed * dt);
+        self.position += step;
     }
 
     pub fn jump_to(&mut self, target: Vec2<f32>, time: f32) {
@@ -129,6 +136,10 @@ impl Entity {
     pub fn jump_at_angle(&mut self, angle: f32, time: f32) {
         let target = self.position + Vec2::new(angle.cos(), angle.sin());
         self.jump_to(target, time);
+    }
+
+    pub fn force_start_healing(&mut self) {
+        self.healing.as_mut().unwrap().force_start();
     }
 
     pub fn attack_by_melee(
@@ -188,7 +199,13 @@ impl Entity {
     }
 
     pub fn check_if_on_floor(&self, floor_y: f32) -> bool {
-        (self.position.y - floor_y).abs() < 1e-4
+        let collider = self.get_collider();
+        (collider.get_y_min() - floor_y).abs() < 1e-5
+    }
+
+    pub fn check_if_on_ceil(&self, ceil_y: f32) -> bool {
+        let collider = self.get_collider();
+        (collider.get_y_max() - ceil_y).abs() < 1e-5
     }
 
     pub fn check_if_dead(&self) -> bool {
@@ -227,6 +244,14 @@ impl Entity {
         is_attacking
     }
 
+    pub fn check_if_healing(&self) -> bool {
+        if let Some(healing) = self.healing {
+            healing.is_started
+        } else {
+            false
+        }
+    }
+
     pub fn check_if_can_jump(&self, floor_y: f32, time: f32) -> bool {
         !self.check_if_attacking(time)
             && !self.check_if_cooling_down(time)
@@ -238,6 +263,14 @@ impl Entity {
         !self.check_if_attacking(time)
             && !self.check_if_cooling_down(time)
             && self.check_if_on_floor(floor_y)
+    }
+
+    pub fn check_if_can_start_healing(&self) -> bool {
+        if let Some(healing) = self.healing {
+            self.healing.as_ref().unwrap().check_if_can_start()
+        } else {
+            false
+        }
     }
 
     pub fn check_if_can_reach_by_melee(
@@ -271,28 +304,34 @@ impl Entity {
         }
     }
 
-    pub fn update_kinematic(
-        &mut self,
-        gravity: f32,
-        floor_collider: Rect,
-        dt: f32,
-    ) {
+    pub fn update(&mut self, gravity: f32, floor_collider: Rect, dt: f32) {
+        if let Some(healing) = self.healing.as_mut() {
+            self.current_health += healing.update(dt);
+        }
+
+        if let Some(animator) = self.animator.as_mut() {
+            animator.update(dt);
+        }
+
+        self.position += self.velocity.scale(dt);
+
         let floor_y = floor_collider.get_y_min();
         let was_on_floor = self.check_if_on_floor(floor_y);
-        self.position += self.velocity.scale(dt);
-        self.position.y = self.position.y.max(floor_y);
-        let is_on_floor = self.check_if_on_floor(floor_y);
+        let self_collider = self.get_collider();
+        let dist_to_floor = self_collider.get_y_min() - floor_y;
+        if dist_to_floor <= 0.0 {
+            self.position.y -= dist_to_floor;
+        }
 
-        if is_on_floor {
+        if self.check_if_on_floor(floor_y) {
             if !was_on_floor {
                 self.velocity.x = 0.0;
             }
             self.velocity.y = 0.0;
-        } else {
+        } else if self.apply_gravity {
             self.velocity.y -= gravity * dt;
         }
 
-        let self_collider = self.get_collider();
         let left_offset =
             floor_collider.get_x_min() - self_collider.get_x_min();
         if left_offset > 0.0 {
@@ -310,12 +349,6 @@ impl Entity {
         if up_offset > 0.0 {
             self.position.y -= up_offset;
             self.velocity.y = 0.0;
-        }
-    }
-
-    pub fn update_animator(&mut self, dt: f32) {
-        if let Some(animator) = self.animator.as_mut() {
-            animator.update(dt);
         }
     }
 
@@ -364,6 +397,53 @@ impl RangeWeapon {
         !self.is_attacking(time)
             && (time - self.last_attack_time)
                 < self.attack_duration + self.attack_cooldown
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct Healing {
+    speed: f32,
+    duration: f32,
+    cooldown: f32,
+    time_since_start: f32,
+    is_started: bool,
+}
+
+impl Healing {
+    pub fn new(speed: f32, duration: f32, cooldown: f32) -> Self {
+        Self {
+            speed,
+            duration,
+            cooldown,
+            time_since_start: cooldown + duration,
+            is_started: false,
+        }
+    }
+
+    pub fn check_if_can_start(&self) -> bool {
+        !self.is_started
+            && (self.time_since_start >= (self.cooldown + self.duration))
+    }
+
+    pub fn force_start(&mut self) {
+        self.is_started = true;
+        self.time_since_start = 0.0;
+    }
+
+    pub fn update(&mut self, dt: f32) -> f32 {
+        self.time_since_start += dt;
+
+        let value = if !self.is_started {
+            0.0
+        } else {
+            if self.time_since_start >= self.duration {
+                self.is_started = false;
+            }
+
+            self.speed * dt
+        };
+
+        value
     }
 }
 

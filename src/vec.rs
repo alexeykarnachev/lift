@@ -50,6 +50,12 @@ impl<T: From<f32>> Vec2<T> {
             y: 0.0.into(),
         }
     }
+    pub fn from_angle(theta: f32) -> Self {
+        Self {
+            x: theta.cos().into(),
+            y: theta.sin().into(),
+        }
+    }
 }
 
 impl<T: Float> Vec2<T> {
@@ -239,6 +245,13 @@ impl Rect {
     pub fn from_bot_center(position: Vec2<f32>, size: Vec2<f32>) -> Self {
         let mut center = position;
         center.y += size.y * 0.5;
+
+        Self::from_center(center, size)
+    }
+
+    pub fn from_top_center(position: Vec2<f32>, size: Vec2<f32>) -> Self {
+        let mut center = position;
+        center.y -= size.y * 0.5;
 
         Self::from_center(center, size)
     }
