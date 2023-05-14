@@ -1,7 +1,7 @@
 { "frames": [
    {
     "filename": "rat_move.0",
-    "frame": { "x": 0, "y": 0, "w": 34, "h": 18 },
+    "frame": { "x": 1, "y": 1, "w": 32, "h": 16 },
     "rotated": false,
     "trimmed": false,
     "spriteSourceSize": { "x": 0, "y": 0, "w": 32, "h": 16 },
@@ -10,7 +10,7 @@
    },
    {
     "filename": "rat_move.1",
-    "frame": { "x": 34, "y": 0, "w": 34, "h": 18 },
+    "frame": { "x": 35, "y": 1, "w": 32, "h": 16 },
     "rotated": false,
     "trimmed": false,
     "spriteSourceSize": { "x": 0, "y": 0, "w": 32, "h": 16 },
@@ -19,7 +19,7 @@
    },
    {
     "filename": "rat_move.2",
-    "frame": { "x": 68, "y": 0, "w": 34, "h": 18 },
+    "frame": { "x": 69, "y": 1, "w": 32, "h": 16 },
     "rotated": false,
     "trimmed": false,
     "spriteSourceSize": { "x": 0, "y": 0, "w": 32, "h": 16 },
@@ -28,7 +28,7 @@
    },
    {
     "filename": "rat_move.3",
-    "frame": { "x": 102, "y": 0, "w": 34, "h": 18 },
+    "frame": { "x": 103, "y": 1, "w": 32, "h": 16 },
     "rotated": false,
     "trimmed": false,
     "spriteSourceSize": { "x": 0, "y": 0, "w": 32, "h": 16 },
@@ -37,7 +37,7 @@
    },
    {
     "filename": "rat_move.4",
-    "frame": { "x": 136, "y": 0, "w": 34, "h": 18 },
+    "frame": { "x": 137, "y": 1, "w": 32, "h": 16 },
     "rotated": false,
     "trimmed": false,
     "spriteSourceSize": { "x": 0, "y": 0, "w": 32, "h": 16 },
@@ -46,7 +46,7 @@
    },
    {
     "filename": "rat_move.5",
-    "frame": { "x": 170, "y": 0, "w": 34, "h": 18 },
+    "frame": { "x": 171, "y": 1, "w": 32, "h": 16 },
     "rotated": false,
     "trimmed": false,
     "spriteSourceSize": { "x": 0, "y": 0, "w": 32, "h": 16 },
@@ -55,7 +55,7 @@
    },
    {
     "filename": "rat_move.6",
-    "frame": { "x": 204, "y": 0, "w": 34, "h": 18 },
+    "frame": { "x": 205, "y": 1, "w": 32, "h": 16 },
     "rotated": false,
     "trimmed": false,
     "spriteSourceSize": { "x": 0, "y": 0, "w": 32, "h": 16 },
@@ -64,7 +64,7 @@
    },
    {
     "filename": "rat_move.7",
-    "frame": { "x": 238, "y": 0, "w": 34, "h": 18 },
+    "frame": { "x": 239, "y": 1, "w": 32, "h": 16 },
     "rotated": false,
     "trimmed": false,
     "spriteSourceSize": { "x": 0, "y": 0, "w": 32, "h": 16 },

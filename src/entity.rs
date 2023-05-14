@@ -229,19 +229,19 @@ impl Entity {
     }
 
     pub fn check_if_cooling_down(&self, time: f32) -> bool {
-        let mut is_attacking = if let Some(weapon) = self.melee_weapon {
+        let mut is_cooling_down = if let Some(weapon) = self.melee_weapon {
             weapon.is_cooling_down(time)
         } else {
             false
         };
 
-        is_attacking |= if let Some(weapon) = self.range_weapon {
+        is_cooling_down |= if let Some(weapon) = self.range_weapon {
             weapon.is_cooling_down(time)
         } else {
             false
         };
 
-        is_attacking
+        is_cooling_down
     }
 
     pub fn check_if_healing(&self) -> bool {

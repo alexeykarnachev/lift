@@ -384,12 +384,18 @@ pub fn draw_entity(entity: &Entity, draw_queue: &mut Vec<DrawPrimitive>) {
     // Main primitive
     if let Some(animator) = entity.animator.as_ref() {
         draw_queue.push(animator.get_draw_primitive(entity.position));
+        draw_queue.push(DrawPrimitive::from_rect(
+            rect,
+            Space::World,
+            Color::new(1.0, 0.0, 0.0, 0.1),
+        ));
+    } else {
+        draw_queue.push(DrawPrimitive::from_rect(
+            rect,
+            Space::World,
+            Color::new(1.0, 0.0, 0.0, 0.75),
+        ));
     }
-    draw_queue.push(DrawPrimitive::from_rect(
-        rect,
-        Space::World,
-        Color::new(1.0, 0.0, 0.0, 0.25),
-    ));
 
     if entity.check_if_dead() {
         return;

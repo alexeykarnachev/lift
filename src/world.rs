@@ -61,8 +61,10 @@ impl World {
             let floor_enemies = Vec::with_capacity(128);
             let mut floor_spawners = Vec::with_capacity(1024);
 
-            // floor_spawners
-            //     .push(create_rat_spawner(Vec2::new(-8.0, floor.y), &sprite_atlas));
+            floor_spawners.push(create_rat_spawner(
+                Vec2::new(-8.0, floor.y),
+                &sprite_atlas,
+            ));
             // floor_spawners.push(create_rat_spawner(
             //     Vec2::new(8.0, floor_collider.get_y_min()),
             //     &sprite_atlas,
@@ -85,9 +87,9 @@ impl World {
         let shaft = create_shaft(n_floors);
 
         let position = Vec2::new(0.0, lift.y);
-        let mut player = create_player(position);
+        let mut player = create_player(position, &sprite_atlas);
 
-        let camera = Camera::new(Vec2::new(0.0, lift.y));
+        let camera = Camera::new(player.get_center().add_y(3.0));
 
         let play_ui = create_default_play_ui();
         let mut game_over_ui = create_default_game_over_ui();
@@ -280,7 +282,7 @@ impl World {
                         Vec2::from_angle(self.time * 4.0).scale(0.5);
                     if enemy.check_if_dead() {
                         enemy.apply_gravity = true;
-                        // enemy.play_animation(Death);
+                        enemy.play_animation("death");
                     } else if enemy.get_health_ratio() < 0.6
                         && enemy.check_if_can_start_healing()
                     {
@@ -299,14 +301,28 @@ impl World {
                         let attack =
                             enemy.attack_by_melee(self.time, None);
                         self.melee_attacks.push(attack);
+                        enemy.play_animation("melee_attack");
                     } else if enemy.check_if_can_step(floor_y, self.time)
                         && !enemy.check_if_healing()
                     {
                         let direction =
                             (target - position).norm() + deviation;
                         enemy.immediate_step(direction, dt);
-                    } else if !enemy.check_if_healing() {
+                        enemy.play_animation("wave");
+                    } else if !enemy.check_if_healing()
+                        && enemy.check_if_cooling_down(self.time)
+                    {
                         enemy.immediate_step(deviation, dt * 0.3);
+                        enemy.play_animation("wave");
+                    } else if enemy.check_if_healing() {
+                        enemy.play_animation("sleep");
+                    }
+
+                    let can_flip = !enemy.check_if_dead()
+                        && !enemy.check_if_healing();
+                    let animator = enemy.animator.as_mut().unwrap();
+                    if can_flip {
+                        animator.flip = target.x > position.x
                     }
                 }
                 _ => {
@@ -536,7 +552,7 @@ impl Camera {
     fn new(position: Vec2<f32>) -> Self {
         Self {
             position,
-            view_width: 20.0,
+            view_width: 40.0,
             aspect: 1.77,
         }
     }

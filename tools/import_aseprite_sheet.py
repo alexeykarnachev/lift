@@ -72,10 +72,11 @@ if __name__ == "__main__":
 
             frame = frame["frame"]
 
-            frame["x"] += 1
-            frame["y"] += 1 + cursor
-            frame["w"] -= 2
-            frame["h"] -= 2
+            # frame["x"] += 1
+            # frame["y"] += 1 + cursor
+            # frame["w"] -= 2
+            # frame["h"] -= 2
+            frame["y"] += cursor
 
             x = frame["x"]
             y = atlas_height - frame["y"]

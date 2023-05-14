@@ -20,7 +20,6 @@ void main(void) {
     } else if (vs_tex_id == 2) {
         vec2 tex_size = vec2(textureSize(glyph_atlas_tex, 0));
         vec2 uv = vs_uv;
-        // uv = floor(uv) + min(fract(uv) / fwidth(uv), 1.0) - 0.5;
         uv /= tex_size;
 
         float alpha = texture(glyph_atlas_tex, uv).r;

@@ -4,7 +4,7 @@ use crate::ui::*;
 use crate::vec::*;
 
 const FLOOR_WIDTH: f32 = 100.0;
-const FLOOR_HEIGHT: f32 = 2.5;
+const FLOOR_HEIGHT: f32 = 6.0;
 const LIFT_WIDTH: f32 = FLOOR_HEIGHT * 0.6;
 const LIFT_HEIGHT: f32 = FLOOR_HEIGHT;
 const SHAFT_WIDTH: f32 = LIFT_WIDTH * 1.2;
@@ -50,11 +50,37 @@ pub fn create_lift_entity(floor_idx: usize) -> Lift {
     )
 }
 
-pub fn create_player(position: Vec2<f32>) -> Entity {
+pub fn create_player(
+    position: Vec2<f32>,
+    sprite_atlas: &SpriteAtlas,
+) -> Entity {
+    use AnimationMode::*;
+    use Origin::*;
+
     let collider =
-        Rect::from_bot_center(Vec2::zeros(), Vec2::new(0.5, 1.0));
+        Rect::from_bot_center(Vec2::zeros(), Vec2::new(1.0, 3.0));
     let range_weapon =
         RangeWeapon::new(Vec2::new(0.0, 0.7), 0.5, 0.5, 0.0, 30.0, 500.0);
+
+    let mut animator = Animator::new(AnimatedSprite::new(
+        sprite_atlas,
+        "ranger_idle",
+        0.5,
+        Repeat,
+        SPRITE_SCALE,
+        BotCenter,
+    ));
+    animator.add(
+        "idle",
+        AnimatedSprite::new(
+            sprite_atlas,
+            "ranger_idle",
+            0.5,
+            Repeat,
+            SPRITE_SCALE,
+            BotCenter,
+        ),
+    );
 
     Entity::new(
         true,
@@ -69,7 +95,7 @@ pub fn create_player(position: Vec2<f32>) -> Entity {
         None,
         None,
         Some(range_weapon),
-        None,
+        Some(animator),
     )
 }
 
@@ -180,7 +206,7 @@ pub fn create_bat(
     let collider =
         Rect::from_top_center(Vec2::zeros(), Vec2::new(0.8, 0.8));
     let melee_weapon =
-        MeleeWeapon::new(Vec2::new(0.0, 0.1), 1.7, 0.5, 1.0, 500.0);
+        MeleeWeapon::new(Vec2::new(0.0, 0.1), 0.8, 0.25, 1.0, 500.0);
     let behaviour = Behaviour::Bat;
     let healing = Healing::new(100.0, 5.0, 5.0);
 
@@ -199,6 +225,39 @@ pub fn create_bat(
             "bat_wave",
             0.25,
             Repeat,
+            SPRITE_SCALE,
+            TopCenter,
+        ),
+    );
+    animator.add(
+        "sleep",
+        AnimatedSprite::new(
+            sprite_atlas,
+            "bat_sleep",
+            1.0,
+            Repeat,
+            SPRITE_SCALE,
+            TopCenter,
+        ),
+    );
+    animator.add(
+        "melee_attack",
+        AnimatedSprite::new(
+            sprite_atlas,
+            "bat_melee_attack",
+            0.25,
+            Once,
+            SPRITE_SCALE,
+            TopCenter,
+        ),
+    );
+    animator.add(
+        "death",
+        AnimatedSprite::new(
+            sprite_atlas,
+            "bat_death",
+            0.5,
+            Once,
             SPRITE_SCALE,
             TopCenter,
         ),
