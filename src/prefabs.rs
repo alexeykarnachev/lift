@@ -65,7 +65,7 @@ pub fn create_player(
     let mut animator = Animator::new(AnimatedSprite::new(
         sprite_atlas,
         "ranger_idle",
-        0.5,
+        1.2,
         Repeat,
         SPRITE_SCALE,
         BotCenter,
@@ -75,7 +75,7 @@ pub fn create_player(
         AnimatedSprite::new(
             sprite_atlas,
             "ranger_idle",
-            0.5,
+            1.2,
             Repeat,
             SPRITE_SCALE,
             BotCenter,
