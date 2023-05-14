@@ -22,6 +22,8 @@ pub struct Sprite {
 
     #[serde(skip)]
     pub scale: f32,
+    #[serde(skip)]
+    pub origin: Origin,
 }
 
 impl Sprite {
@@ -93,6 +95,7 @@ pub struct AnimatedSprite {
     pub duration: f32,
     pub animation_mode: AnimationMode,
     pub scale: f32,
+    pub origin: Origin,
     cycle: f32,
 
     frames: Vec<Sprite>,
@@ -105,6 +108,7 @@ impl AnimatedSprite {
         duration: f32,
         animation_mode: AnimationMode,
         scale: f32,
+        origin: Origin,
     ) -> Self {
         let frames = sprite_atlas.sprites.get(name).unwrap_or_else(|| {
             panic!("There is no such sprite in the sprite atlas: {}", name)
@@ -115,6 +119,7 @@ impl AnimatedSprite {
             duration,
             animation_mode,
             scale,
+            origin,
             cycle: 0.0,
             frames: frames.to_vec(),
         }
@@ -151,6 +156,7 @@ impl AnimatedSprite {
 
         let mut frame = self.frames[frame_idx];
         frame.scale = self.scale;
+        frame.origin = self.origin;
 
         frame
     }
@@ -234,14 +240,14 @@ impl DrawPrimitive {
 
     pub fn from_sprite(
         space: Space,
-        origin: Origin,
+        position: Vec2<f32>,
         sprite: Sprite,
         color: Option<Color>,
         flip: bool,
         tex: Texture,
     ) -> Self {
         let size = Vec2::new(sprite.w, sprite.h).scale(sprite.scale);
-        let rect = Rect::from_origin(origin, size);
+        let rect = Rect::from_origin(sprite.origin, position, size);
 
         Self {
             rect,
@@ -377,15 +383,13 @@ pub fn draw_entity(entity: &Entity, draw_queue: &mut Vec<DrawPrimitive>) {
     let rect = entity.get_collider();
     // Main primitive
     if let Some(animator) = entity.animator.as_ref() {
-        let origin = Origin::BotCenter(entity.position);
-        draw_queue.push(animator.get_draw_primitive(origin));
-    } else {
-        draw_queue.push(DrawPrimitive::from_rect(
-            rect,
-            Space::World,
-            Color::new(0.6, 0.8, 0.2, 1.0),
-        ));
+        draw_queue.push(animator.get_draw_primitive(entity.position));
     }
+    draw_queue.push(DrawPrimitive::from_rect(
+        rect,
+        Space::World,
+        Color::new(1.0, 0.0, 0.0, 0.25),
+    ));
 
     if entity.check_if_dead() {
         return;

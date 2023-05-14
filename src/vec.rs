@@ -189,24 +189,33 @@ impl<T: Float> Vec2<T> {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
 pub enum Origin {
-    Center(Vec2<f32>),
-    BotCenter(Vec2<f32>),
-    BotLeft(Vec2<f32>),
-    TopLeft(Vec2<f32>),
-    RightCenter(Vec2<f32>),
-    LeftCenter(Vec2<f32>),
+    Center,
+    BotCenter,
+    TopCenter,
+    BotLeft,
+    TopLeft,
+    RightCenter,
+    LeftCenter,
+}
+
+impl Default for Origin {
+    fn default() -> Self {
+        Self::Center
+    }
 }
 
 impl Origin {
-    pub fn from_str(name: &str, position: Vec2<f32>) -> Self {
+    pub fn from_str(name: &str) -> Self {
         match name {
-            "Center" => Self::Center(position),
-            "BotCenter" => Self::BotCenter(position),
-            "BotLeft" => Self::BotLeft(position),
-            "TopLeft" => Self::TopLeft(position),
-            "RightCenter" => Self::RightCenter(position),
-            "LeftCenter" => Self::LeftCenter(position),
+            "Center" => Self::Center,
+            "BotCenter" => Self::BotCenter,
+            "TopCenter" => Self::TopCenter,
+            "BotLeft" => Self::BotLeft,
+            "TopLeft" => Self::TopLeft,
+            "RightCenter" => Self::RightCenter,
+            "LeftCenter" => Self::LeftCenter,
             _ => {
                 panic!("Unknown Origin: {}", name)
             }
@@ -221,15 +230,20 @@ pub struct Rect {
 }
 
 impl Rect {
-    pub fn from_origin(origin: Origin, size: Vec2<f32>) -> Self {
+    pub fn from_origin(
+        origin: Origin,
+        position: Vec2<f32>,
+        size: Vec2<f32>,
+    ) -> Self {
         use Origin::*;
         return match origin {
-            Center(p) => Self::from_center(p, size),
-            BotCenter(p) => Self::from_bot_center(p, size),
-            BotLeft(p) => Self::from_bot_left(p, size),
-            TopLeft(p) => Self::from_top_left(p, size),
-            RightCenter(p) => Self::from_right_center(p, size),
-            LeftCenter(p) => Self::from_left_center(p, size),
+            Center => Self::from_center(position, size),
+            BotCenter => Self::from_bot_center(position, size),
+            TopCenter => Self::from_top_center(position, size),
+            BotLeft => Self::from_bot_left(position, size),
+            TopLeft => Self::from_top_left(position, size),
+            RightCenter => Self::from_right_center(position, size),
+            LeftCenter => Self::from_left_center(position, size),
         };
     }
 

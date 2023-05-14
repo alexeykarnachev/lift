@@ -67,10 +67,10 @@ impl World {
             //     Vec2::new(8.0, floor_collider.get_y_min()),
             //     &sprite_atlas,
             // ));
-            floor_spawners.push(create_bat_spawner(Vec2::new(
-                8.0,
-                floor_collider.get_y_max(),
-            )));
+            floor_spawners.push(create_bat_spawner(
+                Vec2::new(8.0, floor_collider.get_y_max()),
+                &sprite_atlas,
+            ));
 
             enemies.push(floor_enemies);
             spawners.push(floor_spawners);
@@ -97,7 +97,7 @@ impl World {
         Self {
             state: WorldState::Play,
             time: 0.0,
-            gravity: 9.8,
+            gravity: 20.0,
             camera,
             shaft,
             lift,
@@ -206,7 +206,6 @@ impl World {
     }
 
     pub fn update_enemies(&mut self, dt: f32) {
-        use AnimationType::*;
         use Behaviour::*;
 
         let floor_idx = if let Some(idx) = self.get_lift_floor_idx() {
@@ -237,13 +236,13 @@ impl World {
                     max_jump_distance,
                 } => {
                     if enemy.check_if_dead() {
-                        enemy.play_animation(Death);
+                        enemy.play_animation("death");
                     } else if enemy.check_if_can_reach_by_melee(
                         player_collider,
                         self.time,
                     ) {
                         let attack = if enemy.check_if_on_floor(floor_y) {
-                            enemy.play_animation(MeleeAttack);
+                            enemy.play_animation("melee_attack");
                             enemy.attack_by_melee(self.time, None)
                         } else {
                             enemy.attack_by_melee(self.time, Some(0.0))
@@ -258,15 +257,15 @@ impl World {
                             angle = PI - angle;
                         }
                         enemy.jump_at_angle(angle, self.time);
-                        enemy.play_animation(Jump);
+                        enemy.play_animation("jump");
                     } else if enemy.check_if_can_step(floor_y, self.time) {
                         let direction = (target - position).with_y(0.0);
                         enemy.immediate_step(direction, dt);
-                        enemy.play_animation(Move);
+                        enemy.play_animation("move");
                     } else if enemy.check_if_on_floor(floor_y)
                         && enemy.check_if_cooling_down(self.time)
                     {
-                        enemy.play_animation(Idle);
+                        enemy.play_animation("idle");
                     }
 
                     let can_flip = enemy.check_if_on_floor(floor_y)
@@ -292,10 +291,22 @@ impl World {
                                 Vec2::new(0.0, 1.0) + deviation;
                             enemy.immediate_step(direction, dt);
                         }
-                    } else if !enemy.check_if_healing() {
+                    } else if enemy.check_if_can_reach_by_melee(
+                        player_collider,
+                        self.time,
+                    ) && !enemy.check_if_healing()
+                    {
+                        let attack =
+                            enemy.attack_by_melee(self.time, None);
+                        self.melee_attacks.push(attack);
+                    } else if enemy.check_if_can_step(floor_y, self.time)
+                        && !enemy.check_if_healing()
+                    {
                         let direction =
                             (target - position).norm() + deviation;
                         enemy.immediate_step(direction, dt);
+                    } else if !enemy.check_if_healing() {
+                        enemy.immediate_step(deviation, dt * 0.3);
                     }
                 }
                 _ => {

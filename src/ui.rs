@@ -79,8 +79,7 @@ impl UI {
         let mut event = None;
         self.texts.clear();
         for element in &self.elements {
-            let origin =
-                Origin::from_str(&element.position.origin, Vec2::zeros());
+            let origin = Origin::from_str(&element.position.origin);
 
             let mut position =
                 Vec2::new(element.position.x, element.position.y);

@@ -260,9 +260,13 @@ impl Entity {
     }
 
     pub fn check_if_can_step(&self, floor_y: f32, time: f32) -> bool {
-        !self.check_if_attacking(time)
-            && !self.check_if_cooling_down(time)
-            && self.check_if_on_floor(floor_y)
+        let mut can_step = !self.check_if_attacking(time);
+        can_step &= !self.check_if_cooling_down(time);
+        if self.apply_gravity {
+            can_step &= self.check_if_on_floor(floor_y);
+        }
+
+        can_step
     }
 
     pub fn check_if_can_start_healing(&self) -> bool {
@@ -304,14 +308,24 @@ impl Entity {
         }
     }
 
-    pub fn update(&mut self, gravity: f32, floor_collider: Rect, dt: f32) {
+    fn update_healing(&mut self, dt: f32) {
+        let can_heal = !self.check_if_dead();
         if let Some(healing) = self.healing.as_mut() {
-            self.current_health += healing.update(dt);
+            if can_heal {
+                self.current_health += healing.update(dt);
+            }
         }
+    }
 
+    fn update_animator(&mut self, dt: f32) {
         if let Some(animator) = self.animator.as_mut() {
             animator.update(dt);
         }
+    }
+
+    pub fn update(&mut self, gravity: f32, floor_collider: Rect, dt: f32) {
+        self.update_healing(dt);
+        self.update_animator(dt);
 
         self.position += self.velocity.scale(dt);
 
@@ -352,9 +366,9 @@ impl Entity {
         }
     }
 
-    pub fn play_animation(&mut self, animation_type: AnimationType) {
+    pub fn play_animation(&mut self, name: &'static str) {
         let animator = self.animator.as_mut().unwrap();
-        animator.play(animation_type);
+        animator.play(name);
     }
 }
 
@@ -645,66 +659,54 @@ impl Spawner {
     }
 }
 
-#[derive(Eq, Hash, PartialEq, Clone, Copy, Debug)]
-pub enum AnimationType {
-    Default_,
-    Idle,
-    Move,
-    MeleeAttack,
-    Jump,
-    Hurt,
-    Death,
-}
-
 #[derive(Clone)]
 pub struct Animator {
     pub flip: bool,
-    pub animation_type: AnimationType,
-    animation_to_sprite: HashMap<AnimationType, AnimatedSprite>,
+    pub animation: &'static str,
+    animation_to_sprite: HashMap<&'static str, AnimatedSprite>,
 }
 
 impl Animator {
     pub fn new(default_sprite: AnimatedSprite) -> Self {
         let mut animation_to_sprite = HashMap::new();
-        animation_to_sprite
-            .insert(AnimationType::Default_, default_sprite);
+        animation_to_sprite.insert("default", default_sprite);
 
         Self {
             flip: false,
-            animation_type: AnimationType::Default_,
+            animation: "default",
             animation_to_sprite,
         }
     }
 
     pub fn add(
         &mut self,
-        animation_type: AnimationType,
+        animation: &'static str,
         sprite: AnimatedSprite,
     ) {
-        self.animation_to_sprite.insert(animation_type, sprite);
+        self.animation_to_sprite.insert(animation, sprite);
     }
 
-    pub fn play(&mut self, animation_type: AnimationType) {
-        if self.animation_type != animation_type {
-            self.animation_to_sprite
-                .get_mut(&animation_type)
-                .unwrap()
-                .reset();
+    pub fn play(&mut self, name: &'static str) {
+        if self.animation != name {
+            self.animation_to_sprite.get_mut(name).unwrap().reset();
         }
 
-        self.animation_type = animation_type;
+        self.animation = name;
     }
 
-    pub fn get_draw_primitive(&self, origin: Origin) -> DrawPrimitive {
+    pub fn get_draw_primitive(
+        &self,
+        position: Vec2<f32>,
+    ) -> DrawPrimitive {
         let mut sprite = self
             .animation_to_sprite
-            .get(&self.animation_type)
+            .get(self.animation)
             .unwrap()
             .get_current_frame();
 
         DrawPrimitive::from_sprite(
             Space::World,
-            origin,
+            position,
             sprite,
             None,
             self.flip,
@@ -714,7 +716,7 @@ impl Animator {
 
     pub fn update(&mut self, dt: f32) {
         self.animation_to_sprite
-            .get_mut(&self.animation_type)
+            .get_mut(self.animation)
             .unwrap()
             .update(dt);
     }
@@ -747,13 +749,14 @@ impl Text {
                 w: glyph.metrics.width as f32,
                 h: glyph.metrics.height as f32,
                 scale,
+                origin: Origin::BotLeft,
             };
             let mut primitive_position = cursor_position;
             primitive_position.x += glyph.metrics.xmin as f32 * scale;
             primitive_position.y += glyph.metrics.ymin as f32 * scale;
             let mut primitive = DrawPrimitive::from_sprite(
                 space,
-                Origin::BotLeft(Vec2::zeros()),
+                Vec2::zeros(),
                 sprite,
                 Some(color),
                 false,
@@ -770,23 +773,23 @@ impl Text {
         let top_right =
             draw_primitives[draw_primitives.len() - 1].rect.top_right;
         let offset = match origin {
-            Origin::Center(p) => p + (bot_left - top_right).scale(0.5),
-            Origin::BotCenter(p) => {
-                p + Vec2::new(0.5 * (bot_left.x - top_right.x), 0.0)
+            Origin::Center => (bot_left - top_right).scale(0.5),
+            Origin::BotCenter => {
+                Vec2::new(0.5 * (bot_left.x - top_right.x), 0.0)
             }
-            Origin::BotLeft(p) => p,
-            Origin::TopLeft(p) => {
-                p + Vec2::new(0.0, bot_left.y - top_right.y)
+            Origin::TopCenter => Vec2::new(
+                0.5 * (bot_left.x - top_right.x),
+                bot_left.y - top_right.y,
+            ),
+            Origin::BotLeft => position,
+            Origin::TopLeft => Vec2::new(0.0, bot_left.y - top_right.y),
+            Origin::LeftCenter => {
+                Vec2::new(0.0, 0.5 * (bot_left.y - top_right.y))
             }
-            Origin::LeftCenter(p) => {
-                p + Vec2::new(0.0, 0.5 * (bot_left.y - top_right.y))
-            }
-            Origin::RightCenter(p) => {
-                p + Vec2::new(
-                    bot_left.x - top_right.x,
-                    0.5 * (bot_left.y - top_right.y),
-                )
-            }
+            Origin::RightCenter => Vec2::new(
+                bot_left.x - top_right.x,
+                0.5 * (bot_left.y - top_right.y),
+            ),
         };
 
         let draw_primitives = draw_primitives

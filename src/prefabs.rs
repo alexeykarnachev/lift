@@ -8,6 +8,7 @@ const FLOOR_HEIGHT: f32 = 2.5;
 const LIFT_WIDTH: f32 = FLOOR_HEIGHT * 0.6;
 const LIFT_HEIGHT: f32 = FLOOR_HEIGHT;
 const SHAFT_WIDTH: f32 = LIFT_WIDTH * 1.2;
+const SPRITE_SCALE: f32 = 0.05;
 
 pub fn create_default_sprite_atlas() -> SpriteAtlas {
     SpriteAtlas::from_image(
@@ -62,7 +63,7 @@ pub fn create_player(position: Vec2<f32>) -> Entity {
         true,
         collider,
         4.0,
-        10.0,
+        6.0,
         0.0,
         5000.0,
         None,
@@ -77,10 +78,10 @@ pub fn create_rat(
     sprite_atlas: &SpriteAtlas,
 ) -> Entity {
     use AnimationMode::*;
-    use AnimationType::*;
+    use Origin::*;
 
     let collider =
-        Rect::from_bot_center(Vec2::zeros(), Vec2::new(0.3, 0.2));
+        Rect::from_bot_center(Vec2::zeros(), Vec2::new(1.0, 0.6));
     let melee_weapon =
         MeleeWeapon::new(Vec2::new(0.0, 0.1), 1.7, 0.5, 1.0, 500.0);
     let behaviour = Behaviour::Rat {
@@ -88,38 +89,67 @@ pub fn create_rat(
         max_jump_distance: 3.25,
     };
 
-    let scale = 0.05;
     let mut animator = Animator::new(AnimatedSprite::new(
         sprite_atlas,
         "rat_idle",
         0.5,
         Repeat,
-        scale,
+        SPRITE_SCALE,
+        BotCenter,
     ));
     animator.add(
-        Idle,
-        AnimatedSprite::new(sprite_atlas, "rat_idle", 0.5, Repeat, scale),
+        "idle",
+        AnimatedSprite::new(
+            sprite_atlas,
+            "rat_idle",
+            0.5,
+            Repeat,
+            SPRITE_SCALE,
+            BotCenter,
+        ),
     );
     animator.add(
-        Jump,
-        AnimatedSprite::new(sprite_atlas, "rat_jump", 0.5, Once, scale),
+        "jump",
+        AnimatedSprite::new(
+            sprite_atlas,
+            "rat_jump",
+            0.5,
+            Once,
+            SPRITE_SCALE,
+            BotCenter,
+        ),
     );
     animator.add(
-        Move,
-        AnimatedSprite::new(sprite_atlas, "rat_move", 0.5, Repeat, scale),
+        "move",
+        AnimatedSprite::new(
+            sprite_atlas,
+            "rat_move",
+            0.5,
+            Repeat,
+            SPRITE_SCALE,
+            BotCenter,
+        ),
     );
     animator.add(
-        Death,
-        AnimatedSprite::new(sprite_atlas, "rat_death", 0.5, Once, scale),
+        "death",
+        AnimatedSprite::new(
+            sprite_atlas,
+            "rat_death",
+            0.5,
+            Once,
+            SPRITE_SCALE,
+            BotCenter,
+        ),
     );
     animator.add(
-        MeleeAttack,
+        "melee_attack",
         AnimatedSprite::new(
             sprite_atlas,
             "rat_melee_attack",
             0.5,
             Once,
-            scale,
+            SPRITE_SCALE,
+            BotCenter,
         ),
     );
 
@@ -130,7 +160,7 @@ pub fn create_rat(
         true,
         collider,
         2.0,
-        8.0,
+        10.0,
         2.0,
         1000.0,
         None,
@@ -140,13 +170,39 @@ pub fn create_rat(
     )
 }
 
-pub fn create_bat(position: Vec2<f32>) -> Entity {
+pub fn create_bat(
+    position: Vec2<f32>,
+    sprite_atlas: &SpriteAtlas,
+) -> Entity {
+    use AnimationMode::*;
+    use Origin::*;
+
     let collider =
-        Rect::from_top_center(Vec2::zeros(), Vec2::new(0.3, 0.3));
+        Rect::from_top_center(Vec2::zeros(), Vec2::new(0.8, 0.8));
     let melee_weapon =
         MeleeWeapon::new(Vec2::new(0.0, 0.1), 1.7, 0.5, 1.0, 500.0);
     let behaviour = Behaviour::Bat;
     let healing = Healing::new(100.0, 5.0, 5.0);
+
+    let mut animator = Animator::new(AnimatedSprite::new(
+        sprite_atlas,
+        "bat_wave",
+        0.25,
+        Repeat,
+        SPRITE_SCALE,
+        TopCenter,
+    ));
+    animator.add(
+        "wave",
+        AnimatedSprite::new(
+            sprite_atlas,
+            "bat_wave",
+            0.25,
+            Repeat,
+            SPRITE_SCALE,
+            TopCenter,
+        ),
+    );
 
     Entity::new(
         false,
@@ -161,12 +217,15 @@ pub fn create_bat(position: Vec2<f32>) -> Entity {
         Some(healing),
         Some(melee_weapon),
         None,
-        None,
+        Some(animator),
     )
 }
 
-pub fn create_bat_spawner(position: Vec2<f32>) -> Spawner {
-    let entity = create_bat(position);
+pub fn create_bat_spawner(
+    position: Vec2<f32>,
+    sprite_atlas: &SpriteAtlas,
+) -> Spawner {
+    let entity = create_bat(position, sprite_atlas);
 
     Spawner::new(position, 5.0, 1, entity)
 }
