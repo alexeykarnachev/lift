@@ -17,7 +17,8 @@ mod vec;
 mod world;
 
 fn main() {
-    let window_size: Vec2<u32> = Vec2::new(2560, 1440);
+    // let window_size: Vec2<u32> = Vec2::new(2560, 1440);
+    let window_size: Vec2<u32> = Vec2::new(1500, 800);
     let sdl = sdl2::init().unwrap();
     let mut renderer = Renderer::new(&sdl, "Lift", window_size);
     let mut input = Input::new(window_size);

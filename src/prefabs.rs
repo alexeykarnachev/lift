@@ -59,8 +59,12 @@ pub fn create_player(
 
     let collider =
         Rect::from_bot_center(Vec2::zeros(), Vec2::new(1.0, 2.0));
-    let range_weapon =
-        RangeWeapon::new(Vec2::new(0.0, 0.7), 0.5, 0.5, 0.0, 30.0, 500.0);
+    let weapon_collider = Rect::from_right_center(
+        collider.get_right_center(),
+        Vec2::new(2.1, 2.4),
+    );
+
+    let melee_weapon = MeleeWeapon::new(weapon_collider, 0.1, 0.22, 500.0);
 
     let mut animator = Animator::new(AnimatedSprite::new(
         sprite_atlas,
@@ -81,6 +85,17 @@ pub fn create_player(
             BotCenter,
         ),
     );
+    animator.add(
+        "attack",
+        AnimatedSprite::new(
+            sprite_atlas,
+            "knight_attack",
+            0.3,
+            Once,
+            SPRITE_SCALE,
+            BotCenter,
+        ),
+    );
 
     Entity::new(
         true,
@@ -93,8 +108,8 @@ pub fn create_player(
         0.0,
         5000.0,
         None,
+        Some(melee_weapon),
         None,
-        Some(range_weapon),
         Some(animator),
     )
 }
@@ -108,8 +123,12 @@ pub fn create_rat(
 
     let collider =
         Rect::from_bot_center(Vec2::zeros(), Vec2::new(1.0, 0.6));
-    let melee_weapon =
-        MeleeWeapon::new(Vec2::new(0.0, 0.1), 1.7, 0.5, 1.0, 500.0);
+    let weapon_collider = Rect::from_right_center(
+        collider.get_right_center(),
+        Vec2::new(0.4, 0.6),
+    );
+
+    let melee_weapon = MeleeWeapon::new(weapon_collider, 0.5, 1.0, 500.0);
     let behaviour = Behaviour::Rat {
         min_jump_distance: 2.0,
         max_jump_distance: 3.25,
@@ -205,8 +224,12 @@ pub fn create_bat(
 
     let collider =
         Rect::from_top_center(Vec2::zeros(), Vec2::new(0.8, 0.8));
-    let melee_weapon =
-        MeleeWeapon::new(Vec2::new(0.0, 0.1), 0.8, 0.25, 1.0, 500.0);
+    let weapon_collider = Rect::from_right_center(
+        collider.get_right_center(),
+        Vec2::new(0.2, 0.8),
+    );
+
+    let melee_weapon = MeleeWeapon::new(weapon_collider, 0.25, 1.0, 500.0);
     let behaviour = Behaviour::Bat;
     let healing = Healing::new(100.0, 5.0, 5.0);
 

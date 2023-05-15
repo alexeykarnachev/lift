@@ -340,6 +340,13 @@ impl Rect {
         top_left
     }
 
+    pub fn get_right_center(&self) -> Vec2<f32> {
+        let mut center = self.top_right;
+        center.y -= 0.5 * self.get_size().y;
+
+        center
+    }
+
     pub fn get_size(&self) -> Vec2<f32> {
         self.top_right - self.bot_left
     }

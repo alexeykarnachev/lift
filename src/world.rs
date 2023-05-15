@@ -272,9 +272,10 @@ impl World {
 
                     let can_flip = enemy.check_if_on_floor(floor_y)
                         && !enemy.check_if_dead();
-                    let animator = enemy.animator.as_mut().unwrap();
                     if can_flip {
-                        animator.flip = target.x > position.x
+                        let is_flip = target.x > position.x;
+                        enemy.animator.as_mut().unwrap().flip = is_flip;
+                        enemy.set_orientation(is_flip);
                     }
                 }
                 Bat => {
@@ -322,7 +323,9 @@ impl World {
                         && !enemy.check_if_healing();
                     let animator = enemy.animator.as_mut().unwrap();
                     if can_flip {
-                        animator.flip = target.x > position.x
+                        let is_flip = target.x > position.x;
+                        animator.flip = is_flip;
+                        enemy.set_orientation(is_flip);
                     }
                 }
                 _ => {
@@ -346,36 +349,34 @@ impl World {
 
         let floor_y = floor_collider.get_y_min();
         let position = &mut self.player.position;
+        let is_attacking = self.player.check_if_attacking(self.time)
+            || self.player.check_if_cooling_down(self.time);
 
         use Keyaction::*;
-        if input.is_action(Right) {
-            self.player.immediate_step(Vec2::new(1.0, 0.0), dt)
-        }
-        if input.is_action(Left) {
-            self.player.immediate_step(Vec2::new(-1.0, 0.0), dt)
-        }
-
-        if input.is_action(Up)
-            && self.player.check_if_can_jump(floor_y, self.time)
+        if let (Some(_), true) = (input.lmb_press_pos, !is_attacking) {
+            let attack = self.player.attack_by_melee(self.time, None);
+            self.melee_attacks.push(attack);
+            self.player.animator.as_mut().unwrap().reset();
+            self.player.animator.as_mut().unwrap().play("attack");
+        } else if input.is_action(Right)
+            && self.player.check_if_can_step(floor_y, self.time)
         {
-            self.player.jump_at_angle(PI * 0.5, self.time);
+            self.player.immediate_step(Vec2::new(1.0, 0.0), dt);
+            self.player.animator.as_mut().unwrap().play("idle");
+            self.player.animator.as_mut().unwrap().flip = false;
+            self.player.set_orientation(true);
+        } else if input.is_action(Left)
+            && self.player.check_if_can_step(floor_y, self.time)
+        {
+            self.player.immediate_step(Vec2::new(-1.0, 0.0), dt);
+            self.player.animator.as_mut().unwrap().play("idle");
+            self.player.animator.as_mut().unwrap().flip = true;
+            self.player.set_orientation(false);
+        } else if !is_attacking {
+            self.player.animator.as_mut().unwrap().play("idle");
         }
 
         self.player.update(self.gravity, floor_collider, dt);
-
-        // Shoot
-        if input.lmb_is_down {
-            let target = window_to_world(
-                &self.camera,
-                input.window_size,
-                input.cursor_pos,
-            );
-            if self.player.check_if_can_reach_by_range(target, self.time) {
-                let bullet =
-                    self.player.attack_by_range(target, self.time);
-                self.bullets.push(bullet);
-            }
-        }
     }
 
     pub fn update_bullets(&mut self, dt: f32) {
@@ -449,7 +450,6 @@ impl World {
                         if enemy.check_if_dead() {
                             self.player.score += 100;
                         }
-                        continue 'attack;
                     }
                 }
             } else if !self.player.check_if_dead() {

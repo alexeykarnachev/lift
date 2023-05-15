@@ -18,10 +18,17 @@ pub enum Behaviour {
     Bat,
 }
 
+#[derive(Clone, Copy, Debug)]
+pub enum Orientation {
+    Left,
+    Right,
+}
+
 #[derive(Clone)]
 pub struct Entity {
     pub behaviour: Behaviour,
     pub position: Vec2<f32>,
+    pub orientation: Orientation,
     pub apply_gravity: bool,
     collider: Rect,
 
@@ -64,6 +71,7 @@ impl Entity {
         Self {
             behaviour,
             position,
+            orientation: Orientation::Right,
             apply_gravity,
             collider,
             move_speed,
@@ -87,6 +95,16 @@ impl Entity {
 
     pub fn get_center(&self) -> Vec2<f32> {
         self.get_collider().get_center()
+    }
+
+    pub fn set_orientation(&mut self, is_right: bool) {
+        use Orientation::*;
+
+        if is_right {
+            self.orientation = Right;
+        } else {
+            self.orientation = Left;
+        }
     }
 
     pub fn receive_damage(&mut self, value: f32) {
@@ -147,13 +165,11 @@ impl Entity {
         time: f32,
         attack_delay: Option<f32>,
     ) -> MeleeAttack {
+        use Orientation::*;
+
         let weapon = self.melee_weapon.as_mut().unwrap();
         weapon.last_attack_time = time;
-
-        let collider = Rect::from_center(
-            weapon.pivot,
-            Vec2::new(weapon.length, weapon.length),
-        );
+        let collider = weapon.get_collider(self.orientation);
 
         let attack_delay = if let Some(delay) = attack_delay {
             delay
@@ -283,10 +299,9 @@ impl Entity {
         time: f32,
     ) -> bool {
         if let Some(weapon) = self.melee_weapon {
-            let collider = Rect::from_center(
-                weapon.pivot + self.position,
-                Vec2::new(weapon.length, weapon.length),
-            );
+            let collider = weapon
+                .get_collider(self.orientation)
+                .translate(self.position);
             !self.check_if_attacking(time)
                 && !self.check_if_cooling_down(time)
                 && collider.collide_with_rect(target)
@@ -463,8 +478,7 @@ impl Healing {
 
 #[derive(Clone, Copy)]
 pub struct MeleeWeapon {
-    pub pivot: Vec2<f32>,
-    pub length: f32,
+    collider: Rect,
     pub last_attack_time: f32,
     pub attack_duration: f32,
     pub attack_cooldown: f32,
@@ -473,15 +487,13 @@ pub struct MeleeWeapon {
 
 impl MeleeWeapon {
     pub fn new(
-        pivot: Vec2<f32>,
-        length: f32,
+        collider: Rect,
         attack_duration: f32,
         attack_cooldown: f32,
         damage: f32,
     ) -> Self {
         Self {
-            pivot,
-            length,
+            collider,
             last_attack_time: -(attack_duration + attack_cooldown),
             attack_duration,
             attack_cooldown,
@@ -497,6 +509,18 @@ impl MeleeWeapon {
         !self.is_attacking(time)
             && (time - self.last_attack_time)
                 < self.attack_duration + self.attack_cooldown
+    }
+
+    pub fn get_collider(&self, orientation: Orientation) -> Rect {
+        use Orientation::*;
+
+        match orientation {
+            Left => {
+                let pivot = self.collider.get_center();
+                self.collider.with_center(pivot.with_x(-pivot.x))
+            }
+            Right => self.collider,
+        }
     }
 }
 
@@ -558,7 +582,7 @@ impl MeleeAttack {
     }
 
     pub fn get_collider(&self) -> Rect {
-        self.collider.with_center(self.position)
+        self.collider.translate(self.position)
     }
 }
 
@@ -684,6 +708,13 @@ impl Animator {
         sprite: AnimatedSprite,
     ) {
         self.animation_to_sprite.insert(animation, sprite);
+    }
+
+    pub fn reset(&mut self) {
+        self.animation_to_sprite
+            .get_mut(self.animation)
+            .unwrap()
+            .reset();
     }
 
     pub fn play(&mut self, name: &'static str) {
