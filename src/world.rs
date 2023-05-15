@@ -293,6 +293,7 @@ impl World {
                             let direction =
                                 Vec2::new(0.0, 1.0) + deviation;
                             enemy.immediate_step(direction, dt);
+                            enemy.play_animation("wave");
                         }
                     } else if enemy.check_if_can_reach_by_melee(
                         player_collider,
