@@ -4,7 +4,7 @@ use crate::ui::*;
 use crate::vec::*;
 
 const FLOOR_WIDTH: f32 = 100.0;
-const FLOOR_HEIGHT: f32 = 6.0;
+const FLOOR_HEIGHT: f32 = 3.5;
 const LIFT_WIDTH: f32 = FLOOR_HEIGHT * 0.6;
 const LIFT_HEIGHT: f32 = FLOOR_HEIGHT;
 const SHAFT_WIDTH: f32 = LIFT_WIDTH * 1.2;
@@ -58,13 +58,13 @@ pub fn create_player(
     use Origin::*;
 
     let collider =
-        Rect::from_bot_center(Vec2::zeros(), Vec2::new(1.0, 3.0));
+        Rect::from_bot_center(Vec2::zeros(), Vec2::new(1.0, 2.0));
     let range_weapon =
         RangeWeapon::new(Vec2::new(0.0, 0.7), 0.5, 0.5, 0.0, 30.0, 500.0);
 
     let mut animator = Animator::new(AnimatedSprite::new(
         sprite_atlas,
-        "ranger_idle",
+        "knight_idle",
         1.2,
         Repeat,
         SPRITE_SCALE,
@@ -74,7 +74,7 @@ pub fn create_player(
         "idle",
         AnimatedSprite::new(
             sprite_atlas,
-            "ranger_idle",
+            "knight_idle",
             1.2,
             Repeat,
             SPRITE_SCALE,

@@ -89,7 +89,7 @@ impl World {
         let position = Vec2::new(0.0, lift.y);
         let mut player = create_player(position, &sprite_atlas);
 
-        let camera = Camera::new(player.get_center().add_y(3.0));
+        let camera = Camera::new(player.get_center().add_y(2.0));
 
         let play_ui = create_default_play_ui();
         let mut game_over_ui = create_default_game_over_ui();
@@ -552,7 +552,7 @@ impl Camera {
     fn new(position: Vec2<f32>) -> Self {
         Self {
             position,
-            view_width: 40.0,
+            view_width: 25.0,
             aspect: 1.77,
         }
     }
