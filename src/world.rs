@@ -363,14 +363,14 @@ impl World {
             && self.player.check_if_can_step(floor_y, self.time)
         {
             self.player.immediate_step(Vec2::new(1.0, 0.0), dt);
-            self.player.animator.as_mut().unwrap().play("idle");
+            self.player.animator.as_mut().unwrap().play("run");
             self.player.animator.as_mut().unwrap().flip = false;
             self.player.set_orientation(true);
         } else if input.is_action(Left)
             && self.player.check_if_can_step(floor_y, self.time)
         {
             self.player.immediate_step(Vec2::new(-1.0, 0.0), dt);
-            self.player.animator.as_mut().unwrap().play("idle");
+            self.player.animator.as_mut().unwrap().play("run");
             self.player.animator.as_mut().unwrap().flip = true;
             self.player.set_orientation(false);
         } else if !is_attacking {

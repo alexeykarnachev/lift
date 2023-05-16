@@ -86,6 +86,17 @@ pub fn create_player(
         ),
     );
     animator.add(
+        "run",
+        AnimatedSprite::new(
+            sprite_atlas,
+            "knight_run",
+            0.8,
+            Repeat,
+            SPRITE_SCALE,
+            BotCenter,
+        ),
+    );
+    animator.add(
         "attack",
         AnimatedSprite::new(
             sprite_atlas,
