@@ -43,6 +43,7 @@ pub struct Entity {
     max_health: f32,
     current_health: f32,
 
+    dashing: Option<Dashing>,
     healing: Option<Healing>,
     melee_weapon: Option<MeleeWeapon>,
     range_weapon: Option<RangeWeapon>,
@@ -63,6 +64,7 @@ impl Entity {
         jump_speed: f32,
         jump_period: f32,
         max_health: f32,
+        dashing: Option<Dashing>,
         healing: Option<Healing>,
         melee_weapon: Option<MeleeWeapon>,
         range_weapon: Option<RangeWeapon>,
@@ -81,6 +83,7 @@ impl Entity {
             velocity: Vec2::zeros(),
             max_health,
             current_health: max_health,
+            dashing,
             healing,
             melee_weapon,
             range_weapon,
@@ -112,6 +115,10 @@ impl Entity {
     }
 
     pub fn try_receive_bullet_damage(&mut self, bullet: &Bullet) -> bool {
+        if self.check_if_dashing() {
+            return false;
+        }
+
         let self_collider = self.get_collider();
         let bullet_collider = bullet.get_collider();
         if self_collider.collide_with_rect(bullet_collider) {
@@ -126,6 +133,10 @@ impl Entity {
         &mut self,
         melee_attack: &MeleeAttack,
     ) -> bool {
+        if self.check_if_dashing() {
+            return false;
+        }
+
         let self_collider = self.get_collider();
         let attack_collider = melee_attack.get_collider();
         if self_collider.collide_with_rect(attack_collider) {
@@ -158,6 +169,10 @@ impl Entity {
 
     pub fn force_start_healing(&mut self) {
         self.healing.as_mut().unwrap().force_start();
+    }
+
+    pub fn force_start_dashing(&mut self) {
+        self.dashing.as_mut().unwrap().force_start();
     }
 
     pub fn attack_by_melee(
@@ -260,6 +275,14 @@ impl Entity {
         is_cooling_down
     }
 
+    pub fn check_if_dashing(&self) -> bool {
+        if let Some(dashing) = self.dashing {
+            dashing.is_started
+        } else {
+            false
+        }
+    }
+
     pub fn check_if_healing(&self) -> bool {
         if let Some(healing) = self.healing {
             healing.is_started
@@ -278,11 +301,20 @@ impl Entity {
     pub fn check_if_can_step(&self, floor_y: f32, time: f32) -> bool {
         let mut can_step = !self.check_if_attacking(time);
         can_step &= !self.check_if_cooling_down(time);
+        can_step &= !self.check_if_dashing();
         if self.apply_gravity {
             can_step &= self.check_if_on_floor(floor_y);
         }
 
         can_step
+    }
+
+    pub fn check_if_can_start_dashing(&self) -> bool {
+        if let Some(dashing) = self.dashing {
+            self.dashing.as_ref().unwrap().check_if_can_start()
+        } else {
+            false
+        }
     }
 
     pub fn check_if_can_start_healing(&self) -> bool {
@@ -323,6 +355,18 @@ impl Entity {
         }
     }
 
+    fn update_dashing(&mut self, dt: f32) {
+        use Orientation::*;
+
+        if let Some(dashing) = self.dashing.as_mut() {
+            let step = dashing.update(dt);
+            self.position.x += match self.orientation {
+                Left => -step,
+                Right => step,
+            }
+        }
+    }
+
     fn update_healing(&mut self, dt: f32) {
         let can_heal = !self.check_if_dead();
         if let Some(healing) = self.healing.as_mut() {
@@ -339,6 +383,7 @@ impl Entity {
     }
 
     pub fn update(&mut self, gravity: f32, floor_collider: Rect, dt: f32) {
+        self.update_dashing(dt);
         self.update_healing(dt);
         self.update_animator(dt);
 
@@ -426,6 +471,53 @@ impl RangeWeapon {
         !self.is_attacking(time)
             && (time - self.last_attack_time)
                 < self.attack_duration + self.attack_cooldown
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct Dashing {
+    speed: f32,
+    duration: f32,
+    cooldown: f32,
+    time_since_start: f32,
+    is_started: bool,
+}
+
+impl Dashing {
+    pub fn new(speed: f32, duration: f32, cooldown: f32) -> Self {
+        Self {
+            speed,
+            duration,
+            cooldown,
+            time_since_start: cooldown + duration,
+            is_started: false,
+        }
+    }
+
+    pub fn check_if_can_start(&self) -> bool {
+        !self.is_started
+            && (self.time_since_start >= (self.cooldown + self.duration))
+    }
+
+    pub fn force_start(&mut self) {
+        self.is_started = true;
+        self.time_since_start = 0.0;
+    }
+
+    pub fn update(&mut self, dt: f32) -> f32 {
+        self.time_since_start += dt;
+
+        let value = if !self.is_started {
+            0.0
+        } else {
+            if self.time_since_start >= self.duration {
+                self.is_started = false;
+            }
+
+            self.speed * dt
+        };
+
+        value
     }
 }
 

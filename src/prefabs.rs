@@ -65,6 +65,7 @@ pub fn create_player(
     );
 
     let melee_weapon = MeleeWeapon::new(weapon_collider, 0.1, 0.22, 500.0);
+    let dashing = Dashing::new(9.0, 0.5, 0.3);
 
     let mut animator = Animator::new(AnimatedSprite::new(
         sprite_atlas,
@@ -97,6 +98,17 @@ pub fn create_player(
         ),
     );
     animator.add(
+        "slide",
+        AnimatedSprite::new(
+            sprite_atlas,
+            "knight_slide",
+            0.5,
+            Once,
+            SPRITE_SCALE,
+            BotCenter,
+        ),
+    );
+    animator.add(
         "attack",
         AnimatedSprite::new(
             sprite_atlas,
@@ -118,6 +130,7 @@ pub fn create_player(
         6.0,
         0.0,
         5000.0,
+        Some(dashing),
         None,
         Some(melee_weapon),
         None,
@@ -220,6 +233,7 @@ pub fn create_rat(
         2.0,
         1000.0,
         None,
+        None,
         Some(melee_weapon),
         None,
         Some(animator),
@@ -307,6 +321,7 @@ pub fn create_bat(
         8.0,
         2.0,
         1000.0,
+        None,
         Some(healing),
         Some(melee_weapon),
         None,

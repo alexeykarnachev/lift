@@ -352,6 +352,7 @@ impl World {
         let position = &mut self.player.position;
         let is_attacking = self.player.check_if_attacking(self.time)
             || self.player.check_if_cooling_down(self.time);
+        let is_dashing = self.player.check_if_dashing();
 
         use Keyaction::*;
         if let (Some(_), true) = (input.lmb_press_pos, !is_attacking) {
@@ -362,18 +363,32 @@ impl World {
         } else if input.is_action(Right)
             && self.player.check_if_can_step(floor_y, self.time)
         {
-            self.player.immediate_step(Vec2::new(1.0, 0.0), dt);
-            self.player.animator.as_mut().unwrap().play("run");
+            if input.is_action(Down)
+                && self.player.check_if_can_start_dashing()
+            {
+                self.player.force_start_dashing();
+                self.player.animator.as_mut().unwrap().play("slide");
+            } else {
+                self.player.immediate_step(Vec2::new(1.0, 0.0), dt);
+                self.player.animator.as_mut().unwrap().play("run");
+            }
             self.player.animator.as_mut().unwrap().flip = false;
             self.player.set_orientation(true);
         } else if input.is_action(Left)
             && self.player.check_if_can_step(floor_y, self.time)
         {
-            self.player.immediate_step(Vec2::new(-1.0, 0.0), dt);
-            self.player.animator.as_mut().unwrap().play("run");
+            if input.is_action(Down)
+                && self.player.check_if_can_start_dashing()
+            {
+                self.player.force_start_dashing();
+                self.player.animator.as_mut().unwrap().play("slide");
+            } else {
+                self.player.immediate_step(Vec2::new(-1.0, 0.0), dt);
+                self.player.animator.as_mut().unwrap().play("run");
+            }
             self.player.animator.as_mut().unwrap().flip = true;
             self.player.set_orientation(false);
-        } else if !is_attacking {
+        } else if !is_attacking && !is_dashing {
             self.player.animator.as_mut().unwrap().play("idle");
         }
 
