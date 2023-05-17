@@ -52,6 +52,8 @@ impl Level {
         let tiled_json: TiledJson = serde_json::from_str(&meta).unwrap();
         let tilewidth = tiled_json.tilewidth;
         let tileheight = tiled_json.tileheight;
+        let global_width = tiled_json.width as f32 * tilewidth;
+        let global_height = tiled_json.height as f32 * tileheight;
 
         let mut room = None;
         let mut player = None;
@@ -106,8 +108,10 @@ impl Level {
                             }
                             "player" => {
                                 if let Some(true) = object.point {
-                                    let position =
-                                        Vec2::new(object.x, object.y);
+                                    let position = Vec2::new(
+                                        object.x,
+                                        global_height - object.y,
+                                    );
                                     player = Some(create_player(
                                         position,
                                         sprite_atlas,
@@ -118,8 +122,10 @@ impl Level {
                             }
                             "rat" => {
                                 if let Some(true) = object.point {
-                                    let position =
-                                        Vec2::new(object.x, object.y);
+                                    let position = Vec2::new(
+                                        object.x,
+                                        global_height - object.y,
+                                    );
                                     let rat =
                                         create_rat(position, sprite_atlas);
                                     enemies.push(rat);
@@ -131,8 +137,10 @@ impl Level {
                             }
                             "bat" => {
                                 if let Some(true) = object.point {
-                                    let position =
-                                        Vec2::new(object.x, object.y);
+                                    let position = Vec2::new(
+                                        object.x,
+                                        global_height - object.y,
+                                    );
                                     let bat =
                                         create_bat(position, sprite_atlas);
                                     enemies.push(bat);
