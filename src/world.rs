@@ -51,26 +51,47 @@ impl World {
         let n_floors = 16;
         let sprite_atlas = create_default_sprite_atlas();
         let glyph_atlas = create_default_glyph_atlas();
+        let tilemap = create_default_tilemap();
 
         let mut floors = Vec::with_capacity(n_floors);
         let mut enemies = Vec::with_capacity(n_floors);
         let mut spawners = Vec::with_capacity(n_floors);
         for floor_idx in 0..n_floors {
-            let floor = create_floor(floor_idx);
+            let floor = create_floor(floor_idx, &tilemap, &sprite_atlas);
             let floor_collider = floor.get_collider();
             let floor_enemies = Vec::with_capacity(128);
             let mut floor_spawners = Vec::with_capacity(1024);
 
             floor_spawners.push(create_rat_spawner(
-                Vec2::new(-8.0, floor.y),
+                Vec2::new(6.0, floor.y),
                 &sprite_atlas,
             ));
-            // floor_spawners.push(create_rat_spawner(
-            //     Vec2::new(8.0, floor_collider.get_y_min()),
-            //     &sprite_atlas,
-            // ));
+            floor_spawners.push(create_rat_spawner(
+                Vec2::new(8.0, floor_collider.get_y_min()),
+                &sprite_atlas,
+            ));
             floor_spawners.push(create_bat_spawner(
                 Vec2::new(8.0, floor_collider.get_y_max()),
+                &sprite_atlas,
+            ));
+            floor_spawners.push(create_bat_spawner(
+                Vec2::new(12.0, floor_collider.get_y_max()),
+                &sprite_atlas,
+            ));
+            floor_spawners.push(create_rat_spawner(
+                Vec2::new(-6.0, floor.y),
+                &sprite_atlas,
+            ));
+            floor_spawners.push(create_rat_spawner(
+                Vec2::new(-8.0, floor_collider.get_y_min()),
+                &sprite_atlas,
+            ));
+            floor_spawners.push(create_bat_spawner(
+                Vec2::new(-12.0, floor_collider.get_y_max()),
+                &sprite_atlas,
+            ));
+            floor_spawners.push(create_bat_spawner(
+                Vec2::new(-11.0, floor_collider.get_y_max()),
                 &sprite_atlas,
             ));
 
@@ -355,7 +376,9 @@ impl World {
         let is_dashing = self.player.check_if_dashing();
 
         use Keyaction::*;
-        if let (Some(_), true) = (input.lmb_press_pos, !is_attacking) {
+        if let (Some(_), false, false) =
+            (input.lmb_press_pos, is_attacking, is_dashing)
+        {
             let attack = self.player.attack_by_melee(self.time, None);
             self.melee_attacks.push(attack);
             self.player.animator.as_mut().unwrap().reset();

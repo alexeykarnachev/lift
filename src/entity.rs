@@ -699,18 +699,34 @@ pub struct Floor {
     pub y: f32,
     pub idx: usize,
     collider: Rect,
+    draw_primitives: Vec<DrawPrimitive>,
 }
 
 impl Floor {
-    pub fn new(y: f32, idx: usize, width: f32, height: f32) -> Self {
+    pub fn new(
+        y: f32,
+        idx: usize,
+        width: f32,
+        height: f32,
+        draw_primitives: Vec<DrawPrimitive>,
+    ) -> Self {
         let collider =
             Rect::from_bot_center(Vec2::zeros(), Vec2::new(width, height));
 
-        Self { y, idx, collider }
+        Self {
+            y,
+            idx,
+            collider,
+            draw_primitives,
+        }
     }
 
     pub fn get_collider(&self) -> Rect {
         self.collider.translate(Vec2::new(0.0, self.y))
+    }
+
+    pub fn get_draw_primitives(&self) -> &Vec<DrawPrimitive> {
+        &self.draw_primitives
     }
 }
 

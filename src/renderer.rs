@@ -78,7 +78,7 @@ impl Renderer {
         self.hdr_resolve_renderer.bind_framebuffer(&self.gl);
 
         unsafe {
-            self.gl.clear_color(0.2, 0.2, 0.2, 1.0);
+            self.gl.clear_color(0.2, 0.2, 0.05, 1.0);
             self.gl.clear(glow::COLOR_BUFFER_BIT);
         }
 
@@ -150,9 +150,13 @@ impl Renderer {
             draw_bullet(bullet, &mut self.primitives);
         });
 
-        world.melee_attacks.iter().for_each(|attack| {
-            draw_melee_attack(attack, &mut self.primitives);
-        });
+        // world.melee_attacks.iter().for_each(|attack| {
+        //     draw_melee_attack(attack, &mut self.primitives);
+        // });
+        // world.enemies[floor_idx].iter().for_each(|enemy| {
+        //     draw_collider(enemy, &mut self.primitives);
+        // });
+        // draw_collider(&world.player, &mut self.primitives);
 
         use WorldState::*;
         if world.state == Play {

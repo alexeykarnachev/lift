@@ -4,14 +4,14 @@ use crate::ui::*;
 use crate::vec::*;
 
 const FLOOR_WIDTH: f32 = 100.0;
-const FLOOR_HEIGHT: f32 = 3.5;
+const FLOOR_HEIGHT: f32 = 4.0;
 const LIFT_WIDTH: f32 = FLOOR_HEIGHT * 0.6;
 const LIFT_HEIGHT: f32 = FLOOR_HEIGHT;
 const SHAFT_WIDTH: f32 = LIFT_WIDTH * 1.2;
 const SPRITE_SCALE: f32 = 0.05;
 
 pub fn create_default_sprite_atlas() -> SpriteAtlas {
-    SpriteAtlas::from_image(
+    SpriteAtlas::new(
         "./assets/sprites/atlas.json",
         "./assets/sprites/atlas.png",
     )
@@ -19,10 +19,14 @@ pub fn create_default_sprite_atlas() -> SpriteAtlas {
 
 pub fn create_default_glyph_atlas() -> GlyphAtlas {
     // Typical font sizes: 3, 7, 9, 12, 16, 21, 28, 37, 50, 67, 89, 119, 159
-    GlyphAtlas::from_ttf(
+    GlyphAtlas::new(
         "./assets/fonts/Montserrat-Bold.ttf",
         &[16, 28, 67, 119],
     )
+}
+
+pub fn create_default_tilemap() -> Tilemap {
+    Tilemap::new("./assets/tilemaps/level0.json")
 }
 
 pub fn create_default_game_over_ui() -> UI {
@@ -37,8 +41,19 @@ pub fn create_shaft(n_floors: usize) -> Shaft {
     Shaft::new(SHAFT_WIDTH, n_floors as f32 * FLOOR_HEIGHT)
 }
 
-pub fn create_floor(idx: usize) -> Floor {
-    Floor::new(idx as f32 * FLOOR_HEIGHT, idx, FLOOR_WIDTH, FLOOR_HEIGHT)
+pub fn create_floor(
+    idx: usize,
+    tilemap: &Tilemap,
+    sprite_atlas: &SpriteAtlas,
+) -> Floor {
+    let y = idx as f32 * FLOOR_HEIGHT;
+    let primitives = tilemap.get_draw_primitives(
+        Origin::BotCenter,
+        Vec2::new(0.0, y - 0.5),
+        SPRITE_SCALE,
+        sprite_atlas,
+    );
+    Floor::new(y, idx, FLOOR_WIDTH, FLOOR_HEIGHT, primitives)
 }
 
 pub fn create_lift_entity(floor_idx: usize) -> Lift {

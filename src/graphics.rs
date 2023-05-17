@@ -64,10 +64,7 @@ pub struct SpriteAtlas {
 }
 
 impl SpriteAtlas {
-    pub fn from_image(
-        meta_file_path: &str,
-        image_file_path: &str,
-    ) -> Self {
+    pub fn new(meta_file_path: &str, image_file_path: &str) -> Self {
         let meta = fs::read_to_string(meta_file_path).unwrap();
         let mut atlas: Self = serde_json::from_str(&meta).unwrap();
 
@@ -80,6 +77,98 @@ impl SpriteAtlas {
         atlas.image = image.as_bytes().to_vec();
 
         atlas
+    }
+}
+
+#[derive(Deserialize)]
+pub struct TilemapLayer {
+    data: Vec<usize>,
+    height: u32,
+    width: u32,
+    opacity: f32,
+    name: String,
+    x: u32,
+    y: u32,
+}
+
+pub struct Tile {
+    pub position: Vec2<f32>,
+    pub origin: Origin,
+    pub idx: usize,
+}
+
+#[derive(Deserialize)]
+pub struct Tilemap {
+    width: u32,
+    height: u32,
+    tilewidth: u32,
+    tileheight: u32,
+    layers: Vec<TilemapLayer>,
+}
+
+impl Tilemap {
+    pub fn new(file_path: &str) -> Self {
+        let meta = fs::read_to_string(file_path).unwrap();
+        let mut tilemap: Self = serde_json::from_str(&meta).unwrap();
+
+        tilemap
+    }
+
+    pub fn get_draw_primitives(
+        &self,
+        origin: Origin,
+        position: Vec2<f32>,
+        scale: f32,
+        sprite_atlas: &SpriteAtlas,
+    ) -> Vec<DrawPrimitive> {
+        use Origin::*;
+
+        let sprites = &sprite_atlas.sprites["tilemap"];
+        let layer = &self.layers[0];
+        let n_cols = layer.width as usize;
+        let n_rows = layer.height as usize;
+        let tilewidth = self.tilewidth as f32 * scale;
+        let tileheight = self.tileheight as f32 * scale;
+        let width = tilewidth * n_cols as f32;
+        let height = tileheight * n_rows as f32;
+
+        let top_left = match origin {
+            BotCenter => position + Vec2::new(-width * 0.5, height),
+            _ => {
+                panic!("Can't construct tilemap draw primities with origin: {:?}. Needs to be implemented", origin);
+            }
+        };
+
+        let mut primitives = Vec::new();
+        for i in 0..n_rows {
+            for j in 0..n_cols {
+                let idx = self.layers[0].data[i * n_cols + j];
+                if idx != 0 {
+                    let x = top_left.x + j as f32 * tilewidth;
+                    let y = top_left.y - i as f32 * tileheight;
+
+                    let mut position = Vec2::new(x, y);
+                    position.x += 0.5 * tilewidth;
+                    position.y -= 0.5 * tileheight;
+
+                    let mut sprite = sprites[idx - 1];
+                    sprite.origin = Center;
+                    sprite.scale = scale;
+
+                    let primitive = DrawPrimitive::from_sprite(
+                        Space::World,
+                        position,
+                        sprite,
+                        None,
+                        false,
+                        Texture::Sprite,
+                    );
+                    primitives.push(primitive);
+                }
+            }
+        }
+
+        primitives
     }
 }
 
@@ -282,7 +371,7 @@ pub struct GlyphAtlas {
 }
 
 impl GlyphAtlas {
-    pub fn from_ttf(file_path: &str, font_sizes: &[u32]) -> Self {
+    pub fn new(file_path: &str, font_sizes: &[u32]) -> Self {
         let mut font_size_to_glyphs = HashMap::<u32, Vec<Glyph>>::new();
         for font_size in font_sizes {
             font_size_to_glyphs.insert(*font_size, Vec::new());
@@ -384,11 +473,6 @@ pub fn draw_entity(entity: &Entity, draw_queue: &mut Vec<DrawPrimitive>) {
     // Main primitive
     if let Some(animator) = entity.animator.as_ref() {
         draw_queue.push(animator.get_draw_primitive(entity.position));
-        draw_queue.push(DrawPrimitive::from_rect(
-            rect,
-            Space::World,
-            Color::new(1.0, 0.0, 0.0, 0.1),
-        ));
     } else {
         draw_queue.push(DrawPrimitive::from_rect(
             rect,
@@ -438,6 +522,18 @@ pub fn draw_bullet(bullet: &Bullet, draw_queue: &mut Vec<DrawPrimitive>) {
     ));
 }
 
+pub fn draw_collider(
+    entity: &Entity,
+    draw_queue: &mut Vec<DrawPrimitive>,
+) {
+    let rect = entity.get_collider();
+    draw_queue.push(DrawPrimitive::from_rect(
+        rect,
+        Space::World,
+        Color::new(1.0, 0.0, 0.0, 0.1),
+    ));
+}
+
 pub fn draw_melee_attack(
     attack: &MeleeAttack,
     draw_queue: &mut Vec<DrawPrimitive>,
@@ -464,14 +560,22 @@ pub fn draw_floor(
     lift_floor_idx: f32,
     draw_queue: &mut Vec<DrawPrimitive>,
 ) {
-    let gray =
-        0.5 - (0.6 * (floor.idx as f32 - lift_floor_idx).abs()).powf(2.0);
-    let rect = floor.get_collider();
-    draw_queue.push(DrawPrimitive::from_rect(
-        rect,
-        Space::World,
-        Color::gray(gray, 1.0),
-    ));
+    if floor.idx == lift_floor_idx as usize {
+        draw_queue.extend_from_slice(&floor.get_draw_primitives());
+        // draw_queue.push(DrawPrimitive::from_rect(
+        //     floor.get_collider(),
+        //     Space::World,
+        //     Color::red(0.1),
+        // ));
+    }
+    // let gray =
+    //     0.5 - (0.6 * (floor.idx as f32 - lift_floor_idx).abs()).powf(2.0);
+    // let rect = floor.get_collider();
+    // draw_queue.push(DrawPrimitive::from_rect(
+    //     rect,
+    //     Space::World,
+    //     Color::gray(gray, 1.0),
+    // ));
 }
 
 pub fn draw_lift(lift: &Lift, draw_queue: &mut Vec<DrawPrimitive>) {
