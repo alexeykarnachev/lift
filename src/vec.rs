@@ -294,7 +294,7 @@ impl Rect {
 
     pub fn from_left_center(position: Vec2<f32>, size: Vec2<f32>) -> Self {
         let mut center = position;
-        center.x -= size.x * 0.5;
+        center.x += size.x * 0.5;
 
         Self::from_center(center, size)
     }

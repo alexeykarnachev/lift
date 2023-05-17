@@ -678,90 +678,6 @@ impl MeleeAttack {
     }
 }
 
-pub struct Shaft {
-    collider: Rect,
-}
-
-impl Shaft {
-    pub fn new(width: f32, height: f32) -> Self {
-        let collider =
-            Rect::from_bot_center(Vec2::zeros(), Vec2::new(width, height));
-
-        Self { collider }
-    }
-
-    pub fn get_collider(&self) -> Rect {
-        self.collider
-    }
-}
-
-pub struct Floor {
-    pub y: f32,
-    pub idx: usize,
-    collider: Rect,
-    draw_primitives: Vec<DrawPrimitive>,
-}
-
-impl Floor {
-    pub fn new(
-        y: f32,
-        idx: usize,
-        width: f32,
-        height: f32,
-        draw_primitives: Vec<DrawPrimitive>,
-    ) -> Self {
-        let collider =
-            Rect::from_bot_center(Vec2::zeros(), Vec2::new(width, height));
-
-        Self {
-            y,
-            idx,
-            collider,
-            draw_primitives,
-        }
-    }
-
-    pub fn get_collider(&self) -> Rect {
-        self.collider.translate(Vec2::new(0.0, self.y))
-    }
-
-    pub fn get_draw_primitives(&self) -> &Vec<DrawPrimitive> {
-        &self.draw_primitives
-    }
-}
-
-pub struct Lift {
-    pub y: f32,
-    pub speed: f32,
-    pub animator: Animator,
-
-    collider: Rect,
-}
-
-impl Lift {
-    pub fn new(
-        y: f32,
-        width: f32,
-        height: f32,
-        speed: f32,
-        animator: Animator,
-    ) -> Self {
-        let collider =
-            Rect::from_bot_center(Vec2::zeros(), Vec2::new(width, height));
-
-        Self {
-            y,
-            speed,
-            collider,
-            animator,
-        }
-    }
-
-    pub fn get_collider(&self) -> Rect {
-        self.collider.translate(Vec2::new(0.0, self.y))
-    }
-}
-
 pub struct Spawner {
     position: Vec2<f32>,
     spawn_period: f32,
@@ -888,7 +804,6 @@ impl Text {
         string: String,
         font_size: u32,
         color: Color,
-        scale: f32,
     ) -> Self {
         let mut draw_primitives = Vec::new();
         let mut cursor_position = Vec2::zeros();
@@ -899,12 +814,11 @@ impl Text {
                 y: glyph.y,
                 w: glyph.metrics.width as f32,
                 h: glyph.metrics.height as f32,
-                scale,
                 origin: Origin::BotLeft,
             };
             let mut primitive_position = cursor_position;
-            primitive_position.x += glyph.metrics.xmin as f32 * scale;
-            primitive_position.y += glyph.metrics.ymin as f32 * scale;
+            primitive_position.x += glyph.metrics.xmin as f32;
+            primitive_position.y += glyph.metrics.ymin as f32;
             let mut primitive = DrawPrimitive::from_sprite(
                 space,
                 Vec2::zeros(),
@@ -916,8 +830,8 @@ impl Text {
             .translate(primitive_position);
             draw_primitives.push(primitive);
 
-            cursor_position.x += glyph.metrics.advance_width * scale;
-            cursor_position.y += glyph.metrics.advance_height * scale;
+            cursor_position.x += glyph.metrics.advance_width;
+            cursor_position.y += glyph.metrics.advance_height;
         }
 
         let bot_left = draw_primitives[0].rect.bot_left;

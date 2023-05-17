@@ -3,13 +3,6 @@ use crate::graphics::*;
 use crate::ui::*;
 use crate::vec::*;
 
-const FLOOR_WIDTH: f32 = 100.0;
-const FLOOR_HEIGHT: f32 = 4.0;
-const LIFT_WIDTH: f32 = FLOOR_HEIGHT * 0.6;
-const LIFT_HEIGHT: f32 = FLOOR_HEIGHT;
-const SHAFT_WIDTH: f32 = LIFT_WIDTH * 1.2;
-const SPRITE_SCALE: f32 = 0.05;
-
 pub fn create_default_sprite_atlas() -> SpriteAtlas {
     SpriteAtlas::new(
         "./assets/sprites/atlas.json",
@@ -25,57 +18,12 @@ pub fn create_default_glyph_atlas() -> GlyphAtlas {
     )
 }
 
-pub fn create_default_tilemap() -> Tilemap {
-    Tilemap::new("./assets/tilemaps/level0.json")
-}
-
 pub fn create_default_game_over_ui() -> UI {
     UI::new("./assets/ui/game_over.json")
 }
 
 pub fn create_default_play_ui() -> UI {
     UI::new("./assets/ui/play.json")
-}
-
-pub fn create_shaft(n_floors: usize) -> Shaft {
-    Shaft::new(SHAFT_WIDTH, n_floors as f32 * FLOOR_HEIGHT)
-}
-
-pub fn create_floor(
-    idx: usize,
-    tilemap: &Tilemap,
-    sprite_atlas: &SpriteAtlas,
-) -> Floor {
-    let y = idx as f32 * FLOOR_HEIGHT;
-    let primitives = tilemap.get_draw_primitives(
-        Origin::BotCenter,
-        Vec2::new(0.0, y - 0.5),
-        SPRITE_SCALE,
-        sprite_atlas,
-    );
-    Floor::new(y, idx, FLOOR_WIDTH, FLOOR_HEIGHT, primitives)
-}
-
-pub fn create_lift_entity(
-    floor_idx: usize,
-    sprite_atlas: &SpriteAtlas,
-) -> Lift {
-    let animator = Animator::new(AnimatedSprite::new(
-        sprite_atlas,
-        "lift",
-        1.0,
-        AnimationMode::Repeat,
-        SPRITE_SCALE,
-        Origin::BotCenter,
-    ));
-
-    Lift::new(
-        floor_idx as f32 * FLOOR_HEIGHT,
-        LIFT_WIDTH,
-        LIFT_HEIGHT,
-        2.0,
-        animator,
-    )
 }
 
 pub fn create_player(
@@ -86,21 +34,20 @@ pub fn create_player(
     use Origin::*;
 
     let collider =
-        Rect::from_bot_center(Vec2::zeros(), Vec2::new(1.0, 2.0));
+        Rect::from_bot_center(Vec2::zeros(), Vec2::new(20.0, 40.0));
     let weapon_collider = Rect::from_right_center(
         collider.get_right_center(),
-        Vec2::new(2.1, 2.4),
+        Vec2::new(42.0, 48.0),
     );
 
     let melee_weapon = MeleeWeapon::new(weapon_collider, 0.1, 0.22, 500.0);
-    let dashing = Dashing::new(9.0, 0.5, 0.3);
+    let dashing = Dashing::new(200.0, 0.5, 0.3);
 
     let mut animator = Animator::new(AnimatedSprite::new(
         sprite_atlas,
         "knight_idle",
         1.2,
         Repeat,
-        SPRITE_SCALE,
         BotCenter,
     ));
     animator.add(
@@ -110,7 +57,6 @@ pub fn create_player(
             "knight_idle",
             1.2,
             Repeat,
-            SPRITE_SCALE,
             BotCenter,
         ),
     );
@@ -121,7 +67,6 @@ pub fn create_player(
             "knight_run",
             0.8,
             Repeat,
-            SPRITE_SCALE,
             BotCenter,
         ),
     );
@@ -132,7 +77,6 @@ pub fn create_player(
             "knight_slide",
             0.5,
             Once,
-            SPRITE_SCALE,
             BotCenter,
         ),
     );
@@ -143,7 +87,6 @@ pub fn create_player(
             "knight_attack",
             0.3,
             Once,
-            SPRITE_SCALE,
             BotCenter,
         ),
     );
@@ -154,8 +97,8 @@ pub fn create_player(
         position,
         true,
         collider,
-        4.0,
-        6.0,
+        100.0,
+        0.0,
         0.0,
         5000.0,
         Some(dashing),
@@ -174,16 +117,16 @@ pub fn create_rat(
     use Origin::*;
 
     let collider =
-        Rect::from_bot_center(Vec2::zeros(), Vec2::new(1.0, 0.6));
+        Rect::from_bot_center(Vec2::zeros(), Vec2::new(20.0, 12.0));
     let weapon_collider = Rect::from_right_center(
         collider.get_right_center(),
-        Vec2::new(0.4, 0.6),
+        Vec2::new(8.0, 12.0),
     );
 
     let melee_weapon = MeleeWeapon::new(weapon_collider, 0.5, 1.0, 500.0);
     let behaviour = Behaviour::Rat {
-        min_jump_distance: 2.0,
-        max_jump_distance: 3.25,
+        min_jump_distance: 40.0,
+        max_jump_distance: 65.0,
     };
 
     let mut animator = Animator::new(AnimatedSprite::new(
@@ -191,7 +134,6 @@ pub fn create_rat(
         "rat_idle",
         0.5,
         Repeat,
-        SPRITE_SCALE,
         BotCenter,
     ));
     animator.add(
@@ -201,7 +143,6 @@ pub fn create_rat(
             "rat_idle",
             0.5,
             Repeat,
-            SPRITE_SCALE,
             BotCenter,
         ),
     );
@@ -212,7 +153,6 @@ pub fn create_rat(
             "rat_jump",
             0.5,
             Once,
-            SPRITE_SCALE,
             BotCenter,
         ),
     );
@@ -223,7 +163,6 @@ pub fn create_rat(
             "rat_move",
             0.5,
             Repeat,
-            SPRITE_SCALE,
             BotCenter,
         ),
     );
@@ -234,7 +173,6 @@ pub fn create_rat(
             "rat_death",
             0.5,
             Once,
-            SPRITE_SCALE,
             BotCenter,
         ),
     );
@@ -245,7 +183,6 @@ pub fn create_rat(
             "rat_melee_attack",
             0.5,
             Once,
-            SPRITE_SCALE,
             BotCenter,
         ),
     );
@@ -256,8 +193,8 @@ pub fn create_rat(
         position,
         true,
         collider,
-        2.0,
-        10.0,
+        40.0,
+        160.0,
         2.0,
         1000.0,
         None,
@@ -276,10 +213,10 @@ pub fn create_bat(
     use Origin::*;
 
     let collider =
-        Rect::from_top_center(Vec2::zeros(), Vec2::new(0.8, 0.8));
+        Rect::from_top_center(Vec2::zeros(), Vec2::new(16.0, 16.0));
     let weapon_collider = Rect::from_right_center(
         collider.get_right_center(),
-        Vec2::new(0.2, 0.8),
+        Vec2::new(4.0, 16.0),
     );
 
     let melee_weapon = MeleeWeapon::new(weapon_collider, 0.25, 1.0, 500.0);
@@ -291,7 +228,6 @@ pub fn create_bat(
         "bat_wave",
         0.25,
         Repeat,
-        SPRITE_SCALE,
         TopCenter,
     ));
     animator.add(
@@ -301,7 +237,6 @@ pub fn create_bat(
             "bat_wave",
             0.25,
             Repeat,
-            SPRITE_SCALE,
             TopCenter,
         ),
     );
@@ -312,7 +247,6 @@ pub fn create_bat(
             "bat_sleep",
             1.0,
             Repeat,
-            SPRITE_SCALE,
             TopCenter,
         ),
     );
@@ -323,7 +257,6 @@ pub fn create_bat(
             "bat_melee_attack",
             0.25,
             Once,
-            SPRITE_SCALE,
             TopCenter,
         ),
     );
@@ -334,7 +267,6 @@ pub fn create_bat(
             "bat_death",
             0.5,
             Once,
-            SPRITE_SCALE,
             TopCenter,
         ),
     );
@@ -345,8 +277,8 @@ pub fn create_bat(
         position,
         false,
         collider,
-        2.5,
-        8.0,
+        50.0,
+        160.0,
         2.0,
         1000.0,
         None,

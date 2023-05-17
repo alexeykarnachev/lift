@@ -88,7 +88,7 @@ impl Renderer {
             &self.gl,
             &world.camera,
             &screen_size,
-            world.player.position.add_y(1.0),
+            world.level.player.position.add_y(20.0),
             &self.primitives,
         );
 
@@ -131,19 +131,9 @@ impl Renderer {
     pub fn fill_render_queue(&mut self, world: &World) {
         self.primitives.clear();
 
-        world.floors.iter().for_each(|floor| {
-            draw_floor(
-                floor,
-                world.get_lift_floor_idx_f(),
-                &mut self.primitives,
-            );
-        });
-        draw_shaft(&world.shaft, &mut self.primitives);
-        draw_lift(&world.lift, &mut self.primitives);
-        draw_entity(&world.player, &mut self.primitives);
-
-        let floor_idx = world.get_lift_nearest_floor_idx();
-        world.enemies[floor_idx].iter().for_each(|enemy| {
+        draw_level(&world.level, &mut self.primitives);
+        draw_entity(&world.level.player, &mut self.primitives);
+        world.level.enemies.iter().for_each(|enemy| {
             draw_entity(enemy, &mut self.primitives);
         });
 
@@ -151,6 +141,7 @@ impl Renderer {
             draw_bullet(bullet, &mut self.primitives);
         });
 
+        // draw_collider(world.level.room, &mut self.primitives);
         // world.melee_attacks.iter().for_each(|attack| {
         //     draw_melee_attack(attack, &mut self.primitives);
         // });

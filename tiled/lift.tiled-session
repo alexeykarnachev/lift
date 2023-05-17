@@ -39,11 +39,11 @@
             "scaleInEditor": 5.5
         }
     },
-    "last.exportedFilePath": "/home/akarnachev/src/lift/assets/tilemaps",
+    "last.exportedFilePath": "/home/akarnachev/src/lift/assets/levels",
     "last.imagePath": "/home/akarnachev/src/lift/aseprite",
     "map.height": 10,
     "map.lastUsedExportFilter": "JSON map files (*.tmj *.json)",
-    "map.lastUsedFormat": "json",
+    "map.lastUsedFormat": "tmx",
     "map.tileHeight": 16,
     "map.tileWidth": 16,
     "map.width": 60,

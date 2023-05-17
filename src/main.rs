@@ -10,6 +10,7 @@ use world::*;
 mod entity;
 mod graphics;
 mod input;
+mod level;
 mod prefabs;
 mod renderer;
 mod ui;

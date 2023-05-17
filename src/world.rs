@@ -7,6 +7,7 @@
 use crate::entity::*;
 use crate::graphics::*;
 use crate::input::*;
+use crate::level::*;
 use crate::prefabs::*;
 use crate::ui::*;
 use crate::vec::*;
@@ -27,16 +28,11 @@ pub struct World {
     pub time: f32,
     pub gravity: f32,
 
+    pub level: Level,
+
     pub camera: Camera,
-    pub shaft: Shaft,
-    pub lift: Lift,
-    pub player: Entity,
-    pub enemies: Vec<Vec<Entity>>,
-    pub spawners: Vec<Vec<Spawner>>,
     pub melee_attacks: Vec<MeleeAttack>,
     pub bullets: Vec<Bullet>,
-
-    pub floors: Vec<Floor>,
 
     pub play_ui: UI,
     pub game_over_ui: UI,
@@ -48,69 +44,13 @@ pub struct World {
 
 impl World {
     pub fn new() -> Self {
-        let n_floors = 16;
         let sprite_atlas = create_default_sprite_atlas();
         let glyph_atlas = create_default_glyph_atlas();
-        let tilemap = create_default_tilemap();
-
-        let mut floors = Vec::with_capacity(n_floors);
-        let mut enemies = Vec::with_capacity(n_floors);
-        let mut spawners = Vec::with_capacity(n_floors);
-        for floor_idx in 0..n_floors {
-            let floor = create_floor(floor_idx, &tilemap, &sprite_atlas);
-            let floor_collider = floor.get_collider();
-            let floor_enemies = Vec::with_capacity(128);
-            let mut floor_spawners = Vec::with_capacity(1024);
-
-            floor_spawners.push(create_rat_spawner(
-                Vec2::new(6.0, floor.y),
-                &sprite_atlas,
-            ));
-            floor_spawners.push(create_rat_spawner(
-                Vec2::new(8.0, floor_collider.get_y_min()),
-                &sprite_atlas,
-            ));
-            floor_spawners.push(create_bat_spawner(
-                Vec2::new(8.0, floor_collider.get_y_max()),
-                &sprite_atlas,
-            ));
-            floor_spawners.push(create_bat_spawner(
-                Vec2::new(12.0, floor_collider.get_y_max()),
-                &sprite_atlas,
-            ));
-            floor_spawners.push(create_rat_spawner(
-                Vec2::new(-6.0, floor.y),
-                &sprite_atlas,
-            ));
-            floor_spawners.push(create_rat_spawner(
-                Vec2::new(-8.0, floor_collider.get_y_min()),
-                &sprite_atlas,
-            ));
-            floor_spawners.push(create_bat_spawner(
-                Vec2::new(-12.0, floor_collider.get_y_max()),
-                &sprite_atlas,
-            ));
-            floor_spawners.push(create_bat_spawner(
-                Vec2::new(-11.0, floor_collider.get_y_max()),
-                &sprite_atlas,
-            ));
-
-            enemies.push(floor_enemies);
-            spawners.push(floor_spawners);
-            floors.push(floor);
-        }
+        let level = Level::new("./assets/levels/0.json", &sprite_atlas);
 
         let melee_attacks: Vec<MeleeAttack> = Vec::with_capacity(256);
         let bullets: Vec<Bullet> = Vec::with_capacity(256);
-
-        let idx = (n_floors / 2) as usize;
-        let mut lift = create_lift_entity(idx, &sprite_atlas);
-        let shaft = create_shaft(n_floors);
-
-        let position = Vec2::new(0.0, lift.y);
-        let mut player = create_player(position, &sprite_atlas);
-
-        let camera = Camera::new(player.get_center().add_y(2.0));
+        let camera = Camera::new(level.player.get_center().add_y(2.0));
 
         let play_ui = create_default_play_ui();
         let mut game_over_ui = create_default_game_over_ui();
@@ -120,16 +60,11 @@ impl World {
         Self {
             state: WorldState::Play,
             time: 0.0,
-            gravity: 20.0,
+            gravity: 400.0,
+            level,
             camera,
-            shaft,
-            lift,
-            player,
-            enemies,
-            spawners,
             melee_attacks,
             bullets,
-            floors,
             play_ui,
             game_over_ui,
             game_over_ui_last_modified,
@@ -153,7 +88,6 @@ impl World {
                 self.update_enemies(dt);
                 self.update_player(dt, input);
                 self.update_free_camera(input);
-                self.update_lift(dt, input);
                 self.update_spawners(dt);
                 self.time += dt;
             }
@@ -166,7 +100,7 @@ impl World {
             Quit => {}
         }
 
-        if self.player.check_if_dead() && self.state == Play {
+        if self.level.player.check_if_dead() && self.state == Play {
             self.state = GameOver;
         }
     }
@@ -179,71 +113,27 @@ impl World {
         }
     }
 
-    fn update_lift(&mut self, dt: f32, input: &Input) {
-        let cursor_world_pos = window_to_world(
-            &self.camera,
-            input.window_size,
-            input.cursor_pos,
-        );
-
-        let mut target = None;
-        if let Some(floor_idx) = self.get_lift_floor_idx() {
-            let shaft_width = self.shaft.get_collider().get_size().x;
-            let is_enemy_in_lift =
-                self.enemies[floor_idx].iter().any(|enemy| {
-                    let collider = enemy.get_collider();
-                    let x = collider.get_x_dist_to(0.0);
-
-                    x <= 0.5 * shaft_width
-                });
-
-            if !is_enemy_in_lift {
-                let mut idx = floor_idx as i32;
-                if let Some(_) = input.lmb_press_pos {
-                    idx += 1;
-                } else if let Some(_) = input.rmb_press_pos {
-                    idx -= 1;
-                }
-
-                idx = idx.clamp(0, self.floors.len() as i32 - 1);
-                let target_y = idx as f32 * self.get_floor_height();
-                target = Some(Vec2::new(0.0, target_y));
-            }
-        }
-    }
-
     pub fn update_spawners(&mut self, dt: f32) {
-        let floor_idx = if let Some(idx) = self.get_lift_floor_idx() {
-            idx
-        } else {
-            return;
-        };
-
-        let floor_spawners = &mut self.spawners[floor_idx];
-        let floor_enemies = &mut self.enemies[floor_idx];
-        for spawner in floor_spawners.iter_mut() {
-            if let Some(entity) = spawner.update(dt) {
-                floor_enemies.push(entity);
-            }
-        }
+        // let floor_spawners = &mut self.spawners[floor_idx];
+        // let floor_enemies = &mut self.enemies[floor_idx];
+        // for spawner in floor_spawners.iter_mut() {
+        //     if let Some(entity) = spawner.update(dt) {
+        //         floor_enemies.push(entity);
+        //     }
+        // }
     }
 
     pub fn update_enemies(&mut self, dt: f32) {
         use Behaviour::*;
 
-        let floor_idx = if let Some(idx) = self.get_lift_floor_idx() {
-            idx
-        } else {
-            return;
-        };
-
-        let enemies = &mut self.enemies[floor_idx];
-        let floor_collider = self.floors[floor_idx].get_collider();
-        let floor_y = floor_collider.get_y_min();
-        let ceil_y = floor_collider.get_y_max();
-        let target = self.player.get_center();
-        let player_collider = self.player.get_collider();
-        let is_player_alive = !self.player.check_if_dead();
+        let enemies = &mut self.level.enemies;
+        let player = &self.level.player;
+        let room = self.level.room;
+        let floor_y = room.get_y_min();
+        let ceil_y = room.get_y_max();
+        let target = player.get_center();
+        let player_collider = player.get_collider();
+        let is_player_alive = !player.check_if_dead();
 
         for enemy in enemies.iter_mut() {
             if !is_player_alive {
@@ -358,97 +248,83 @@ impl World {
                 }
             }
 
-            enemy.update(self.gravity, floor_collider, dt);
+            enemy.update(self.gravity, room, dt);
         }
     }
 
     pub fn update_player(&mut self, dt: f32, input: &Input) {
-        let floor_collider = if let Some(floor) = self.get_lift_floor() {
-            floor.get_collider()
-        } else {
-            self.lift.get_collider()
-        };
-
-        let floor_y = floor_collider.get_y_min();
-        let position = &mut self.player.position;
-        let is_attacking = self.player.check_if_attacking(self.time)
-            || self.player.check_if_cooling_down(self.time);
-        let is_dashing = self.player.check_if_dashing();
+        let room = self.level.room;
+        let floor_y = room.get_y_min();
+        let player = &mut self.level.player;
+        let position = player.position;
+        let is_attacking = player.check_if_attacking(self.time)
+            || player.check_if_cooling_down(self.time);
+        let is_dashing = player.check_if_dashing();
 
         use Keyaction::*;
         if let (Some(_), false, false) =
             (input.lmb_press_pos, is_attacking, is_dashing)
         {
-            let attack = self.player.attack_by_melee(self.time, None);
+            let attack = player.attack_by_melee(self.time, None);
             self.melee_attacks.push(attack);
-            self.player.animator.as_mut().unwrap().reset();
-            self.player.animator.as_mut().unwrap().play("attack");
+            player.animator.as_mut().unwrap().reset();
+            player.animator.as_mut().unwrap().play("attack");
         } else if input.is_action(Right)
-            && self.player.check_if_can_step(floor_y, self.time)
+            && player.check_if_can_step(floor_y, self.time)
         {
-            if input.is_action(Down)
-                && self.player.check_if_can_start_dashing()
+            if input.is_action(Down) && player.check_if_can_start_dashing()
             {
-                self.player.force_start_dashing();
-                self.player.animator.as_mut().unwrap().play("slide");
+                player.force_start_dashing();
+                player.animator.as_mut().unwrap().play("slide");
             } else {
-                self.player.immediate_step(Vec2::new(1.0, 0.0), dt);
-                self.player.animator.as_mut().unwrap().play("run");
+                player.immediate_step(Vec2::new(1.0, 0.0), dt);
+                player.animator.as_mut().unwrap().play("run");
             }
-            self.player.animator.as_mut().unwrap().flip = false;
-            self.player.set_orientation(true);
+            player.animator.as_mut().unwrap().flip = false;
+            player.set_orientation(true);
         } else if input.is_action(Left)
-            && self.player.check_if_can_step(floor_y, self.time)
+            && player.check_if_can_step(floor_y, self.time)
         {
-            if input.is_action(Down)
-                && self.player.check_if_can_start_dashing()
+            if input.is_action(Down) && player.check_if_can_start_dashing()
             {
-                self.player.force_start_dashing();
-                self.player.animator.as_mut().unwrap().play("slide");
+                player.force_start_dashing();
+                player.animator.as_mut().unwrap().play("slide");
             } else {
-                self.player.immediate_step(Vec2::new(-1.0, 0.0), dt);
-                self.player.animator.as_mut().unwrap().play("run");
+                player.immediate_step(Vec2::new(-1.0, 0.0), dt);
+                player.animator.as_mut().unwrap().play("run");
             }
-            self.player.animator.as_mut().unwrap().flip = true;
-            self.player.set_orientation(false);
+            player.animator.as_mut().unwrap().flip = true;
+            player.set_orientation(false);
         } else if !is_attacking && !is_dashing {
-            self.player.animator.as_mut().unwrap().play("idle");
+            player.animator.as_mut().unwrap().play("idle");
         }
 
-        self.player.update(self.gravity, floor_collider, dt);
+        player.update(self.gravity, room, dt);
     }
 
     pub fn update_bullets(&mut self, dt: f32) {
-        let floor_idx = if let Some(idx) = self.get_lift_floor_idx() {
-            idx
-        } else {
-            return;
-        };
-
-        let floor = &self.floors[floor_idx];
-        let floor_enemies = &mut self.enemies[floor_idx];
-
-        let floor_collider = floor.get_collider();
+        let room = self.level.room;
+        let enemies = &mut self.level.enemies;
+        let player = &mut self.level.player;
         let mut new_bullets = Vec::with_capacity(self.bullets.len());
 
         'bullet: for bullet in self.bullets.iter_mut() {
             let step = bullet.velocity.scale(dt);
             bullet.position += step;
-            if floor_collider.collide_with_point(bullet.position) {
+            if room.collide_with_point(bullet.position) {
                 if bullet.is_player_friendly {
-                    for enemy in floor_enemies
-                        .iter_mut()
-                        .filter(|e| !e.check_if_dead())
+                    for enemy in
+                        enemies.iter_mut().filter(|e| !e.check_if_dead())
                     {
                         if enemy.try_receive_bullet_damage(bullet) {
                             if enemy.check_if_dead() {
-                                self.player.score += 100;
+                                player.score += 100;
                             }
                             continue 'bullet;
                         }
                     }
-                } else if !self.player.check_if_dead() {
-                    if self.player.try_receive_bullet_damage(bullet) {
+                } else if !player.check_if_dead() {
+                    if player.try_receive_bullet_damage(bullet) {
                         continue 'bullet;
                     }
                 }
@@ -461,16 +337,9 @@ impl World {
     }
 
     pub fn update_melee_attacks(&mut self, dt: f32) {
-        let floor_idx = if let Some(idx) = self.get_lift_floor_idx() {
-            idx
-        } else {
-            return;
-        };
-
-        let floor = &self.floors[floor_idx];
-        let floor_enemies = &mut self.enemies[floor_idx];
-
-        let floor_collider = floor.get_collider();
+        let room = self.level.room;
+        let enemies = &mut self.level.enemies;
+        let player = &mut self.level.player;
         let mut new_melee_attacks =
             Vec::with_capacity(self.melee_attacks.len());
 
@@ -483,16 +352,16 @@ impl World {
 
             if attack.is_player_friendly {
                 for enemy in
-                    floor_enemies.iter_mut().filter(|e| !e.check_if_dead())
+                    enemies.iter_mut().filter(|e| !e.check_if_dead())
                 {
                     if enemy.try_receive_melee_attack_damage(attack) {
                         if enemy.check_if_dead() {
-                            self.player.score += 100;
+                            player.score += 100;
                         }
                     }
                 }
-            } else if !self.player.check_if_dead() {
-                if self.player.try_receive_melee_attack_damage(attack) {
+            } else if !player.check_if_dead() {
+                if player.try_receive_melee_attack_damage(attack) {
                     continue 'attack;
                 }
             }
@@ -525,7 +394,7 @@ impl World {
     }
 
     fn update_play_ui(&mut self, input: &Input) {
-        let score = format!("Score: {}", self.player.score);
+        let score = format!("Score: {}", self.level.player.score);
         self.play_ui.set_element_text("score", &score);
         _ = self.play_ui.update(input, &self.glyph_atlas);
     }
@@ -546,38 +415,6 @@ impl World {
             }
         }
     }
-
-    pub fn get_floor_height(&self) -> f32 {
-        self.floors[0].get_collider().get_height()
-    }
-
-    pub fn get_lift_floor_idx_f(&self) -> f32 {
-        self.lift.y / self.get_floor_height()
-    }
-
-    pub fn get_lift_floor_idx(&self) -> Option<usize> {
-        let idx = self.get_lift_floor_idx_f();
-        if (idx.floor() - idx).abs() < 1.0e-5 {
-            return Some(idx as usize);
-        }
-
-        None
-    }
-
-    pub fn get_lift_nearest_floor_idx(&self) -> usize {
-        let idx = self.get_lift_floor_idx_f().round() as usize;
-        let floor = &self.floors[idx];
-
-        (floor.y / self.get_floor_height()).floor() as usize
-    }
-
-    pub fn get_lift_floor(&self) -> Option<&Floor> {
-        if let Some(idx) = self.get_lift_floor_idx() {
-            return Some(&self.floors[idx]);
-        }
-
-        None
-    }
 }
 
 pub struct Camera {
@@ -591,7 +428,7 @@ impl Camera {
     fn new(position: Vec2<f32>) -> Self {
         Self {
             position,
-            view_width: 35.0,
+            view_width: 500.0,
             aspect: 1.77,
         }
     }

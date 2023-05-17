@@ -10,9 +10,9 @@ uniform sampler2D glyph_atlas_tex;
 out vec4 frag_color;
 
 vec3 apply_light(vec3 color) {
-    float d = distance(light_pos, vs_pos);
+    float d = distance(light_pos, vs_pos) / 40.0;
     float k = 1.0 / (1.0 + d * 0.05 + d*d * 0.1);
-    return color * k * vec3(1.8, 1.5, 1.4);
+    return color * k * vec3(1.2, 1.1, 1.0);
 }
 
 void main(void) {

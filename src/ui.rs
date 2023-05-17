@@ -94,7 +94,6 @@ impl UI {
                     text_config.string.clone(),
                     text_config.font_size,
                     Color::new(1.0, 0.0, 0.0, 1.0),
-                    1.0,
                 )
             } else {
                 panic!(
