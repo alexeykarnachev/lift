@@ -88,6 +88,7 @@ impl Renderer {
             &self.gl,
             &world.camera,
             &screen_size,
+            world.player.position.add_y(1.0),
             &self.primitives,
         );
 
@@ -278,6 +279,7 @@ impl PrimitiveRenderer {
         gl: &glow::Context,
         camera: &Camera,
         screen_size: &[f32; 2],
+        light_pos: Vec2<f32>,
         primitives: &Vec<DrawPrimitive>,
     ) {
         primitives.iter().for_each(|p| self.push_primitive(p));
@@ -304,6 +306,13 @@ impl PrimitiveRenderer {
                 gl.active_texture(glow::TEXTURE0 + 1);
                 gl.bind_texture(glow::TEXTURE_2D, Some(glyph_atlas_tex));
             }
+
+            set_uniform_2_f32(
+                gl,
+                self.program,
+                "light_pos",
+                &light_pos.to_array(),
+            );
         }
 
         self.sync_data(gl);

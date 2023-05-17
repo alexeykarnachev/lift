@@ -15,6 +15,7 @@ layout (location = 5) in float a_flip;
 flat out uint vs_tex_id;
 out vec4 vs_rgba;
 out vec2 vs_uv;
+out vec2 vs_pos;
 
 vec2 project(vec2 pos, Camera camera) {
     vec2 proj = pos;
@@ -36,8 +37,8 @@ void main(void) {
     vec2 pos = a_xywh.xy;
     vec2 size = a_xywh.zw;
 
-    vec2 proj = pos + 0.5 * RECT_IDX_TO_NDC[gl_VertexID] * size;
-    proj = project(proj, camera);
+    pos += 0.5 * RECT_IDX_TO_NDC[gl_VertexID] * size;
+    vec2 proj = project(pos, camera);
 
     vec2 local_uv = RECT_IDX_TO_UV[gl_VertexID];
     local_uv.y = 1.0 - local_uv.y;
@@ -48,5 +49,6 @@ void main(void) {
 
     vs_tex_id = a_tex_id;
     vs_rgba = a_rgba;
+    vs_pos = pos;
     gl_Position = vec4(proj, 0.0, 1.0);
 }

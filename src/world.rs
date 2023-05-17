@@ -591,7 +591,7 @@ impl Camera {
     fn new(position: Vec2<f32>) -> Self {
         Self {
             position,
-            view_width: 25.0,
+            view_width: 35.0,
             aspect: 1.77,
         }
     }
