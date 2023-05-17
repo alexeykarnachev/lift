@@ -733,16 +733,28 @@ impl Floor {
 pub struct Lift {
     pub y: f32,
     pub speed: f32,
+    pub animator: Animator,
 
     collider: Rect,
 }
 
 impl Lift {
-    pub fn new(y: f32, width: f32, height: f32, speed: f32) -> Self {
+    pub fn new(
+        y: f32,
+        width: f32,
+        height: f32,
+        speed: f32,
+        animator: Animator,
+    ) -> Self {
         let collider =
             Rect::from_bot_center(Vec2::zeros(), Vec2::new(width, height));
 
-        Self { y, speed, collider }
+        Self {
+            y,
+            speed,
+            collider,
+            animator,
+        }
     }
 
     pub fn get_collider(&self) -> Rect {

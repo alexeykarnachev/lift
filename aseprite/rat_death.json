@@ -142,6 +142,15 @@
     "spriteSourceSize": { "x": 0, "y": 0, "w": 32, "h": 16 },
     "sourceSize": { "w": 32, "h": 16 },
     "duration": 50
+   },
+   {
+    "filename": "rat_death.16",
+    "frame": { "x": 545, "y": 1, "w": 32, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 32, "h": 16 },
+    "sourceSize": { "w": 32, "h": 16 },
+    "duration": 50
    }
  ],
  "meta": {
@@ -149,7 +158,7 @@
   "version": "1.3-rc2-x64",
   "image": "rat_death.png",
   "format": "RGBA8888",
-  "size": { "w": 544, "h": 18 },
+  "size": { "w": 578, "h": 18 },
   "scale": "1",
   "frameTags": [
   ],

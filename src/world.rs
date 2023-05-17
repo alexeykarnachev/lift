@@ -104,7 +104,7 @@ impl World {
         let bullets: Vec<Bullet> = Vec::with_capacity(256);
 
         let idx = (n_floors / 2) as usize;
-        let mut lift = create_lift_entity(idx);
+        let mut lift = create_lift_entity(idx, &sprite_atlas);
         let shaft = create_shaft(n_floors);
 
         let position = Vec2::new(0.0, lift.y);

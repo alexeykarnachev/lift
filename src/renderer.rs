@@ -78,7 +78,7 @@ impl Renderer {
         self.hdr_resolve_renderer.bind_framebuffer(&self.gl);
 
         unsafe {
-            self.gl.clear_color(0.2, 0.2, 0.05, 1.0);
+            self.gl.clear_color(0.0, 0.0, 0.0, 1.0);
             self.gl.clear(glow::COLOR_BUFFER_BIT);
         }
 

@@ -547,12 +547,12 @@ pub fn draw_melee_attack(
 }
 
 pub fn draw_shaft(shaft: &Shaft, draw_queue: &mut Vec<DrawPrimitive>) {
-    let rect = shaft.get_collider();
-    draw_queue.push(DrawPrimitive::from_rect(
-        rect,
-        Space::World,
-        Color::gray(0.05, 1.0),
-    ));
+    // let rect = shaft.get_collider();
+    // draw_queue.push(DrawPrimitive::from_rect(
+    //     rect,
+    //     Space::World,
+    //     Color::gray(0.05, 1.0),
+    // ));
 }
 
 pub fn draw_floor(
@@ -561,12 +561,12 @@ pub fn draw_floor(
     draw_queue: &mut Vec<DrawPrimitive>,
 ) {
     if floor.idx == lift_floor_idx as usize {
+        draw_queue.push(DrawPrimitive::from_rect(
+            floor.get_collider(),
+            Space::World,
+            Color::gray(0.1, 1.0),
+        ));
         draw_queue.extend_from_slice(&floor.get_draw_primitives());
-        // draw_queue.push(DrawPrimitive::from_rect(
-        //     floor.get_collider(),
-        //     Space::World,
-        //     Color::red(0.1),
-        // ));
     }
     // let gray =
     //     0.5 - (0.6 * (floor.idx as f32 - lift_floor_idx).abs()).powf(2.0);
@@ -579,12 +579,9 @@ pub fn draw_floor(
 }
 
 pub fn draw_lift(lift: &Lift, draw_queue: &mut Vec<DrawPrimitive>) {
-    let rect = lift.get_collider();
-    draw_queue.push(DrawPrimitive::from_rect(
-        rect,
-        Space::World,
-        Color::gray(0.6, 1.0),
-    ));
+    let position = lift.get_collider().get_bot_center().add_y(-0.5);
+    let primitive = lift.animator.get_draw_primitive(position);
+    draw_queue.push(primitive);
 }
 
 pub fn draw_text(text: &Text, draw_queue: &mut Vec<DrawPrimitive>) {

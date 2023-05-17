@@ -56,12 +56,25 @@ pub fn create_floor(
     Floor::new(y, idx, FLOOR_WIDTH, FLOOR_HEIGHT, primitives)
 }
 
-pub fn create_lift_entity(floor_idx: usize) -> Lift {
+pub fn create_lift_entity(
+    floor_idx: usize,
+    sprite_atlas: &SpriteAtlas,
+) -> Lift {
+    let animator = Animator::new(AnimatedSprite::new(
+        sprite_atlas,
+        "lift",
+        1.0,
+        AnimationMode::Repeat,
+        SPRITE_SCALE,
+        Origin::BotCenter,
+    ));
+
     Lift::new(
         floor_idx as f32 * FLOOR_HEIGHT,
         LIFT_WIDTH,
         LIFT_HEIGHT,
         2.0,
+        animator,
     )
 }
 
