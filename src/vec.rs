@@ -196,6 +196,7 @@ pub enum Origin {
     TopCenter,
     BotLeft,
     TopLeft,
+    TopRight,
     RightCenter,
     LeftCenter,
 }
@@ -214,6 +215,7 @@ impl Origin {
             "TopCenter" => Self::TopCenter,
             "BotLeft" => Self::BotLeft,
             "TopLeft" => Self::TopLeft,
+            "TopRight" => Self::TopRight,
             "RightCenter" => Self::RightCenter,
             "LeftCenter" => Self::LeftCenter,
             _ => {
@@ -242,6 +244,7 @@ impl Rect {
             TopCenter => Self::from_top_center(position, size),
             BotLeft => Self::from_bot_left(position, size),
             TopLeft => Self::from_top_left(position, size),
+            TopRight => Self::from_top_right(position, size),
             RightCenter => Self::from_right_center(position, size),
             LeftCenter => Self::from_left_center(position, size),
         };
@@ -278,6 +281,12 @@ impl Rect {
 
     pub fn from_top_left(position: Vec2<f32>, size: Vec2<f32>) -> Self {
         let center = position + Vec2::new(size.x * 0.5, -size.y * 0.5);
+
+        Self::from_center(center, size)
+    }
+
+    pub fn from_top_right(position: Vec2<f32>, size: Vec2<f32>) -> Self {
+        let center = position - size.scale(0.5);
 
         Self::from_center(center, size)
     }

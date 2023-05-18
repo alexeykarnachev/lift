@@ -29,7 +29,7 @@ vec2 project(vec2 pos, Camera camera) {
     if (a_space == WorldSpace || a_space == CameraSpace) {
         proj /= 0.5 * camera.world_xywh.zw;
     } else if (a_space == ScreenSpace) {
-        proj /= 0.5 * screen_size;
+        proj = 2.0 * proj / screen_size - 1.0;
     }
 
     return proj;

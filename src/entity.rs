@@ -855,7 +855,7 @@ impl Text {
         position: Vec2<f32>,
         glyph_atlas: &GlyphAtlas,
         space: SpaceType,
-        origin: Origin,
+        alignment: Origin,
         string: String,
         font_size: u32,
         color: Color,
@@ -893,7 +893,7 @@ impl Text {
         let bot_left = draw_primitives[0].rect.bot_left;
         let top_right =
             draw_primitives[draw_primitives.len() - 1].rect.top_right;
-        let offset = match origin {
+        let offset = match alignment {
             Origin::Center => (bot_left - top_right).scale(0.5),
             Origin::BotCenter => {
                 Vec2::new(0.5 * (bot_left.x - top_right.x), 0.0)
@@ -902,8 +902,9 @@ impl Text {
                 0.5 * (bot_left.x - top_right.x),
                 bot_left.y - top_right.y,
             ),
-            Origin::BotLeft => position,
+            Origin::BotLeft => Vec2::zeros(),
             Origin::TopLeft => Vec2::new(0.0, bot_left.y - top_right.y),
+            Origin::TopRight => bot_left - top_right,
             Origin::LeftCenter => {
                 Vec2::new(0.0, 0.5 * (bot_left.y - top_right.y))
             }

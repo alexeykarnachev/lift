@@ -83,8 +83,7 @@ impl UI {
 
             let mut position =
                 Vec2::new(element.position.x, element.position.y);
-            position = (position * window_size).scale(0.5);
-
+            position = (position * window_size + window_size).scale(0.5);
             let mut text = if let Some(text_config) = &element.text {
                 Text::new(
                     position,

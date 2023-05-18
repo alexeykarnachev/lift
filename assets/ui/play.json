@@ -2,8 +2,8 @@
     {
         "id": "score",
         "position": {
-            "origin": "TopLeft",
-            "x": -0.95,
+            "origin": "TopRight",
+            "x": 0.95,
             "y": 0.95
         },
         "text": {

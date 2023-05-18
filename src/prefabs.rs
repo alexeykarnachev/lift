@@ -45,8 +45,8 @@ pub fn create_player(
 
     let light = Light {
         position: collider.get_top_center(),
-        color: Color::new(0.25, 0.25, 0.25, 1.0),
-        attenuation: [1.0, 0.02, 0.0],
+        color: Color::new(1.0, 1.0, 1.0, 1.0),
+        attenuation: [1.0, 0.05, 0.0],
     };
     let mut animator = Animator::new(AnimatedSprite::new(
         sprite_atlas,
