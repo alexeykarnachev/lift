@@ -49,6 +49,7 @@ pub struct Entity {
     range_weapon: Option<RangeWeapon>,
 
     pub animator: Option<Animator>,
+    pub effect: u32,
 
     pub score: u32,
 }
@@ -69,6 +70,7 @@ impl Entity {
         melee_weapon: Option<MeleeWeapon>,
         range_weapon: Option<RangeWeapon>,
         animator: Option<Animator>,
+        effect: u32,
     ) -> Self {
         Self {
             behaviour,
@@ -88,6 +90,7 @@ impl Entity {
             melee_weapon,
             range_weapon,
             animator,
+            effect,
             score: 0,
         }
     }
@@ -764,6 +767,7 @@ impl Animator {
     pub fn get_draw_primitive(
         &self,
         position: Vec2<f32>,
+        effect: u32,
     ) -> DrawPrimitive {
         let mut sprite = self
             .animation_to_sprite
@@ -772,12 +776,13 @@ impl Animator {
             .get_current_frame();
 
         DrawPrimitive::from_sprite(
-            Space::World,
+            SpaceType::WorldSpace,
+            effect,
             position,
             sprite,
             None,
             self.flip,
-            Texture::Sprite,
+            TextureType::SpriteTexture,
         )
     }
 
@@ -799,7 +804,7 @@ impl Text {
     pub fn new(
         position: Vec2<f32>,
         glyph_atlas: &GlyphAtlas,
-        space: Space,
+        space: SpaceType,
         origin: Origin,
         string: String,
         font_size: u32,
@@ -821,11 +826,12 @@ impl Text {
             primitive_position.y += glyph.metrics.ymin as f32;
             let mut primitive = DrawPrimitive::from_sprite(
                 space,
+                0,
                 Vec2::zeros(),
                 sprite,
                 Some(color),
                 false,
-                Texture::Glyph,
+                TextureType::GlyphTexture,
             )
             .translate(primitive_position);
             draw_primitives.push(primitive);

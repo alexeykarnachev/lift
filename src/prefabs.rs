@@ -2,6 +2,9 @@ use crate::entity::*;
 use crate::graphics::*;
 use crate::ui::*;
 use crate::vec::*;
+use AnimationMode::*;
+use EffectType::*;
+use Origin::*;
 
 pub fn create_default_sprite_atlas() -> SpriteAtlas {
     SpriteAtlas::new(
@@ -30,9 +33,6 @@ pub fn create_player(
     position: Vec2<f32>,
     sprite_atlas: &SpriteAtlas,
 ) -> Entity {
-    use AnimationMode::*;
-    use Origin::*;
-
     let collider =
         Rect::from_bot_center(Vec2::zeros(), Vec2::new(20.0, 40.0));
     let weapon_collider = Rect::from_right_center(
@@ -106,6 +106,7 @@ pub fn create_player(
         Some(melee_weapon),
         None,
         Some(animator),
+        ApplyLightEffect as u32,
     )
 }
 
@@ -113,9 +114,6 @@ pub fn create_rat(
     position: Vec2<f32>,
     sprite_atlas: &SpriteAtlas,
 ) -> Entity {
-    use AnimationMode::*;
-    use Origin::*;
-
     let collider =
         Rect::from_bot_center(Vec2::zeros(), Vec2::new(20.0, 12.0));
     let weapon_collider = Rect::from_right_center(
@@ -202,6 +200,7 @@ pub fn create_rat(
         Some(melee_weapon),
         None,
         Some(animator),
+        ApplyLightEffect as u32,
     )
 }
 
@@ -209,9 +208,6 @@ pub fn create_bat(
     position: Vec2<f32>,
     sprite_atlas: &SpriteAtlas,
 ) -> Entity {
-    use AnimationMode::*;
-    use Origin::*;
-
     let collider =
         Rect::from_top_center(Vec2::zeros(), Vec2::new(16.0, 16.0));
     let weapon_collider = Rect::from_right_center(
@@ -278,14 +274,15 @@ pub fn create_bat(
         false,
         collider,
         50.0,
-        160.0,
-        2.0,
+        0.0,
+        0.0,
         1000.0,
         None,
         Some(healing),
         Some(melee_weapon),
         None,
         Some(animator),
+        ApplyLightEffect as u32,
     )
 }
 

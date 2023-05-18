@@ -89,7 +89,7 @@ impl UI {
                 Text::new(
                     position,
                     &glyph_atlas,
-                    Space::Screen,
+                    SpaceType::ScreenSpace,
                     origin,
                     text_config.string.clone(),
                     text_config.font_size,

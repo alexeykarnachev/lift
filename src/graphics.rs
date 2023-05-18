@@ -6,6 +6,8 @@ use crate::entity::*;
 use crate::level::Level;
 use crate::ui::*;
 use crate::vec::{Origin, Rect, Vec2};
+use core::fmt::Debug;
+use enum_iterator::{all, Sequence};
 use fontdue::Font;
 use fontdue::Metrics;
 use image::imageops::flip_vertical_in_place;
@@ -195,34 +197,28 @@ impl Color {
 }
 
 #[derive(Copy, Clone)]
-pub enum Texture {
-    Sprite = 1,
-    Glyph = 2,
-}
-
-#[derive(Copy, Clone)]
-pub enum Space {
-    World = 1,
-    Camera = 2,
-    Screen = 3,
-}
-
-#[derive(Copy, Clone)]
 pub struct DrawPrimitive {
     pub rect: Rect,
-    pub space: Space,
+    pub space: SpaceType,
+    pub effect: u32,
     pub flip: bool,
 
     pub color: Option<Color>,
     pub sprite: Option<Sprite>,
-    pub tex: Option<Texture>,
+    pub tex: Option<TextureType>,
 }
 
 impl DrawPrimitive {
-    pub fn from_rect(rect: Rect, space: Space, color: Color) -> Self {
+    pub fn from_rect(
+        rect: Rect,
+        space: SpaceType,
+        effect: u32,
+        color: Color,
+    ) -> Self {
         Self {
             rect,
             space,
+            effect,
             flip: false,
             color: Some(color),
             sprite: None,
@@ -231,12 +227,13 @@ impl DrawPrimitive {
     }
 
     pub fn from_sprite(
-        space: Space,
+        space: SpaceType,
+        effect: u32,
         position: Vec2<f32>,
         sprite: Sprite,
         color: Option<Color>,
         flip: bool,
-        tex: Texture,
+        tex: TextureType,
     ) -> Self {
         let size = Vec2::new(sprite.w, sprite.h);
         let rect = Rect::from_origin(sprite.origin, position, size);
@@ -244,6 +241,7 @@ impl DrawPrimitive {
         Self {
             rect,
             space,
+            effect,
             color,
             sprite: Some(sprite),
             tex: Some(tex),
@@ -375,11 +373,14 @@ pub fn draw_entity(entity: &Entity, draw_queue: &mut Vec<DrawPrimitive>) {
     let rect = entity.get_collider();
     // Main primitive
     if let Some(animator) = entity.animator.as_ref() {
-        draw_queue.push(animator.get_draw_primitive(entity.position));
+        draw_queue.push(
+            animator.get_draw_primitive(entity.position, entity.effect),
+        );
     } else {
         draw_queue.push(DrawPrimitive::from_rect(
             rect,
-            Space::World,
+            SpaceType::WorldSpace,
+            0,
             Color::new(1.0, 0.0, 0.0, 0.75),
         ));
     }
@@ -401,7 +402,8 @@ pub fn draw_entity(entity: &Entity, draw_queue: &mut Vec<DrawPrimitive>) {
     let background_rect = Rect::from_bot_center(position, bar_size);
     draw_queue.push(DrawPrimitive::from_rect(
         background_rect,
-        Space::World,
+        SpaceType::WorldSpace,
+        0,
         Color::gray(0.2, 1.0),
     ));
 
@@ -411,7 +413,8 @@ pub fn draw_entity(entity: &Entity, draw_queue: &mut Vec<DrawPrimitive>) {
     let health_rect = Rect::from_bot_left(bot_left, bar_size);
     draw_queue.push(DrawPrimitive::from_rect(
         health_rect,
-        Space::World,
+        SpaceType::WorldSpace,
+        0,
         color,
     ));
 }
@@ -420,7 +423,8 @@ pub fn draw_bullet(bullet: &Bullet, draw_queue: &mut Vec<DrawPrimitive>) {
     let rect = bullet.get_collider();
     draw_queue.push(DrawPrimitive::from_rect(
         rect,
-        Space::World,
+        SpaceType::WorldSpace,
+        0,
         Color::red(1.0),
     ));
 }
@@ -428,7 +432,8 @@ pub fn draw_bullet(bullet: &Bullet, draw_queue: &mut Vec<DrawPrimitive>) {
 pub fn draw_collider(collider: Rect, draw_queue: &mut Vec<DrawPrimitive>) {
     draw_queue.push(DrawPrimitive::from_rect(
         collider,
-        Space::World,
+        SpaceType::WorldSpace,
+        0,
         Color::new(1.0, 0.0, 0.0, 0.1),
     ));
 }
@@ -440,7 +445,8 @@ pub fn draw_melee_attack(
     let rect = attack.get_collider();
     draw_queue.push(DrawPrimitive::from_rect(
         rect,
-        Space::World,
+        SpaceType::WorldSpace,
+        0,
         Color::yellow(0.5),
     ));
 }
@@ -455,4 +461,53 @@ pub fn draw_text(text: &Text, draw_queue: &mut Vec<DrawPrimitive>) {
 
 pub fn draw_ui(ui: &UI, draw_queue: &mut Vec<DrawPrimitive>) {
     ui.texts.iter().for_each(|t| draw_text(t, draw_queue));
+}
+
+#[derive(Copy, Clone, Debug, Sequence)]
+pub enum TextureType {
+    SpriteTexture = 1,
+    GlyphTexture = 2,
+}
+
+impl From<TextureType> for u32 {
+    fn from(e: TextureType) -> u32 {
+        e as u32
+    }
+}
+
+#[derive(Copy, Clone, Debug, Sequence)]
+pub enum SpaceType {
+    WorldSpace = 1,
+    CameraSpace = 2,
+    ScreenSpace = 3,
+}
+
+impl From<SpaceType> for u32 {
+    fn from(e: SpaceType) -> u32 {
+        e as u32
+    }
+}
+
+#[derive(Copy, Clone, Debug, Sequence)]
+pub enum EffectType {
+    ApplyLightEffect = 1 << 0,
+}
+
+impl From<EffectType> for u32 {
+    fn from(e: EffectType) -> u32 {
+        e as u32
+    }
+}
+
+pub fn enum_to_shader_source<T: Sequence + Debug + Copy + Into<u32>>(
+) -> String {
+    let mut source = String::new();
+
+    for variant in all::<T>().collect::<Vec<_>>() {
+        let definition =
+            format!("const uint {:?} = {:?};\n", variant, variant.into());
+        source.push_str(&definition);
+    }
+
+    source
 }

@@ -176,6 +176,7 @@ struct PrimitiveRenderer {
     vao: glow::NativeVertexArray,
     a_xywh: Attribute<f32>,
     a_space: Attribute<u32>,
+    a_effect: Attribute<u32>,
     a_tex_uvwh: Attribute<f32>,
     a_rgba: Attribute<f32>,
     a_tex_id: Attribute<u32>,
@@ -210,6 +211,15 @@ impl PrimitiveRenderer {
             program,
             1,
             "a_space",
+            glow::UNSIGNED_INT,
+            MAX_N_INSTANCED_PRIMITIVES,
+            1,
+        );
+        let a_effect = Attribute::new(
+            gl,
+            program,
+            1,
+            "a_effect",
             glow::UNSIGNED_INT,
             MAX_N_INSTANCED_PRIMITIVES,
             1,
@@ -258,6 +268,7 @@ impl PrimitiveRenderer {
             vao,
             a_xywh,
             a_space,
+            a_effect,
             a_tex_uvwh,
             a_rgba,
             a_tex_id,
@@ -322,6 +333,7 @@ impl PrimitiveRenderer {
     fn push_primitive(&mut self, primitive: &DrawPrimitive) {
         self.a_xywh.push_data(&primitive.rect.to_xywh());
         self.a_space.push_data(&[primitive.space as u32]);
+        self.a_effect.push_data(&[primitive.effect]);
         self.a_flip.push_data(&[(primitive.flip as i32) as f32]);
 
         if let Some(tex) = primitive.tex {
@@ -349,6 +361,7 @@ impl PrimitiveRenderer {
         }
         self.a_xywh.sync_data(gl);
         self.a_space.sync_data(gl);
+        self.a_effect.sync_data(gl);
         self.a_rgba.sync_data(gl);
         self.a_tex_uvwh.sync_data(gl);
         self.a_tex_id.sync_data(gl);
@@ -556,13 +569,18 @@ fn create_program(
     unsafe {
         program = gl.create_program().expect("Cannot create program");
 
-        let common_shader_src: String;
+        let mut common_shader_src: String;
         if let Some(common_shader_fp) = common_shader_fp {
             common_shader_src =
                 fs::read_to_string(common_shader_fp).unwrap();
         } else {
             common_shader_src = "".to_string();
         }
+
+        common_shader_src.push_str(&enum_to_shader_source::<SpaceType>());
+        common_shader_src
+            .push_str(&enum_to_shader_source::<TextureType>());
+        common_shader_src.push_str(&enum_to_shader_source::<EffectType>());
 
         let mut vert_shader_src =
             fs::read_to_string(vert_shader_fp).unwrap();

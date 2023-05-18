@@ -1,5 +1,5 @@
 use crate::entity::*;
-use crate::graphics::{DrawPrimitive, Space, SpriteAtlas, Texture};
+use crate::graphics::*;
 use crate::prefabs::*;
 use crate::vec::{Origin, Rect, Vec2};
 use serde::Deserialize;
@@ -48,6 +48,8 @@ pub struct Level {
 
 impl Level {
     pub fn new(file_path: &str, sprite_atlas: &SpriteAtlas) -> Self {
+        use EffectType::*;
+
         let meta = fs::read_to_string(file_path).unwrap();
         let tiled_json: TiledJson = serde_json::from_str(&meta).unwrap();
         let tilewidth = tiled_json.tilewidth;
@@ -81,12 +83,13 @@ impl Level {
                                 sprite.origin = Origin::TopLeft;
 
                                 let primitive = DrawPrimitive::from_sprite(
-                                    Space::World,
+                                    SpaceType::WorldSpace,
+                                    ApplyLightEffect as u32,
                                     position,
                                     sprite,
                                     None,
                                     false,
-                                    Texture::Sprite,
+                                    TextureType::SpriteTexture,
                                 );
                                 draw_primitives.push(primitive);
                             }
