@@ -1,36 +1,42 @@
 [
     {
         "id": "game_over",
+        "type": "text",
+        "is_interactive": false,
         "position": {
             "origin": "Center",
             "x": 0.0,
             "y": 0.5
         },
-        "text": {
+        "params": {
             "string": "Game Over",
             "font_size": 119
         }
     },
     {
         "id": "restart",
+        "type": "text",
+        "is_interactive": true,
         "position": {
             "origin": "Center",
             "x": 0.0,
             "y": 0.2
         },
-        "text": {
+        "params": {
             "string": "Restart",
             "font_size": 67
         }
     },
     {
         "id": "quit",
+        "type": "text",
+        "is_interactive": true,
         "position": {
             "origin": "Center",
             "x": 0.0,
             "y": 0.0
         },
-        "text": {
+        "params": {
             "string": "Quit",
             "font_size": 67
         }

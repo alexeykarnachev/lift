@@ -1,14 +1,30 @@
 [
     {
         "id": "score",
+        "type": "text",
+        "is_interactive": false,
         "position": {
             "origin": "TopRight",
             "x": 0.95,
             "y": 0.95
         },
-        "text": {
+        "params": {
             "string": "Score:",
             "font_size": 28
+        }
+    },
+    {
+        "id": "health",
+        "type": "rect",
+        "is_interactive": false,
+        "position": {
+            "origin": "TopLeft",
+            "x": 0.95,
+            "y": 0.95
+        },
+        "params": {
+            "width": 0.1,
+            "aspect": 5.0
         }
     }
 ]

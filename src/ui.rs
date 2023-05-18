@@ -9,16 +9,22 @@ pub enum UIEvent {
     Hover(String),
     LMBPress(String),
     RMBPress(String),
+    Empty(String),
 }
 
 #[derive(Deserialize, Debug, Clone)]
-pub struct TextConfig {
-    string: String,
-    font_size: u32,
+pub struct Params {
+    // Text
+    string: Option<String>,
+    font_size: Option<u32>,
+
+    // Rect
+    width: Option<f32>,
+    aspect: Option<f32>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
-pub struct PositionConfig {
+pub struct Position {
     origin: String,
     x: f32,
     y: f32,
@@ -27,13 +33,20 @@ pub struct PositionConfig {
 #[derive(Deserialize, Debug, Clone)]
 pub struct Element {
     id: String,
-    position: PositionConfig,
-    text: Option<TextConfig>,
+    #[serde(rename = "type")]
+    type_: String,
+    is_interactive: bool,
+    position: Position,
+    params: Params,
+
+    #[serde(skip)]
+    color: Color,
 }
 
 pub struct UI {
     pub file_path: &'static str,
     pub texts: Vec<Text>,
+    pub rects: Vec<Rect>,
     elements: Vec<Element>,
 }
 
@@ -42,18 +55,31 @@ impl UI {
         let data = fs::read_to_string(file_path).unwrap();
         let elements: Vec<Element> = serde_json::from_str(&data).unwrap();
         let texts = Vec::<Text>::with_capacity(elements.len());
+        let rects = Vec::<Rect>::with_capacity(elements.len());
 
         Self {
             file_path,
             elements,
             texts,
+            rects,
         }
     }
 
-    pub fn set_element_text(&mut self, element_id: &str, string: &str) {
+    pub fn set_element_string(&mut self, element_id: &str, string: &str) {
         for element in self.elements.iter_mut() {
             if element.id == element_id {
-                element.text.as_mut().unwrap().string = string.to_string();
+                element.params.string = Some(string.to_string());
+                return;
+            }
+        }
+
+        panic!("No such element: {:?}", element_id);
+    }
+
+    pub fn set_element_color(&mut self, element_id: &str, color: Color) {
+        for element in self.elements.iter_mut() {
+            if element.id == element_id {
+                element.color = color;
                 return;
             }
         }
@@ -65,7 +91,7 @@ impl UI {
         &mut self,
         input: &Input,
         glyph_atlas: &GlyphAtlas,
-    ) -> Option<UIEvent> {
+    ) -> Vec<UIEvent> {
         let cursor_pos = Vec2::new(
             input.cursor_pos.x as f32,
             (input.window_size.y - input.cursor_pos.y) as f32,
@@ -74,50 +100,65 @@ impl UI {
             input.window_size.x as f32,
             input.window_size.y as f32,
         );
-        let cursor_pos = cursor_pos - window_size.scale(0.5);
 
-        let mut event = None;
         self.texts.clear();
-        for element in &self.elements {
+        self.rects.clear();
+        let mut events = Vec::with_capacity(self.elements.len());
+        for element in self.elements.iter() {
+            let params = element.params.clone();
             let origin = Origin::from_str(&element.position.origin);
-
             let mut position =
                 Vec2::new(element.position.x, element.position.y);
             position = (position * window_size + window_size).scale(0.5);
-            let mut text = if let Some(text_config) = &element.text {
-                Text::new(
-                    position,
-                    &glyph_atlas,
-                    SpaceType::ScreenSpace,
-                    origin,
-                    text_config.string.clone(),
-                    text_config.font_size,
-                    Color::new(1.0, 0.0, 0.0, 1.0),
-                )
-            } else {
-                panic!(
-                    "UI element {:?} doesn't have a text field",
-                    element.id
-                );
-            };
 
-            let rect = text.get_bound_rect();
-            if rect.collide_with_point(cursor_pos) {
-                text.set_color(Color::yellow(1.0));
-
-                let id = element.id.clone();
-                if input.lmb_press_pos.is_some() {
-                    event = Some(UIEvent::LMBPress(id));
-                } else if input.rmb_press_pos.is_some() {
-                    event = Some(UIEvent::RMBPress(id));
-                } else {
-                    event = Some(UIEvent::Hover(id));
+            let collider;
+            match element.type_.as_str() {
+                "text" => {
+                    let string = params.string.unwrap();
+                    let font_size = element.params.font_size.unwrap();
+                    let text = Text::new(
+                        position,
+                        &glyph_atlas,
+                        SpaceType::ScreenSpace,
+                        origin,
+                        string.clone(),
+                        font_size,
+                        element.color,
+                    );
+                    collider = text.get_bound_rect();
+                    self.texts.push(text);
+                }
+                "rect" => {
+                    let width = params.width.unwrap();
+                    let aspect = params.aspect.unwrap();
+                    let height = width / aspect;
+                    let size = Vec2::new(width, height) * window_size;
+                    let rect = Rect::from_origin(origin, position, size);
+                    collider = rect;
+                    self.rects.push(rect);
+                }
+                _ => {
+                    panic!("Unknown UI element type: {:?}", element.type_)
                 }
             }
 
-            self.texts.push(text);
+            if element.is_interactive {
+                let id = element.id.clone();
+
+                if collider.collide_with_point(cursor_pos) {
+                    if input.lmb_press_pos.is_some() {
+                        events.push(UIEvent::LMBPress(id));
+                    } else if input.rmb_press_pos.is_some() {
+                        events.push(UIEvent::RMBPress(id));
+                    } else {
+                        events.push(UIEvent::Hover(id));
+                    }
+                } else {
+                    events.push(UIEvent::Empty(id));
+                }
+            }
         }
 
-        event
+        events
     }
 }

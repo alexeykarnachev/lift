@@ -163,7 +163,7 @@ impl AnimatedSprite {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct Color {
     r: f32,
     g: f32,
@@ -171,9 +171,24 @@ pub struct Color {
     a: f32,
 }
 
+impl Default for Color {
+    fn default() -> Self {
+        Self {
+            r: 0.5,
+            g: 0.5,
+            b: 0.5,
+            a: 1.0,
+        }
+    }
+}
+
 impl Color {
     pub fn new(r: f32, g: f32, b: f32, a: f32) -> Self {
         Self { r, g, b, a }
+    }
+
+    pub fn from_slice(arr: &[f32; 4]) -> Self {
+        Self::new(arr[0], arr[1], arr[2], arr[3])
     }
 
     pub fn gray(c: f32, a: f32) -> Self {

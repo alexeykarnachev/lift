@@ -13,6 +13,7 @@ use crate::ui::*;
 use crate::vec::*;
 use std::f32::consts::PI;
 use std::fs;
+use std::time::SystemTime;
 
 #[derive(PartialEq, Debug)]
 pub enum WorldState {
@@ -110,6 +111,7 @@ impl World {
         let game_over_ui_last_modified =
             get_last_modified(self.game_over_ui.file_path);
         if game_over_ui_last_modified != self.game_over_ui_last_modified {
+            self.game_over_ui_last_modified = game_over_ui_last_modified;
             self.game_over_ui = create_default_game_over_ui();
         }
     }
@@ -402,22 +404,33 @@ impl World {
 
     fn update_play_ui(&mut self, input: &Input) {
         let score = format!("Score: {}", self.level.player.score);
-        self.play_ui.set_element_text("score", &score);
+        self.play_ui.set_element_string("score", &score);
         _ = self.play_ui.update(input, &self.glyph_atlas);
     }
 
     fn update_game_over_ui(&mut self, input: &Input) {
-        if let Some(event) =
-            self.game_over_ui.update(input, &self.glyph_atlas)
-        {
+        use UIEvent::*;
+
+        let events = self.game_over_ui.update(input, &self.glyph_atlas);
+        for event in events.iter() {
             match event {
-                UIEvent::LMBPress(id) => match id.as_str() {
+                LMBPress(id) => match id.as_str() {
                     "restart" => self.state = WorldState::Restart,
                     "quit" => {
                         self.state = WorldState::Quit;
                     }
                     _ => {}
                 },
+                Hover(id) => {
+                    self.game_over_ui.set_element_color(
+                        &id,
+                        Color::new(0.9, 0.9, 0.5, 1.0),
+                    );
+                }
+                Empty(id) => {
+                    self.game_over_ui
+                        .set_element_color(&id, Color::default());
+                }
                 _ => {}
             }
         }
@@ -490,5 +503,11 @@ pub fn world_to_screen(
 
 fn get_last_modified(file_path: &str) -> u64 {
     let metadata = fs::metadata(file_path).unwrap();
-    metadata.modified().unwrap().elapsed().unwrap().as_millis() as u64
+    if let Ok(time) = metadata.modified() {
+        time.duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+    } else {
+        0
+    }
 }
