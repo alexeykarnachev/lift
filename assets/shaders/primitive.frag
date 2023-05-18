@@ -4,7 +4,14 @@ in vec2 vs_pos;
 flat in uint vs_tex_id;
 flat in uint vs_effect;
 
-uniform vec2 light_pos;
+struct Light {
+    vec2 position;
+    vec3 color;
+    vec3 attenuation;
+};
+
+uniform Light lights[32];
+uniform int n_lights;
 uniform sampler2D sprite_atlas_tex;
 uniform sampler2D glyph_atlas_tex;
 
@@ -35,9 +42,13 @@ vec4 get_color() {
 }
 
 vec4 apply_light(vec4 color) {
-    float d = distance(light_pos, vs_pos) / 40.0;
-    float k = 1.0 / (1.0 + d * 0.05 + d*d * 0.1);
-    vec3 rgb = color.rgb * k * vec3(1.2, 1.1, 1.0);
+    vec3 rgb = vec3(0.0);
+    for (int i = 0; i < n_lights; ++i) {
+        Light light = lights[i];
+        float d = distance(light.position, vs_pos);
+        float k = 1.0 / dot(light.attenuation, vec3(1.0, d, d * d));
+        rgb += color.rgb * k * light.color;
+    }
     return vec4(rgb, color.a);
 }
 

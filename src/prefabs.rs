@@ -43,6 +43,11 @@ pub fn create_player(
     let melee_weapon = MeleeWeapon::new(weapon_collider, 0.1, 0.22, 500.0);
     let dashing = Dashing::new(200.0, 0.5, 0.3);
 
+    let light = Light {
+        position: collider.get_top_center(),
+        color: Color::new(0.25, 0.25, 0.25, 1.0),
+        attenuation: [1.0, 0.02, 0.0],
+    };
     let mut animator = Animator::new(AnimatedSprite::new(
         sprite_atlas,
         "knight_idle",
@@ -93,10 +98,10 @@ pub fn create_player(
 
     Entity::new(
         true,
-        Behaviour::Player,
+        Some(Behaviour::Player),
         position,
         true,
-        collider,
+        Some(collider),
         100.0,
         0.0,
         0.0,
@@ -105,6 +110,7 @@ pub fn create_player(
         None,
         Some(melee_weapon),
         None,
+        Some(light),
         Some(animator),
         ApplyLightEffect as u32,
     )
@@ -187,10 +193,10 @@ pub fn create_rat(
 
     Entity::new(
         false,
-        behaviour,
+        Some(behaviour),
         position,
         true,
-        collider,
+        Some(collider),
         40.0,
         160.0,
         2.0,
@@ -198,6 +204,7 @@ pub fn create_rat(
         None,
         None,
         Some(melee_weapon),
+        None,
         None,
         Some(animator),
         ApplyLightEffect as u32,
@@ -269,10 +276,10 @@ pub fn create_bat(
 
     Entity::new(
         false,
-        behaviour,
+        Some(behaviour),
         position,
         false,
-        collider,
+        Some(collider),
         50.0,
         0.0,
         0.0,
@@ -281,8 +288,46 @@ pub fn create_bat(
         Some(healing),
         Some(melee_weapon),
         None,
+        None,
         Some(animator),
         ApplyLightEffect as u32,
+    )
+}
+
+pub fn create_torch(
+    position: Vec2<f32>,
+    sprite_atlas: &SpriteAtlas,
+) -> Entity {
+    let animator = Animator::new(AnimatedSprite::new(
+        sprite_atlas,
+        "torch_burn",
+        0.5,
+        Repeat,
+        TopCenter,
+    ));
+    let light = Light {
+        position,
+        color: Color::new(6.0, 1.0, 0.5, 1.0),
+        attenuation: [0.05, 0.005, 0.005],
+    };
+
+    Entity::new(
+        false,
+        None,
+        position,
+        false,
+        None,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        None,
+        None,
+        None,
+        None,
+        Some(light),
+        Some(animator),
+        0,
     )
 }
 

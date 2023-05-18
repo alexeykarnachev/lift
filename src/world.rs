@@ -87,6 +87,7 @@ impl World {
                 self.update_melee_attacks(dt);
                 self.update_enemies(dt);
                 self.update_player(dt, input);
+                self.update_lights(dt);
                 self.update_free_camera(input);
                 self.update_spawners(dt);
                 self.time += dt;
@@ -132,7 +133,7 @@ impl World {
         let floor_y = room.get_y_min();
         let ceil_y = room.get_y_max();
         let target = player.get_center();
-        let player_collider = player.get_collider();
+        let player_collider = player.get_collider().unwrap();
         let is_player_alive = !player.check_if_dead();
 
         for enemy in enemies.iter_mut() {
@@ -144,10 +145,10 @@ impl World {
             let dist_to_target = position.dist_to(target);
 
             match enemy.behaviour {
-                Rat {
+                Some(Rat {
                     min_jump_distance,
                     max_jump_distance,
-                } => {
+                }) => {
                     if enemy.check_if_dead() {
                         enemy.play_animation("death");
                     } else if enemy.check_if_can_reach_by_melee(
@@ -189,7 +190,7 @@ impl World {
                         enemy.set_orientation(is_flip);
                     }
                 }
-                Bat => {
+                Some(Bat) => {
                     let deviation =
                         Vec2::from_angle(self.time * 4.0).scale(0.5);
                     if enemy.check_if_dead() {
@@ -368,6 +369,12 @@ impl World {
         }
 
         self.melee_attacks = new_melee_attacks;
+    }
+
+    fn update_lights(&mut self, dt: f32) {
+        for light in self.level.lights.iter_mut() {
+            light.update(self.gravity, self.level.room, dt)
+        }
     }
 
     fn update_free_camera(&mut self, input: &Input) {

@@ -1,0 +1,56 @@
+{ "frames": [
+   {
+    "filename": "torch_burn.0",
+    "frame": { "x": 1, "y": 1, "w": 8, "h": 32 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 8, "h": 32 },
+    "sourceSize": { "w": 8, "h": 32 },
+    "duration": 100
+   },
+   {
+    "filename": "torch_burn.1",
+    "frame": { "x": 11, "y": 1, "w": 8, "h": 32 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 8, "h": 32 },
+    "sourceSize": { "w": 8, "h": 32 },
+    "duration": 100
+   },
+   {
+    "filename": "torch_burn.2",
+    "frame": { "x": 21, "y": 1, "w": 8, "h": 32 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 8, "h": 32 },
+    "sourceSize": { "w": 8, "h": 32 },
+    "duration": 100
+   },
+   {
+    "filename": "torch_burn.3",
+    "frame": { "x": 31, "y": 1, "w": 8, "h": 32 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 8, "h": 32 },
+    "sourceSize": { "w": 8, "h": 32 },
+    "duration": 100
+   }
+ ],
+ "meta": {
+  "app": "http://www.aseprite.org/",
+  "version": "1.3-rc2-x64",
+  "image": "torch_burn.png",
+  "format": "RGBA8888",
+  "size": { "w": 40, "h": 34 },
+  "scale": "1",
+  "frameTags": [
+  ],
+  "layers": [
+   { "name": "flame", "opacity": 255, "blendMode": "normal" },
+   { "name": "Layer 3", "opacity": 255, "blendMode": "normal" },
+   { "name": "Layer 2", "opacity": 255, "blendMode": "normal" }
+  ],
+  "slices": [
+  ]
+ }
+}

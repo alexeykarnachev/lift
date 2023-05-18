@@ -31,7 +31,7 @@
                  "rotation":0,
                  "type":"",
                  "visible":true,
-                 "width":735.381181818182,
+                 "width":735.381,
                  "x":0.5,
                  "y":5.75
                 }, 
@@ -118,6 +118,42 @@
                  "width":0,
                  "x":108.333,
                  "y":101
+                }, 
+                {
+                 "height":0,
+                 "id":16,
+                 "name":"torch",
+                 "point":true,
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":0,
+                 "x":533.25,
+                 "y":34.75
+                }, 
+                {
+                 "height":0,
+                 "id":17,
+                 "name":"torch",
+                 "point":true,
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":0,
+                 "x":378.5,
+                 "y":35.25
+                }, 
+                {
+                 "height":0,
+                 "id":18,
+                 "name":"torch",
+                 "point":true,
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":0,
+                 "x":13,
+                 "y":34.25
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -126,7 +162,7 @@
          "y":0
         }],
  "nextlayerid":4,
- "nextobjectid":16,
+ "nextobjectid":19,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.10.1",

@@ -81,6 +81,13 @@ impl SpriteAtlas {
     }
 }
 
+#[derive(Copy, Clone)]
+pub struct Light {
+    pub position: Vec2<f32>,
+    pub color: Color,
+    pub attenuation: [f32; 3],
+}
+
 #[derive(Copy, Clone, PartialEq)]
 pub enum AnimationMode {
     Repeat,
@@ -193,6 +200,10 @@ impl Color {
             b: k * self.b + k_other * other.b,
             a: k * self.a + k_other * other.a,
         }
+    }
+
+    pub fn to_rgb_array(&self) -> [f32; 3] {
+        [self.r, self.g, self.b]
     }
 }
 
@@ -370,15 +381,13 @@ impl GlyphAtlas {
 }
 
 pub fn draw_entity(entity: &Entity, draw_queue: &mut Vec<DrawPrimitive>) {
-    let rect = entity.get_collider();
-    // Main primitive
     if let Some(animator) = entity.animator.as_ref() {
         draw_queue.push(
             animator.get_draw_primitive(entity.position, entity.effect),
         );
-    } else {
+    } else if let Some(collider) = entity.get_collider() {
         draw_queue.push(DrawPrimitive::from_rect(
-            rect,
+            collider,
             SpaceType::WorldSpace,
             0,
             Color::new(1.0, 0.0, 0.0, 0.75),
@@ -397,8 +406,8 @@ pub fn draw_entity(entity: &Entity, draw_queue: &mut Vec<DrawPrimitive>) {
     let bar_size = Vec2::new(20.0, 2.6);
     let border_size = Vec2::new(0.6, 0.6);
 
-    let y = rect.get_top_left().y + 4.0;
-    let position = Vec2::new(rect.get_center().x, y);
+    let y = entity.get_top_left().y + 4.0;
+    let position = Vec2::new(entity.get_center().x, y);
     let background_rect = Rect::from_bot_center(position, bar_size);
     draw_queue.push(DrawPrimitive::from_rect(
         background_rect,

@@ -333,6 +333,13 @@ impl Rect {
         center
     }
 
+    pub fn get_top_center(&self) -> Vec2<f32> {
+        let mut center = self.get_center();
+        center.y += 0.5 * self.get_size().y;
+
+        center
+    }
+
     pub fn get_top_left(&self) -> Vec2<f32> {
         let mut top_left = self.top_right;
         top_left.x -= self.get_size().x;

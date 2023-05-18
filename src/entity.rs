@@ -26,11 +26,11 @@ pub enum Orientation {
 
 #[derive(Clone)]
 pub struct Entity {
-    pub behaviour: Behaviour,
+    pub behaviour: Option<Behaviour>,
     pub position: Vec2<f32>,
     pub orientation: Orientation,
     pub apply_gravity: bool,
-    collider: Rect,
+    collider: Option<Rect>,
 
     pub move_speed: f32,
 
@@ -48,6 +48,7 @@ pub struct Entity {
     melee_weapon: Option<MeleeWeapon>,
     range_weapon: Option<RangeWeapon>,
 
+    pub light: Option<Light>,
     pub animator: Option<Animator>,
     pub effect: u32,
 
@@ -57,10 +58,10 @@ pub struct Entity {
 impl Entity {
     pub fn new(
         is_player: bool,
-        behaviour: Behaviour,
+        behaviour: Option<Behaviour>,
         position: Vec2<f32>,
         apply_gravity: bool,
-        collider: Rect,
+        collider: Option<Rect>,
         move_speed: f32,
         jump_speed: f32,
         jump_period: f32,
@@ -69,6 +70,7 @@ impl Entity {
         healing: Option<Healing>,
         melee_weapon: Option<MeleeWeapon>,
         range_weapon: Option<RangeWeapon>,
+        light: Option<Light>,
         animator: Option<Animator>,
         effect: u32,
     ) -> Self {
@@ -89,18 +91,44 @@ impl Entity {
             healing,
             melee_weapon,
             range_weapon,
+            light,
             animator,
             effect,
             score: 0,
         }
     }
 
-    pub fn get_collider(&self) -> Rect {
-        self.collider.translate(self.position)
+    pub fn get_collider(&self) -> Option<Rect> {
+        if let Some(collider) = self.collider {
+            return Some(collider.translate(self.position));
+        }
+
+        None
     }
 
     pub fn get_center(&self) -> Vec2<f32> {
-        self.get_collider().get_center()
+        if let Some(collider) = self.get_collider() {
+            return collider.get_center();
+        }
+
+        self.position
+    }
+
+    pub fn get_top_left(&self) -> Vec2<f32> {
+        if let Some(collider) = self.get_collider() {
+            return collider.get_top_left();
+        }
+
+        self.position
+    }
+
+    pub fn get_light(&self) -> Option<Light> {
+        if let Some(mut light) = self.light {
+            light.position += self.position;
+            return Some(light);
+        };
+
+        None
     }
 
     pub fn set_orientation(&mut self, is_right: bool) {
@@ -122,11 +150,12 @@ impl Entity {
             return false;
         }
 
-        let self_collider = self.get_collider();
         let bullet_collider = bullet.get_collider();
-        if self_collider.collide_with_rect(bullet_collider) {
-            self.receive_damage(bullet.damage);
-            return true;
+        if let Some(self_collider) = self.get_collider() {
+            if self_collider.collide_with_rect(bullet_collider) {
+                self.receive_damage(bullet.damage);
+                return true;
+            }
         }
 
         false
@@ -140,11 +169,12 @@ impl Entity {
             return false;
         }
 
-        let self_collider = self.get_collider();
         let attack_collider = melee_attack.get_collider();
-        if self_collider.collide_with_rect(attack_collider) {
-            self.receive_damage(melee_attack.damage);
-            return true;
+        if let Some(self_collider) = self.get_collider() {
+            if self_collider.collide_with_rect(attack_collider) {
+                self.receive_damage(melee_attack.damage);
+                return true;
+            }
         }
 
         false
@@ -229,17 +259,26 @@ impl Entity {
     }
 
     pub fn check_if_player(&self) -> bool {
-        self.behaviour == Behaviour::Player
+        if let Some(Behaviour::Player) = self.behaviour {
+            return true;
+        }
+        false
     }
 
     pub fn check_if_on_floor(&self, floor_y: f32) -> bool {
-        let collider = self.get_collider();
-        (collider.get_y_min() - floor_y).abs() < 1e-5
+        if let Some(collider) = self.get_collider() {
+            return (collider.get_y_min() - floor_y).abs() < 1e-5;
+        }
+
+        false
     }
 
     pub fn check_if_on_ceil(&self, ceil_y: f32) -> bool {
-        let collider = self.get_collider();
-        (collider.get_y_max() - ceil_y).abs() < 1e-5
+        if let Some(collider) = self.get_collider() {
+            return (collider.get_y_max() - ceil_y).abs() < 1e-5;
+        }
+
+        false
     }
 
     pub fn check_if_dead(&self) -> bool {
@@ -394,8 +433,22 @@ impl Entity {
 
         let floor_y = floor_collider.get_y_min();
         let was_on_floor = self.check_if_on_floor(floor_y);
+
+        let (x_min, x_max, y_min, y_max) =
+            if let Some(collider) = self.get_collider() {
+                (
+                    collider.get_x_min(),
+                    collider.get_x_max(),
+                    collider.get_y_min(),
+                    collider.get_y_max(),
+                )
+            } else {
+                let p = self.get_center();
+                (p.x, p.x, p.y, p.y)
+            };
+
         let self_collider = self.get_collider();
-        let dist_to_floor = self_collider.get_y_min() - floor_y;
+        let dist_to_floor = y_min - floor_y;
         if dist_to_floor <= 0.0 {
             self.position.y -= dist_to_floor;
         }
@@ -409,20 +462,17 @@ impl Entity {
             self.velocity.y -= gravity * dt;
         }
 
-        let left_offset =
-            floor_collider.get_x_min() - self_collider.get_x_min();
+        let left_offset = floor_collider.get_x_min() - x_min;
         if left_offset > 0.0 {
             self.position.x += left_offset
         }
 
-        let right_offset =
-            self_collider.get_x_max() - floor_collider.get_x_max();
+        let right_offset = x_max - floor_collider.get_x_max();
         if right_offset > 0.0 {
             self.position.x -= right_offset;
         }
 
-        let up_offset =
-            self_collider.get_y_max() - floor_collider.get_y_max();
+        let up_offset = y_max - floor_collider.get_y_max();
         if up_offset > 0.0 {
             self.position.y -= up_offset;
             self.velocity.y = 0.0;

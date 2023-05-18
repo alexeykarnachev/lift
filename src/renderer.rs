@@ -9,6 +9,7 @@ use std::fs;
 use std::mem::size_of;
 
 const MAX_N_INSTANCED_PRIMITIVES: usize = 1 << 12;
+const MAX_N_LIGHTS: usize = 32;
 const COMMON_GLSL_SHADER_FP: &str = "./assets/shaders/common.glsl";
 const PRIMITIVE_VERT_SHADER_FP: &str = "./assets/shaders/primitive.vert";
 const PRIMITIVE_FRAG_SHADER_FP: &str = "./assets/shaders/primitive.frag";
@@ -26,6 +27,7 @@ pub struct Renderer {
     hdr_resolve_renderer: HDRResolveRenderer,
 
     primitives: Vec<DrawPrimitive>,
+    lights: Vec<Light>,
 }
 
 impl Renderer {
@@ -68,12 +70,14 @@ impl Renderer {
             primitive_renderer,
             hdr_resolve_renderer,
             primitives: Vec::with_capacity(MAX_N_INSTANCED_PRIMITIVES),
+            lights: Vec::with_capacity(MAX_N_LIGHTS),
         }
     }
 
     pub fn render(&mut self, world: &World) {
         self.load_resources(world);
         self.fill_render_queue(world);
+        self.fill_lights(world);
 
         self.hdr_resolve_renderer.bind_framebuffer(&self.gl);
 
@@ -88,7 +92,7 @@ impl Renderer {
             &self.gl,
             &world.camera,
             &screen_size,
-            world.level.player.position.add_y(20.0),
+            &self.lights,
             &self.primitives,
         );
 
@@ -132,6 +136,12 @@ impl Renderer {
         self.primitives.clear();
 
         draw_level(&world.level, &mut self.primitives);
+        world
+            .level
+            .lights
+            .iter()
+            .for_each(|light| draw_entity(light, &mut self.primitives));
+
         draw_entity(&world.level.player, &mut self.primitives);
         world.level.enemies.iter().for_each(|enemy| {
             draw_entity(enemy, &mut self.primitives);
@@ -155,6 +165,25 @@ impl Renderer {
             draw_ui(&world.play_ui, &mut self.primitives);
         } else if world.state == GameOver {
             draw_ui(&world.game_over_ui, &mut self.primitives);
+        }
+    }
+
+    pub fn fill_lights(&mut self, world: &World) {
+        self.lights.clear();
+
+        if let Some(light) = world.level.player.get_light() {
+            self.lights.push(light);
+        }
+
+        for light in
+            world.level.enemies.iter().filter_map(|e| e.get_light())
+        {
+            self.lights.push(light);
+        }
+
+        for entity in world.level.lights.iter() {
+            let light = entity.light.unwrap();
+            self.lights.push(light);
         }
     }
 
@@ -281,7 +310,7 @@ impl PrimitiveRenderer {
         gl: &glow::Context,
         camera: &Camera,
         screen_size: &[f32; 2],
-        light_pos: Vec2<f32>,
+        lights: &Vec<Light>,
         primitives: &Vec<DrawPrimitive>,
     ) {
         primitives.iter().for_each(|p| self.push_primitive(p));
@@ -309,12 +338,7 @@ impl PrimitiveRenderer {
                 gl.bind_texture(glow::TEXTURE_2D, Some(glyph_atlas_tex));
             }
 
-            set_uniform_2_f32(
-                gl,
-                self.program,
-                "light_pos",
-                &light_pos.to_array(),
-            );
+            set_uniform_lights(gl, self.program, lights)
         }
 
         self.sync_data(gl);
@@ -688,6 +712,36 @@ fn set_uniform_camera(
     set_uniform_4_f32(gl, program, "camera.world_xywh", &world_xywh);
 }
 
+fn set_uniform_lights(
+    gl: &glow::Context,
+    program: glow::NativeProgram,
+    lights: &[Light],
+) {
+    set_uniform_1_i32(gl, program, "n_lights", lights.len() as i32);
+
+    for (i, light) in lights.iter().enumerate() {
+        let name = format!("lights[{}]", i).clone();
+        set_uniform_2_f32(
+            gl,
+            program,
+            &format!("{}.{}", name, "position"),
+            &light.position.to_array(),
+        );
+        set_uniform_3_f32(
+            gl,
+            program,
+            &format!("{}.{}", name, "color"),
+            &light.color.to_rgb_array(),
+        );
+        set_uniform_3_f32(
+            gl,
+            program,
+            &format!("{}.{}", name, "attenuation"),
+            &light.attenuation,
+        );
+    }
+}
+
 fn set_uniform_1_f32(
     gl: &glow::Context,
     program: glow::NativeProgram,
@@ -721,6 +775,18 @@ fn set_uniform_2_f32(
     unsafe {
         let loc = gl.get_uniform_location(program, name);
         gl.uniform_2_f32_slice(loc.as_ref(), value)
+    }
+}
+
+fn set_uniform_3_f32(
+    gl: &glow::Context,
+    program: glow::NativeProgram,
+    name: &str,
+    value: &[f32],
+) {
+    unsafe {
+        let loc = gl.get_uniform_location(program, name);
+        gl.uniform_3_f32_slice(loc.as_ref(), value)
     }
 }
 

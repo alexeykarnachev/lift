@@ -44,6 +44,7 @@ pub struct Level {
     pub player: Entity,
     pub enemies: Vec<Entity>,
     pub draw_primitives: Vec<DrawPrimitive>,
+    pub lights: Vec<Entity>,
 }
 
 impl Level {
@@ -60,6 +61,7 @@ impl Level {
         let mut room = None;
         let mut player = None;
         let mut enemies = Vec::new();
+        let mut lights = Vec::new();
         let mut draw_primitives = Vec::new();
 
         let layers = tiled_json.layers;
@@ -99,6 +101,8 @@ impl Level {
                 "objects" => {
                     let objects = layer.objects.as_ref().unwrap();
                     for object in objects {
+                        let position =
+                            Vec2::new(object.x, global_height - object.y);
                         match object.name.as_str() {
                             "room" => {
                                 let position =
@@ -110,48 +114,25 @@ impl Level {
                                 ));
                             }
                             "player" => {
-                                if let Some(true) = object.point {
-                                    let position = Vec2::new(
-                                        object.x,
-                                        global_height - object.y,
-                                    );
-                                    player = Some(create_player(
-                                        position,
-                                        sprite_atlas,
-                                    ));
-                                } else {
-                                    panic!("Player object must have point type");
-                                }
+                                player = Some(create_player(
+                                    position,
+                                    sprite_atlas,
+                                ));
                             }
                             "rat" => {
-                                if let Some(true) = object.point {
-                                    let position = Vec2::new(
-                                        object.x,
-                                        global_height - object.y,
-                                    );
-                                    let rat =
-                                        create_rat(position, sprite_atlas);
-                                    enemies.push(rat);
-                                } else {
-                                    panic!(
-                                        "Rat object must have point type"
-                                    );
-                                }
+                                let rat =
+                                    create_rat(position, sprite_atlas);
+                                enemies.push(rat);
                             }
                             "bat" => {
-                                if let Some(true) = object.point {
-                                    let position = Vec2::new(
-                                        object.x,
-                                        global_height - object.y,
-                                    );
-                                    let bat =
-                                        create_bat(position, sprite_atlas);
-                                    enemies.push(bat);
-                                } else {
-                                    panic!(
-                                        "Bat object must have point type"
-                                    );
-                                }
+                                let bat =
+                                    create_bat(position, sprite_atlas);
+                                enemies.push(bat);
+                            }
+                            "torch" => {
+                                let torch =
+                                    create_torch(position, sprite_atlas);
+                                lights.push(torch);
                             }
                             _ => {
                                 panic!(
@@ -173,6 +154,7 @@ impl Level {
             player: player.unwrap(),
             enemies,
             draw_primitives,
+            lights,
         }
     }
 }
