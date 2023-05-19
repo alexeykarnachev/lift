@@ -86,7 +86,7 @@ impl World {
         match self.state {
             Play => {
                 self.update_play_ui(input);
-                self.update_bullets(dt);
+                // self.update_bullets(dt);
                 self.update_melee_attacks(dt);
                 self.update_enemies(dt);
                 self.update_player(dt, input);
@@ -133,9 +133,6 @@ impl World {
 
         let enemies = &mut self.level.enemies;
         let player = &self.level.player;
-        let room = self.level.room;
-        let floor_y = room.get_y_min();
-        let ceil_y = room.get_y_max();
         let target = player.get_center();
         let player_collider = player.get_collider().unwrap();
         let is_player_alive = !player.check_if_dead();
@@ -158,14 +155,14 @@ impl World {
                     } else if enemy
                         .check_if_can_reach_by_melee(player_collider)
                     {
-                        let attack = if enemy.check_if_on_floor(floor_y) {
+                        let attack = if enemy.is_on_floor {
                             enemy.play_animation("melee_attack");
                             enemy.attack_by_melee(None)
                         } else {
                             enemy.attack_by_melee(Some(0.0))
                         };
                         self.melee_attacks.push(attack);
-                    } else if enemy.check_if_can_jump(floor_y)
+                    } else if enemy.check_if_can_jump()
                         && dist_to_target <= max_jump_distance
                         && dist_to_target >= min_jump_distance
                     {
@@ -175,18 +172,18 @@ impl World {
                         }
                         enemy.jump_at_angle(angle, None);
                         enemy.play_animation("jump");
-                    } else if enemy.check_if_can_step(floor_y) {
+                    } else if enemy.check_if_can_step() {
                         let direction = (target - position).with_y(0.0);
                         enemy.immediate_step(direction, dt);
                         enemy.play_animation("move");
-                    } else if enemy.check_if_on_floor(floor_y)
+                    } else if enemy.is_on_floor
                         && enemy.check_if_cooling_down()
                     {
                         enemy.play_animation("idle");
                     }
 
-                    let can_flip = enemy.check_if_on_floor(floor_y)
-                        && !enemy.check_if_dead();
+                    let can_flip =
+                        enemy.is_on_floor && !enemy.check_if_dead();
                     if can_flip {
                         let is_flip = target.x > position.x;
                         enemy.animator.as_mut().unwrap().flip = is_flip;
@@ -210,7 +207,7 @@ impl World {
                     } else if enemy.get_health_ratio() < 0.6
                         && enemy.check_if_can_start_healing()
                     {
-                        if enemy.check_if_on_ceil(ceil_y) {
+                        if enemy.is_on_ceil {
                             enemy.force_start_healing();
                             enemy.velocity.x = 0.0;
                         } else {
@@ -226,7 +223,7 @@ impl World {
                         let attack = enemy.attack_by_melee(None);
                         self.melee_attacks.push(attack);
                         enemy.play_animation("melee_attack");
-                    } else if enemy.check_if_can_step(floor_y)
+                    } else if enemy.check_if_can_step()
                         && !enemy.check_if_healing()
                     {
                         let direction =
@@ -259,13 +256,16 @@ impl World {
                 }
             }
 
-            enemy.update(self.gravity, self.friction, room, dt);
+            enemy.update(
+                self.gravity,
+                self.friction,
+                &self.level.colliders,
+                dt,
+            );
         }
     }
 
     pub fn update_player(&mut self, dt: f32, input: &Input) {
-        let room = self.level.room;
-        let floor_y = room.get_y_min();
         let player = &mut self.level.player;
         let position = player.position;
         let is_attacking =
@@ -280,9 +280,7 @@ impl World {
             self.melee_attacks.push(attack);
             player.animator.as_mut().unwrap().reset();
             player.animator.as_mut().unwrap().play("attack");
-        } else if input.is_action(Right)
-            && player.check_if_can_step(floor_y)
-        {
+        } else if input.is_action(Right) && player.check_if_can_step() {
             if input.is_action(Down) && player.check_if_can_start_dashing()
             {
                 player.force_start_dashing();
@@ -293,9 +291,7 @@ impl World {
             }
             player.animator.as_mut().unwrap().flip = false;
             player.set_orientation(true);
-        } else if input.is_action(Left)
-            && player.check_if_can_step(floor_y)
-        {
+        } else if input.is_action(Left) && player.check_if_can_step() {
             if input.is_action(Down) && player.check_if_can_start_dashing()
             {
                 player.force_start_dashing();
@@ -304,17 +300,23 @@ impl World {
                 player.immediate_step(Vec2::new(-1.0, 0.0), dt);
                 player.animator.as_mut().unwrap().play("run");
             }
+
             player.animator.as_mut().unwrap().flip = true;
             player.set_orientation(false);
         } else if !is_attacking && !is_dashing {
             player.animator.as_mut().unwrap().play("idle");
         }
 
-        player.update(self.gravity, self.friction, room, dt);
+        player.update(
+            self.gravity,
+            self.friction,
+            &self.level.colliders,
+            dt,
+        );
     }
 
+    /*
     pub fn update_bullets(&mut self, dt: f32) {
-        let room = self.level.room;
         let enemies = &mut self.level.enemies;
         let player = &mut self.level.player;
         let mut new_bullets = Vec::with_capacity(self.bullets.len());
@@ -346,9 +348,9 @@ impl World {
 
         self.bullets = new_bullets;
     }
+    */
 
     pub fn update_melee_attacks(&mut self, dt: f32) {
-        let room = self.level.room;
         let enemies = &mut self.level.enemies;
         let player = &mut self.level.player;
         let mut new_melee_attacks =
@@ -389,7 +391,12 @@ impl World {
 
     fn update_lights(&mut self, dt: f32) {
         for light in self.level.lights.iter_mut() {
-            light.update(self.gravity, self.friction, self.level.room, dt)
+            light.update(
+                self.gravity,
+                self.friction,
+                &self.level.colliders,
+                dt,
+            )
         }
     }
 

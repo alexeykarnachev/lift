@@ -40,11 +40,16 @@ struct TiledObjectJson {
 }
 
 pub struct Level {
-    pub room: Rect,
     pub player: Entity,
     pub enemies: Vec<Entity>,
+    pub colliders: Vec<Collider>,
     pub draw_primitives: Vec<DrawPrimitive>,
     pub lights: Vec<Entity>,
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum Collider {
+    Rigid(Rect),
 }
 
 impl Level {
@@ -58,8 +63,8 @@ impl Level {
         let global_width = tiled_json.width as f32 * tilewidth;
         let global_height = tiled_json.height as f32 * tileheight;
 
-        let mut room = None;
         let mut player = None;
+        let mut colliders = Vec::new();
         let mut enemies = Vec::new();
         let mut lights = Vec::new();
         let mut draw_primitives = Vec::new();
@@ -104,12 +109,12 @@ impl Level {
                         let position =
                             Vec2::new(object.x, global_height - object.y);
                         match object.name.as_str() {
-                            "room" => {
+                            "collider" => {
                                 let size =
                                     Vec2::new(object.width, object.height);
-                                room = Some(Rect::from_top_left(
-                                    position, size,
-                                ));
+                                let rect =
+                                    Rect::from_top_left(position, size);
+                                colliders.push(Collider::Rigid(rect));
                             }
                             "player" => {
                                 player = Some(create_player(
@@ -148,9 +153,9 @@ impl Level {
         }
 
         Self {
-            room: room.unwrap(),
             player: player.unwrap(),
             enemies,
+            colliders,
             draw_primitives,
             lights,
         }

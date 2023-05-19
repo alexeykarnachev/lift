@@ -307,7 +307,7 @@ pub fn create_torch(
     ));
     let light = Light {
         position,
-        color: Color::new(6.0, 2.0, 0.0, 1.0),
+        color: Color::new(8.0, 2.0, 0.0, 1.0),
         attenuation: [0.05, 0.005, 0.005],
     };
 

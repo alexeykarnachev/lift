@@ -51,7 +51,7 @@
         "level0.tmx"
     ],
     "project": "lift.tiled-project",
-    "property.type": "float",
+    "property.type": "bool",
     "recentFiles": [
         "level0.tmx",
         "lift.tsx",

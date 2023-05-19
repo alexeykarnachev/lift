@@ -409,7 +409,7 @@ impl Rect {
         let width = max_x - min_x;
         let height = max_y - min_y;
 
-        width < sum_width && height < sum_height
+        width <= sum_width && height <= sum_height
     }
 
     pub fn to_xywh(&self) -> [f32; 4] {

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.10.1" orientation="orthogonal" renderorder="right-down" width="46" height="6" tilewidth="16" tileheight="16" infinite="0" nextlayerid="4" nextobjectid="20">
+<map version="1.10" tiledversion="1.10.1" orientation="orthogonal" renderorder="right-down" width="46" height="6" tilewidth="16" tileheight="16" infinite="0" nextlayerid="5" nextobjectid="29">
  <editorsettings>
   <export target="../assets/levels/0.json" format="json"/>
  </editorsettings>
@@ -15,8 +15,7 @@
 </data>
  </layer>
  <objectgroup id="3" name="objects">
-  <object id="3" name="room" x="0.5" y="5.75" width="735.381" height="81.7917"/>
-  <object id="8" name="player" x="208.057" y="86.377">
+  <object id="8" name="player" x="209.724" y="86.0437">
    <point/>
   </object>
   <object id="9" name="rat" x="304.02" y="86.25">
@@ -49,5 +48,9 @@
   <object id="19" name="torch" x="167" y="34.75">
    <point/>
   </object>
+  <object id="20" name="collider" type="rigid" x="0.02825" y="87.1382" width="735.959" height="9.97352"/>
+  <object id="21" name="collider" type="rigid" x="-11.3545" y="-2.99509" width="11.334" height="100.107"/>
+  <object id="22" name="collider" type="rigid" x="-0.0045" y="-3.01454" width="735.959" height="9.97352"/>
+  <object id="23" name="collider" type="rigid" x="735.973" y="-3.00906" width="11.334" height="100.107"/>
  </objectgroup>
 </map>

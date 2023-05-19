@@ -25,17 +25,6 @@
          "name":"objects",
          "objects":[
                 {
-                 "height":81.7917,
-                 "id":3,
-                 "name":"room",
-                 "rotation":0,
-                 "type":"",
-                 "visible":true,
-                 "width":735.381,
-                 "x":0.5,
-                 "y":5.75
-                }, 
-                {
                  "height":0,
                  "id":8,
                  "name":"player",
@@ -44,8 +33,8 @@
                  "type":"",
                  "visible":true,
                  "width":0,
-                 "x":208.057,
-                 "y":86.377
+                 "x":209.723666666667,
+                 "y":86.0436666666667
                 }, 
                 {
                  "height":0,
@@ -166,6 +155,50 @@
                  "width":0,
                  "x":167,
                  "y":34.75
+                }, 
+                {
+                 "height":9.97352,
+                 "id":20,
+                 "name":"collider",
+                 "rotation":0,
+                 "type":"rigid",
+                 "visible":true,
+                 "width":735.959125,
+                 "x":0.0282500000000709,
+                 "y":87.13824
+                }, 
+                {
+                 "height":100.106853333333,
+                 "id":21,
+                 "name":"collider",
+                 "rotation":0,
+                 "type":"rigid",
+                 "visible":true,
+                 "width":11.3339999999999,
+                 "x":-11.3545,
+                 "y":-2.99509333333334
+                }, 
+                {
+                 "height":9.97352,
+                 "id":22,
+                 "name":"collider",
+                 "rotation":0,
+                 "type":"rigid",
+                 "visible":true,
+                 "width":735.959,
+                 "x":-0.00449999999997353,
+                 "y":-3.01453777777778
+                }, 
+                {
+                 "height":100.107,
+                 "id":23,
+                 "name":"collider",
+                 "rotation":0,
+                 "type":"rigid",
+                 "visible":true,
+                 "width":11.334,
+                 "x":735.973404040404,
+                 "y":-3.00905555555556
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -173,8 +206,8 @@
          "x":0,
          "y":0
         }],
- "nextlayerid":4,
- "nextobjectid":20,
+ "nextlayerid":5,
+ "nextobjectid":29,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.10.1",

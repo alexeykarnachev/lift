@@ -4,6 +4,7 @@
 #![allow(unused_imports)]
 
 use crate::graphics::*;
+use crate::level::Collider;
 use crate::vec::*;
 use std::collections::HashMap;
 use std::fs;
@@ -27,6 +28,8 @@ pub enum Orientation {
 #[derive(Clone)]
 pub struct Entity {
     time: f32,
+    pub is_on_floor: bool,
+    pub is_on_ceil: bool,
 
     pub behaviour: Option<Behaviour>,
     pub position: Vec2<f32>,
@@ -79,6 +82,8 @@ impl Entity {
     ) -> Self {
         Self {
             time: 0.0,
+            is_on_floor: false,
+            is_on_ceil: false,
             behaviour,
             position,
             orientation: Orientation::Right,
@@ -278,22 +283,6 @@ impl Entity {
         false
     }
 
-    pub fn check_if_on_floor(&self, floor_y: f32) -> bool {
-        if let Some(collider) = self.get_collider() {
-            return (collider.get_y_min() - floor_y).abs() < 1e-5;
-        }
-
-        false
-    }
-
-    pub fn check_if_on_ceil(&self, ceil_y: f32) -> bool {
-        if let Some(collider) = self.get_collider() {
-            return (collider.get_y_max() - ceil_y).abs() < 1e-5;
-        }
-
-        false
-    }
-
     pub fn check_if_dead(&self) -> bool {
         self.current_health <= 0.0
     }
@@ -346,19 +335,19 @@ impl Entity {
         }
     }
 
-    pub fn check_if_can_jump(&self, floor_y: f32) -> bool {
+    pub fn check_if_can_jump(&self) -> bool {
         !self.check_if_attacking()
             && !self.check_if_cooling_down()
-            && self.check_if_on_floor(floor_y)
+            && self.is_on_floor
             && self.get_time_since_last_jump() >= self.jump_period
     }
 
-    pub fn check_if_can_step(&self, floor_y: f32) -> bool {
+    pub fn check_if_can_step(&self) -> bool {
         let mut can_step = !self.check_if_attacking();
         can_step &= !self.check_if_cooling_down();
         can_step &= !self.check_if_dashing();
         if self.apply_gravity {
-            can_step &= self.check_if_on_floor(floor_y);
+            can_step &= self.is_on_floor;
         }
 
         can_step
@@ -401,6 +390,77 @@ impl Entity {
         }
     }
 
+    fn update_kinematic(
+        &mut self,
+        gravity: f32,
+        friction: f32,
+        colliders: &Vec<Collider>,
+        dt: f32,
+    ) {
+        let was_on_floor = self.is_on_floor;
+
+        self.is_on_ceil = false;
+        self.is_on_floor = false;
+
+        if let Some(self_rect) = self.get_collider() {
+            for collider in colliders {
+                match collider {
+                    Collider::Rigid(rect) => {
+                        if rect.collide_with_rect(self_rect) {
+                            let velocity_x;
+                            let offset_x;
+                            if rect.get_x_max() > self_rect.get_x_max() {
+                                velocity_x = self.velocity.x.max(0.0);
+                                offset_x = rect.get_x_min()
+                                    - self_rect.get_x_max();
+                            } else {
+                                velocity_x = self.velocity.x.min(0.0);
+                                offset_x = rect.get_x_max()
+                                    - self_rect.get_x_min();
+                            };
+
+                            let velocity_y;
+                            let offset_y;
+                            let mut is_on_ceil = false;
+                            let mut is_on_floor = false;
+                            if rect.get_y_max() > self_rect.get_y_max() {
+                                is_on_ceil = true;
+                                velocity_y = self.velocity.y.min(0.0);
+                                offset_y = rect.get_y_min()
+                                    - self_rect.get_y_max();
+                            } else {
+                                is_on_floor = true;
+                                if !was_on_floor {
+                                    self.velocity.x = 0.0;
+                                }
+                                velocity_y = self.velocity.y.max(0.0);
+                                offset_y = rect.get_y_max()
+                                    - self_rect.get_y_min();
+                            };
+
+                            if offset_x.abs() < offset_y.abs() {
+                                self.position.x += offset_x;
+                                self.velocity.x = velocity_x;
+                            } else {
+                                self.position.y += offset_y;
+                                self.velocity.y = velocity_y;
+                                self.is_on_ceil = is_on_ceil;
+                                self.is_on_floor = is_on_floor;
+                            }
+                        }
+                    }
+                };
+            }
+        }
+
+        if !self.is_on_floor && self.apply_gravity {
+            self.velocity.y -= gravity * dt;
+        }
+
+        self.position += self.velocity.scale(dt);
+        self.velocity.x *= 1.0 - friction;
+    }
+
     fn update_dashing(&mut self, dt: f32) {
         use Orientation::*;
 
@@ -432,65 +492,14 @@ impl Entity {
         &mut self,
         gravity: f32,
         friction: f32,
-        floor_collider: Rect,
+        colliders: &Vec<Collider>,
         dt: f32,
     ) {
         self.time += dt;
-
+        self.update_kinematic(gravity, friction, colliders, dt);
         self.update_dashing(dt);
         self.update_healing(dt);
         self.update_animator(dt);
-
-        self.position += self.velocity.scale(dt);
-
-        let floor_y = floor_collider.get_y_min();
-        let was_on_floor = self.check_if_on_floor(floor_y);
-
-        let (x_min, x_max, y_min, y_max) =
-            if let Some(collider) = self.get_collider() {
-                (
-                    collider.get_x_min(),
-                    collider.get_x_max(),
-                    collider.get_y_min(),
-                    collider.get_y_max(),
-                )
-            } else {
-                let p = self.get_center();
-                (p.x, p.x, p.y, p.y)
-            };
-
-        let self_collider = self.get_collider();
-        let dist_to_floor = y_min - floor_y;
-        if dist_to_floor <= 0.0 {
-            self.position.y -= dist_to_floor;
-        }
-
-        if self.check_if_on_floor(floor_y) {
-            if !was_on_floor {
-                self.velocity.x = 0.0;
-            }
-            self.velocity.y = 0.0;
-        } else if self.apply_gravity {
-            self.velocity.y -= gravity * dt;
-        }
-
-        self.velocity.x *= 1.0 - friction;
-
-        let left_offset = floor_collider.get_x_min() - x_min;
-        if left_offset > 0.0 {
-            self.position.x += left_offset
-        }
-
-        let right_offset = x_max - floor_collider.get_x_max();
-        if right_offset > 0.0 {
-            self.position.x -= right_offset;
-        }
-
-        let up_offset = y_max - floor_collider.get_y_max();
-        if up_offset > 0.0 {
-            self.position.y -= up_offset;
-            self.velocity.y = 0.0;
-        }
     }
 
     pub fn play_animation(&mut self, name: &'static str) {
