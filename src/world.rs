@@ -28,6 +28,7 @@ pub struct World {
 
     pub time: f32,
     pub gravity: f32,
+    pub friction: f32,
 
     pub level: Level,
 
@@ -62,6 +63,7 @@ impl World {
             state: WorldState::Play,
             time: 0.0,
             gravity: 400.0,
+            friction: 0.02,
             level,
             camera,
             melee_attacks,
@@ -171,7 +173,7 @@ impl World {
                         if target.x - position.x < 0.0 {
                             angle = PI - angle;
                         }
-                        enemy.jump_at_angle(angle);
+                        enemy.jump_at_angle(angle, None);
                         enemy.play_animation("jump");
                     } else if enemy.check_if_can_step(floor_y) {
                         let direction = (target - position).with_y(0.0);
@@ -194,6 +196,14 @@ impl World {
                 Some(Bat) => {
                     let deviation =
                         Vec2::from_angle(self.time * 4.0).scale(0.5);
+                    let t = enemy.get_time_since_last_received_damage();
+                    if t < 0.3 {
+                        enemy.apply_gravity = true;
+                    } else if !enemy.check_if_dead() {
+                        enemy.apply_gravity = false;
+                        enemy.velocity.y = enemy.velocity.y.max(0.0);
+                    }
+
                     if enemy.check_if_dead() {
                         enemy.apply_gravity = true;
                         enemy.play_animation("death");
@@ -202,6 +212,7 @@ impl World {
                     {
                         if enemy.check_if_on_ceil(ceil_y) {
                             enemy.force_start_healing();
+                            enemy.velocity.x = 0.0;
                         } else {
                             let direction =
                                 Vec2::new(0.0, 1.0) + deviation;
@@ -248,7 +259,7 @@ impl World {
                 }
             }
 
-            enemy.update(self.gravity, room, dt);
+            enemy.update(self.gravity, self.friction, room, dt);
         }
     }
 
@@ -299,7 +310,7 @@ impl World {
             player.animator.as_mut().unwrap().play("idle");
         }
 
-        player.update(self.gravity, room, dt);
+        player.update(self.gravity, self.friction, room, dt);
     }
 
     pub fn update_bullets(&mut self, dt: f32) {
@@ -355,6 +366,12 @@ impl World {
                     enemies.iter_mut().filter(|e| !e.check_if_dead())
                 {
                     if enemy.try_receive_melee_attack_damage(attack) {
+                        let mut angle = PI * 0.15;
+                        if enemy.position.x - player.position.x < 0.0 {
+                            angle = PI - angle;
+                        }
+                        enemy.jump_at_angle(angle, Some(120.0));
+
                         if enemy.check_if_dead() {
                             player.score += 100;
                         }
@@ -372,7 +389,7 @@ impl World {
 
     fn update_lights(&mut self, dt: f32) {
         for light in self.level.lights.iter_mut() {
-            light.update(self.gravity, self.level.room, dt)
+            light.update(self.gravity, self.friction, self.level.room, dt)
         }
     }
 

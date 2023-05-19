@@ -46,7 +46,8 @@ pub fn create_player(
     let light = Light {
         position: collider.get_top_center(),
         color: Color::new(1.0, 1.0, 1.0, 1.0),
-        attenuation: [1.0, 0.05, 0.0],
+        // attenuation: [1.0, 0.05, 0.0],
+        attenuation: [1.0, 0.0, 0.0],
     };
     let mut animator = Animator::new(AnimatedSprite::new(
         sprite_atlas,
@@ -198,7 +199,7 @@ pub fn create_rat(
         true,
         Some(collider),
         40.0,
-        190.0,
+        250.0,
         2.0,
         1000.0,
         None,

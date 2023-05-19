@@ -44,7 +44,7 @@ pub struct Entity {
 
     max_health: f32,
     current_health: f32,
-    last_damage_time: f32,
+    last_received_damage_time: f32,
 
     dashing: Option<Dashing>,
     healing: Option<Healing>,
@@ -91,7 +91,7 @@ impl Entity {
             velocity: Vec2::zeros(),
             max_health,
             current_health: max_health,
-            last_damage_time: -f32::INFINITY,
+            last_received_damage_time: -f32::INFINITY,
             dashing,
             healing,
             melee_weapon,
@@ -128,7 +128,7 @@ impl Entity {
     }
 
     pub fn get_time_since_last_received_damage(&self) -> f32 {
-        self.time - self.last_damage_time
+        self.time - self.last_received_damage_time
     }
 
     pub fn get_time_since_last_jump(&self) -> f32 {
@@ -156,7 +156,7 @@ impl Entity {
 
     pub fn receive_damage(&mut self, value: f32) {
         self.current_health -= value;
-        self.last_damage_time = self.time;
+        self.last_received_damage_time = self.time;
     }
 
     pub fn try_receive_bullet_damage(&mut self, bullet: &Bullet) -> bool {
@@ -203,15 +203,19 @@ impl Entity {
         self.position += step;
     }
 
-    pub fn jump_to(&mut self, target: Vec2<f32>) {
-        self.velocity +=
-            (target - self.position).with_len(self.jump_speed);
+    pub fn jump_to(&mut self, target: Vec2<f32>, jump_speed: Option<f32>) {
+        let jump_speed = if let Some(jump_speed) = jump_speed {
+            jump_speed
+        } else {
+            self.jump_speed
+        };
+        self.velocity += (target - self.position).with_len(jump_speed);
         self.last_jump_time = self.time;
     }
 
-    pub fn jump_at_angle(&mut self, angle: f32) {
+    pub fn jump_at_angle(&mut self, angle: f32, jump_speed: Option<f32>) {
         let target = self.position + Vec2::new(angle.cos(), angle.sin());
-        self.jump_to(target);
+        self.jump_to(target, jump_speed);
     }
 
     pub fn force_start_healing(&mut self) {
@@ -424,7 +428,13 @@ impl Entity {
         }
     }
 
-    pub fn update(&mut self, gravity: f32, floor_collider: Rect, dt: f32) {
+    pub fn update(
+        &mut self,
+        gravity: f32,
+        friction: f32,
+        floor_collider: Rect,
+        dt: f32,
+    ) {
         self.time += dt;
 
         self.update_dashing(dt);
@@ -463,6 +473,8 @@ impl Entity {
         } else if self.apply_gravity {
             self.velocity.y -= gravity * dt;
         }
+
+        self.velocity.x *= 1.0 - friction;
 
         let left_offset = floor_collider.get_x_min() - x_min;
         if left_offset > 0.0 {

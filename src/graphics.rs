@@ -408,17 +408,24 @@ impl GlyphAtlas {
 
 pub fn draw_entity(entity: &Entity, draw_queue: &mut Vec<DrawPrimitive>) {
     if let Some(animator) = entity.animator.as_ref() {
-        draw_queue.push(
-            animator.get_draw_primitive(entity.position, entity.effect),
-        );
+        let mut primitive =
+            animator.get_draw_primitive(entity.position, entity.effect);
+
+        let t = entity.get_time_since_last_received_damage();
+        if t < 0.1 {
+            primitive.color = Some(Color::red(0.5));
+        }
+
+        draw_queue.push(primitive);
     } else if let Some(collider) = entity.get_collider() {
-        draw_queue.push(DrawPrimitive::from_rect(
+        let primitive = DrawPrimitive::from_rect(
             collider,
             SpaceType::WorldSpace,
             0,
             Color::new(1.0, 0.0, 0.0, 0.75),
-        ));
-    }
+        );
+        draw_queue.push(primitive);
+    };
 
     if entity.check_if_dead() {
         return;

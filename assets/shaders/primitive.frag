@@ -26,6 +26,7 @@ vec4 get_color() {
         uv = floor(uv) + min(fract(uv) / fwidth(uv), 1.0) - 0.5;
         uv /= tex_size;
         color = texture(sprite_atlas_tex, uv);
+        color = vec4(color.rgb + vs_rgba.rgb * vs_rgba.a, color.a);
     } else if (vs_tex_id == GlyphTexture) {
         vec2 tex_size = vec2(textureSize(glyph_atlas_tex, 0));
         vec2 uv = vs_uv;
