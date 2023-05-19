@@ -13,17 +13,6 @@ pub enum UIEvent {
 }
 
 #[derive(Deserialize, Debug, Clone)]
-pub struct Params {
-    // Text
-    string: Option<String>,
-    font_size: Option<u32>,
-
-    // Rect
-    width: Option<f32>,
-    aspect: Option<f32>,
-}
-
-#[derive(Deserialize, Debug, Clone)]
 pub struct Position {
     origin: String,
     x: f32,
@@ -37,7 +26,15 @@ pub struct Element {
     type_: String,
     is_interactive: bool,
     position: Position,
-    params: Params,
+
+    // Text
+    string: Option<String>,
+    font_size: Option<u32>,
+
+    // Rect
+    width: Option<f32>,
+    height: Option<f32>,
+    filling: Option<f32>,
 
     #[serde(skip)]
     color: Color,
@@ -46,8 +43,8 @@ pub struct Element {
 pub struct UI {
     pub file_path: &'static str,
     pub texts: Vec<Text>,
-    pub rects: Vec<Rect>,
-    elements: Vec<Element>,
+    pub rects: Vec<DrawPrimitive>,
+    pub elements: Vec<Element>,
 }
 
 impl UI {
@@ -55,7 +52,7 @@ impl UI {
         let data = fs::read_to_string(file_path).unwrap();
         let elements: Vec<Element> = serde_json::from_str(&data).unwrap();
         let texts = Vec::<Text>::with_capacity(elements.len());
-        let rects = Vec::<Rect>::with_capacity(elements.len());
+        let rects = Vec::<DrawPrimitive>::with_capacity(elements.len());
 
         Self {
             file_path,
@@ -68,7 +65,7 @@ impl UI {
     pub fn set_element_string(&mut self, element_id: &str, string: &str) {
         for element in self.elements.iter_mut() {
             if element.id == element_id {
-                element.params.string = Some(string.to_string());
+                element.string = Some(string.to_string());
                 return;
             }
         }
@@ -80,6 +77,17 @@ impl UI {
         for element in self.elements.iter_mut() {
             if element.id == element_id {
                 element.color = color;
+                return;
+            }
+        }
+
+        panic!("No such element: {:?}", element_id);
+    }
+
+    pub fn set_element_filling(&mut self, element_id: &str, filling: f32) {
+        for element in self.elements.iter_mut() {
+            if element.id == element_id {
+                element.filling = Some(filling);
                 return;
             }
         }
@@ -105,7 +113,6 @@ impl UI {
         self.rects.clear();
         let mut events = Vec::with_capacity(self.elements.len());
         for element in self.elements.iter() {
-            let params = element.params.clone();
             let origin = Origin::from_str(&element.position.origin);
             let mut position =
                 Vec2::new(element.position.x, element.position.y);
@@ -114,8 +121,8 @@ impl UI {
             let collider;
             match element.type_.as_str() {
                 "text" => {
-                    let string = params.string.unwrap();
-                    let font_size = element.params.font_size.unwrap();
+                    let string = element.string.clone().unwrap();
+                    let font_size = element.font_size.unwrap();
                     let text = Text::new(
                         position,
                         &glyph_atlas,
@@ -129,13 +136,22 @@ impl UI {
                     self.texts.push(text);
                 }
                 "rect" => {
-                    let width = params.width.unwrap();
-                    let aspect = params.aspect.unwrap();
-                    let height = width / aspect;
+                    let mut width = element.width.unwrap();
+                    let height = element.height.unwrap();
+                    if let Some(filling) = element.filling {
+                        width *= filling;
+                    }
+
                     let size = Vec2::new(width, height) * window_size;
                     let rect = Rect::from_origin(origin, position, size);
+                    let primitive = DrawPrimitive::from_rect(
+                        rect,
+                        SpaceType::ScreenSpace,
+                        0,
+                        element.color,
+                    );
                     collider = rect;
-                    self.rects.push(rect);
+                    self.rects.push(primitive);
                 }
                 _ => {
                     panic!("Unknown UI element type: {:?}", element.type_)

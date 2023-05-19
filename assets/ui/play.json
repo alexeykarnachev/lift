@@ -8,10 +8,8 @@
             "x": 0.95,
             "y": 0.95
         },
-        "params": {
-            "string": "Score:",
-            "font_size": 28
-        }
+        "string": "Score:",
+        "font_size": 28
     },
     {
         "id": "health",
@@ -19,12 +17,10 @@
         "is_interactive": false,
         "position": {
             "origin": "TopLeft",
-            "x": 0.95,
+            "x": -0.95,
             "y": 0.95
         },
-        "params": {
-            "width": 0.1,
-            "aspect": 5.0
-        }
+        "width": 0.2,
+        "height": 0.025
     }
 ]

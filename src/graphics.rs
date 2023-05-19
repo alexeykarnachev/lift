@@ -199,8 +199,19 @@ impl Color {
         Self::new(1.0, 0.0, 0.0, a)
     }
 
+    pub fn green(a: f32) -> Self {
+        Self::new(0.0, 1.0, 0.0, a)
+    }
+
     pub fn yellow(a: f32) -> Self {
         Self::new(1.0, 1.0, 0.0, a)
+    }
+
+    pub fn healthbar(ratio: f32) -> Self {
+        let alive = Self::green(1.0);
+        let dead = Self::red(1.0);
+
+        alive.lerp(&dead, ratio)
     }
 
     pub fn to_array(&self) -> [f32; 4] {
@@ -485,6 +496,7 @@ pub fn draw_text(text: &Text, draw_queue: &mut Vec<DrawPrimitive>) {
 
 pub fn draw_ui(ui: &UI, draw_queue: &mut Vec<DrawPrimitive>) {
     ui.texts.iter().for_each(|t| draw_text(t, draw_queue));
+    ui.rects.iter().for_each(|r| draw_queue.push(*r));
 }
 
 #[derive(Copy, Clone, Debug, Sequence)]

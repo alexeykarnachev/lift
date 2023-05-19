@@ -8,10 +8,8 @@
             "x": 0.0,
             "y": 0.5
         },
-        "params": {
-            "string": "Game Over",
-            "font_size": 119
-        }
+        "string": "Game Over",
+        "font_size": 119
     },
     {
         "id": "restart",
@@ -22,10 +20,8 @@
             "x": 0.0,
             "y": 0.2
         },
-        "params": {
-            "string": "Restart",
-            "font_size": 67
-        }
+        "string": "Restart",
+        "font_size": 67
     },
     {
         "id": "quit",
@@ -36,9 +32,7 @@
             "x": 0.0,
             "y": 0.0
         },
-        "params": {
-            "string": "Quit",
-            "font_size": 67
-        }
+        "string": "Quit",
+        "font_size": 67
     }
 ]

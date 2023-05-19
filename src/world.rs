@@ -404,7 +404,12 @@ impl World {
 
     fn update_play_ui(&mut self, input: &Input) {
         let score = format!("Score: {}", self.level.player.score);
+        let health_ratio = self.level.player.get_health_ratio();
         self.play_ui.set_element_string("score", &score);
+        self.play_ui
+            .set_element_color("health", Color::healthbar(health_ratio));
+        self.play_ui.set_element_filling("health", health_ratio);
+
         _ = self.play_ui.update(input, &self.glyph_atlas);
     }
 
