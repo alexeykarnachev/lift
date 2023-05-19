@@ -15,11 +15,11 @@
 </data>
  </layer>
  <objectgroup id="3" name="objects">
-  <object id="3" name="room" x="0.5" y="5.75" width="735.381" height="80.7917"/>
-  <object id="8" name="player" x="209.182" y="101.752">
+  <object id="3" name="room" x="0.5" y="5.75" width="735.381" height="81.7917"/>
+  <object id="8" name="player" x="208.057" y="86.377">
    <point/>
   </object>
-  <object id="9" name="rat" x="305.52" y="102">
+  <object id="9" name="rat" x="304.02" y="86.25">
    <point/>
   </object>
   <object id="10" name="bat" x="431.67" y="35.6667">
@@ -34,7 +34,7 @@
   <object id="14" name="bat" x="486" y="56">
    <point/>
   </object>
-  <object id="15" name="rat" x="108.333" y="101">
+  <object id="15" name="rat" x="107.541" y="86.4167">
    <point/>
   </object>
   <object id="16" name="torch" x="533.25" y="34.75">

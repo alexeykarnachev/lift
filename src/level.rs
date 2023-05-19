@@ -105,11 +105,9 @@ impl Level {
                             Vec2::new(object.x, global_height - object.y);
                         match object.name.as_str() {
                             "room" => {
-                                let position =
-                                    Vec2::new(object.x, object.y);
                                 let size =
                                     Vec2::new(object.width, object.height);
-                                room = Some(Rect::from_bot_left(
+                                room = Some(Rect::from_top_left(
                                     position, size,
                                 ));
                             }
