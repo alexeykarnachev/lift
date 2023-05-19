@@ -26,6 +26,8 @@ pub enum Orientation {
 
 #[derive(Clone)]
 pub struct Entity {
+    time: f32,
+
     pub behaviour: Option<Behaviour>,
     pub position: Vec2<f32>,
     pub orientation: Orientation,
@@ -42,6 +44,7 @@ pub struct Entity {
 
     max_health: f32,
     current_health: f32,
+    last_damage_time: f32,
 
     dashing: Option<Dashing>,
     healing: Option<Healing>,
@@ -75,6 +78,7 @@ impl Entity {
         effect: u32,
     ) -> Self {
         Self {
+            time: 0.0,
             behaviour,
             position,
             orientation: Orientation::Right,
@@ -87,6 +91,7 @@ impl Entity {
             velocity: Vec2::zeros(),
             max_health,
             current_health: max_health,
+            last_damage_time: -f32::INFINITY,
             dashing,
             healing,
             melee_weapon,
@@ -122,6 +127,14 @@ impl Entity {
         self.position
     }
 
+    pub fn get_time_since_last_received_damage(&self) -> f32 {
+        self.time - self.last_damage_time
+    }
+
+    pub fn get_time_since_last_jump(&self) -> f32 {
+        self.time - self.last_jump_time
+    }
+
     pub fn get_light(&self) -> Option<Light> {
         if let Some(mut light) = self.light {
             light.position += self.position;
@@ -143,6 +156,7 @@ impl Entity {
 
     pub fn receive_damage(&mut self, value: f32) {
         self.current_health -= value;
+        self.last_damage_time = self.time;
     }
 
     pub fn try_receive_bullet_damage(&mut self, bullet: &Bullet) -> bool {
@@ -189,15 +203,15 @@ impl Entity {
         self.position += step;
     }
 
-    pub fn jump_to(&mut self, target: Vec2<f32>, time: f32) {
+    pub fn jump_to(&mut self, target: Vec2<f32>) {
         self.velocity +=
             (target - self.position).with_len(self.jump_speed);
-        self.last_jump_time = time;
+        self.last_jump_time = self.time;
     }
 
-    pub fn jump_at_angle(&mut self, angle: f32, time: f32) {
+    pub fn jump_at_angle(&mut self, angle: f32) {
         let target = self.position + Vec2::new(angle.cos(), angle.sin());
-        self.jump_to(target, time);
+        self.jump_to(target);
     }
 
     pub fn force_start_healing(&mut self) {
@@ -210,13 +224,12 @@ impl Entity {
 
     pub fn attack_by_melee(
         &mut self,
-        time: f32,
         attack_delay: Option<f32>,
     ) -> MeleeAttack {
         use Orientation::*;
 
         let weapon = self.melee_weapon.as_mut().unwrap();
-        weapon.last_attack_time = time;
+        weapon.last_attack_time = self.time;
         let collider = weapon.get_collider(self.orientation);
 
         let attack_delay = if let Some(delay) = attack_delay {
@@ -234,13 +247,9 @@ impl Entity {
         )
     }
 
-    pub fn attack_by_range(
-        &mut self,
-        target: Vec2<f32>,
-        time: f32,
-    ) -> Bullet {
+    pub fn attack_by_range(&mut self, target: Vec2<f32>) -> Bullet {
         let weapon = self.range_weapon.as_mut().unwrap();
-        weapon.last_attack_time = time;
+        weapon.last_attack_time = self.time;
 
         let pivot = self.position + weapon.pivot;
         let direction = target - pivot;
@@ -285,15 +294,15 @@ impl Entity {
         self.current_health <= 0.0
     }
 
-    pub fn check_if_attacking(&self, time: f32) -> bool {
+    pub fn check_if_attacking(&self) -> bool {
         let mut is_attacking = if let Some(weapon) = self.melee_weapon {
-            weapon.is_attacking(time)
+            weapon.is_attacking(self.time)
         } else {
             false
         };
 
         is_attacking |= if let Some(weapon) = self.range_weapon {
-            weapon.is_attacking(time)
+            weapon.is_attacking(self.time)
         } else {
             false
         };
@@ -301,15 +310,15 @@ impl Entity {
         is_attacking
     }
 
-    pub fn check_if_cooling_down(&self, time: f32) -> bool {
+    pub fn check_if_cooling_down(&self) -> bool {
         let mut is_cooling_down = if let Some(weapon) = self.melee_weapon {
-            weapon.is_cooling_down(time)
+            weapon.is_cooling_down(self.time)
         } else {
             false
         };
 
         is_cooling_down |= if let Some(weapon) = self.range_weapon {
-            weapon.is_cooling_down(time)
+            weapon.is_cooling_down(self.time)
         } else {
             false
         };
@@ -333,16 +342,16 @@ impl Entity {
         }
     }
 
-    pub fn check_if_can_jump(&self, floor_y: f32, time: f32) -> bool {
-        !self.check_if_attacking(time)
-            && !self.check_if_cooling_down(time)
+    pub fn check_if_can_jump(&self, floor_y: f32) -> bool {
+        !self.check_if_attacking()
+            && !self.check_if_cooling_down()
             && self.check_if_on_floor(floor_y)
-            && (time - self.last_jump_time) >= self.jump_period
+            && self.get_time_since_last_jump() >= self.jump_period
     }
 
-    pub fn check_if_can_step(&self, floor_y: f32, time: f32) -> bool {
-        let mut can_step = !self.check_if_attacking(time);
-        can_step &= !self.check_if_cooling_down(time);
+    pub fn check_if_can_step(&self, floor_y: f32) -> bool {
+        let mut can_step = !self.check_if_attacking();
+        can_step &= !self.check_if_cooling_down();
         can_step &= !self.check_if_dashing();
         if self.apply_gravity {
             can_step &= self.check_if_on_floor(floor_y);
@@ -367,31 +376,22 @@ impl Entity {
         }
     }
 
-    pub fn check_if_can_reach_by_melee(
-        &self,
-        target: Rect,
-        time: f32,
-    ) -> bool {
+    pub fn check_if_can_reach_by_melee(&self, target: Rect) -> bool {
         if let Some(weapon) = self.melee_weapon {
             let collider = weapon
                 .get_collider(self.orientation)
                 .translate(self.position);
-            !self.check_if_attacking(time)
-                && !self.check_if_cooling_down(time)
+            !self.check_if_attacking()
+                && !self.check_if_cooling_down()
                 && collider.collide_with_rect(target)
         } else {
             false
         }
     }
 
-    pub fn check_if_can_reach_by_range(
-        &self,
-        target: Vec2<f32>,
-        time: f32,
-    ) -> bool {
+    pub fn check_if_can_reach_by_range(&self, target: Vec2<f32>) -> bool {
         if let Some(weapon) = self.range_weapon {
-            !self.check_if_attacking(time)
-                && !self.check_if_cooling_down(time)
+            !self.check_if_attacking() && !self.check_if_cooling_down()
         } else {
             false
         }
@@ -425,6 +425,8 @@ impl Entity {
     }
 
     pub fn update(&mut self, gravity: f32, floor_collider: Rect, dt: f32) {
+        self.time += dt;
+
         self.update_dashing(dt);
         self.update_healing(dt);
         self.update_animator(dt);

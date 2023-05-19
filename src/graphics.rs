@@ -424,9 +424,26 @@ pub fn draw_entity(entity: &Entity, draw_queue: &mut Vec<DrawPrimitive>) {
         return;
     }
 
-    // Healthbar
-    let alive_color = Color::new(0.0, 1.0, 0.0, 1.0);
-    let dead_color = Color::new(1.0, 0.0, 0.0, 1.0);
+    draw_healthbar(entity, draw_queue);
+}
+
+fn draw_healthbar(entity: &Entity, draw_queue: &mut Vec<DrawPrimitive>) {
+    let fade_in_time = 0.0;
+    let plateau_time = 3.0;
+    let fade_out_time = 0.3;
+
+    let t = entity.get_time_since_last_received_damage();
+    let a = if t <= fade_in_time {
+        t / fade_in_time
+    } else if t <= (fade_in_time + plateau_time) {
+        1.0
+    } else {
+        let total_time = fade_in_time + plateau_time + fade_out_time;
+        ((total_time - t) / fade_out_time).max(0.0)
+    };
+
+    let alive_color = Color::new(0.0, 1.0, 0.0, a);
+    let dead_color = Color::new(1.0, 0.0, 0.0, a);
     let ratio = entity.get_health_ratio();
     let color = alive_color.lerp(&dead_color, ratio);
     let bar_size = Vec2::new(20.0, 2.6);
@@ -439,7 +456,7 @@ pub fn draw_entity(entity: &Entity, draw_queue: &mut Vec<DrawPrimitive>) {
         background_rect,
         SpaceType::WorldSpace,
         0,
-        Color::gray(0.2, 1.0),
+        Color::gray(0.2, a),
     ));
 
     let bot_left = background_rect.bot_left + border_size;

@@ -198,7 +198,7 @@ pub fn create_rat(
         true,
         Some(collider),
         40.0,
-        160.0,
+        190.0,
         2.0,
         1000.0,
         None,

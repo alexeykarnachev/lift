@@ -153,18 +153,17 @@ impl World {
                 }) => {
                     if enemy.check_if_dead() {
                         enemy.play_animation("death");
-                    } else if enemy.check_if_can_reach_by_melee(
-                        player_collider,
-                        self.time,
-                    ) {
+                    } else if enemy
+                        .check_if_can_reach_by_melee(player_collider)
+                    {
                         let attack = if enemy.check_if_on_floor(floor_y) {
                             enemy.play_animation("melee_attack");
-                            enemy.attack_by_melee(self.time, None)
+                            enemy.attack_by_melee(None)
                         } else {
-                            enemy.attack_by_melee(self.time, Some(0.0))
+                            enemy.attack_by_melee(Some(0.0))
                         };
                         self.melee_attacks.push(attack);
-                    } else if enemy.check_if_can_jump(floor_y, self.time)
+                    } else if enemy.check_if_can_jump(floor_y)
                         && dist_to_target <= max_jump_distance
                         && dist_to_target >= min_jump_distance
                     {
@@ -172,14 +171,14 @@ impl World {
                         if target.x - position.x < 0.0 {
                             angle = PI - angle;
                         }
-                        enemy.jump_at_angle(angle, self.time);
+                        enemy.jump_at_angle(angle);
                         enemy.play_animation("jump");
-                    } else if enemy.check_if_can_step(floor_y, self.time) {
+                    } else if enemy.check_if_can_step(floor_y) {
                         let direction = (target - position).with_y(0.0);
                         enemy.immediate_step(direction, dt);
                         enemy.play_animation("move");
                     } else if enemy.check_if_on_floor(floor_y)
-                        && enemy.check_if_cooling_down(self.time)
+                        && enemy.check_if_cooling_down()
                     {
                         enemy.play_animation("idle");
                     }
@@ -209,16 +208,14 @@ impl World {
                             enemy.immediate_step(direction, dt);
                             enemy.play_animation("wave");
                         }
-                    } else if enemy.check_if_can_reach_by_melee(
-                        player_collider,
-                        self.time,
-                    ) && !enemy.check_if_healing()
+                    } else if enemy
+                        .check_if_can_reach_by_melee(player_collider)
+                        && !enemy.check_if_healing()
                     {
-                        let attack =
-                            enemy.attack_by_melee(self.time, None);
+                        let attack = enemy.attack_by_melee(None);
                         self.melee_attacks.push(attack);
                         enemy.play_animation("melee_attack");
-                    } else if enemy.check_if_can_step(floor_y, self.time)
+                    } else if enemy.check_if_can_step(floor_y)
                         && !enemy.check_if_healing()
                     {
                         let direction =
@@ -226,7 +223,7 @@ impl World {
                         enemy.immediate_step(direction, dt);
                         enemy.play_animation("wave");
                     } else if !enemy.check_if_healing()
-                        && enemy.check_if_cooling_down(self.time)
+                        && enemy.check_if_cooling_down()
                     {
                         enemy.immediate_step(deviation, dt * 0.3);
                         enemy.play_animation("wave");
@@ -260,20 +257,20 @@ impl World {
         let floor_y = room.get_y_min();
         let player = &mut self.level.player;
         let position = player.position;
-        let is_attacking = player.check_if_attacking(self.time)
-            || player.check_if_cooling_down(self.time);
+        let is_attacking =
+            player.check_if_attacking() || player.check_if_cooling_down();
         let is_dashing = player.check_if_dashing();
 
         use Keyaction::*;
         if let (Some(_), false, false) =
             (input.lmb_press_pos, is_attacking, is_dashing)
         {
-            let attack = player.attack_by_melee(self.time, None);
+            let attack = player.attack_by_melee(None);
             self.melee_attacks.push(attack);
             player.animator.as_mut().unwrap().reset();
             player.animator.as_mut().unwrap().play("attack");
         } else if input.is_action(Right)
-            && player.check_if_can_step(floor_y, self.time)
+            && player.check_if_can_step(floor_y)
         {
             if input.is_action(Down) && player.check_if_can_start_dashing()
             {
@@ -286,7 +283,7 @@ impl World {
             player.animator.as_mut().unwrap().flip = false;
             player.set_orientation(true);
         } else if input.is_action(Left)
-            && player.check_if_can_step(floor_y, self.time)
+            && player.check_if_can_step(floor_y)
         {
             if input.is_action(Down) && player.check_if_can_start_dashing()
             {
