@@ -125,19 +125,19 @@ impl Level {
                             "rat" => {
                                 let rat =
                                     create_rat(position, sprite_atlas);
-                                enemies.push(rat);
+                                spawn_enemy(rat, &mut enemies);
                             }
                             "bat" => {
                                 let bat =
                                     create_bat(position, sprite_atlas);
-                                enemies.push(bat);
+                                spawn_enemy(bat, &mut enemies);
                             }
                             "rat_nest" => {
                                 let rat_nest = create_rat_nest(
                                     position,
                                     sprite_atlas,
                                 );
-                                enemies.push(rat_nest);
+                                spawn_enemy(rat_nest, &mut enemies);
                             }
                             "torch" => {
                                 let torch =
@@ -167,4 +167,13 @@ impl Level {
             lights,
         }
     }
+
+    pub fn spawn_enemy(&mut self, enemy: Entity) {
+        spawn_enemy(enemy, &mut self.enemies);
+    }
+}
+
+fn spawn_enemy(mut enemy: Entity, array: &mut Vec<Entity>) {
+    enemy.id = array.len() as i32;
+    array.push(enemy);
 }

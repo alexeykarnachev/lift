@@ -19,7 +19,7 @@ pub enum Behaviour {
     Spawner,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum State {
     Initial,
     Idle,
@@ -40,6 +40,7 @@ pub enum Orientation {
 
 #[derive(Clone)]
 pub struct Entity {
+    pub id: i32,
     pub time: f32,
     pub state: State,
     pub is_on_floor: bool,
@@ -77,11 +78,14 @@ pub struct Entity {
     pub effect: u32,
 
     pub score: u32,
+
+    pub spawner_id: Option<usize>,
 }
 
 impl Entity {
     pub fn new(position: Vec2<f32>) -> Self {
         Self {
+            id: -1,
             time: 0.0,
             state: State::Initial,
             is_on_floor: false,
@@ -110,6 +114,7 @@ impl Entity {
             spawner: None,
             effect: 0,
             score: 0,
+            spawner_id: None,
         }
     }
 
@@ -486,7 +491,12 @@ impl Entity {
     ) -> Option<Entity> {
         let position = self.get_bot_center();
         if let Some(spawner) = self.spawner.as_mut() {
-            return spawner.update(dt, position, sprite_atlas);
+            if let Some(mut entity) =
+                spawner.update(dt, position, sprite_atlas)
+            {
+                entity.spawner_id = Some(self.id as usize);
+                return Some(entity);
+            }
         };
 
         None
@@ -765,6 +775,8 @@ impl Attack {
 pub struct Spawner {
     spawn_period: f32,
     n_to_spawn: u32,
+    n_alive_max: u32,
+    pub n_alive_current: u32,
     behaviour: Behaviour,
     countdown: f32,
     spawn_range_x: f32,
@@ -775,6 +787,7 @@ impl Spawner {
     pub fn new(
         spawn_period: f32,
         n_to_spawn: u32,
+        n_alive_max: u32,
         behaviour: Behaviour,
         spawn_range_x: f32,
         spawn_range_y: f32,
@@ -782,6 +795,8 @@ impl Spawner {
         Self {
             spawn_period,
             n_to_spawn,
+            n_alive_max,
+            n_alive_current: 0,
             behaviour,
             countdown: 0.0,
             spawn_range_x,
@@ -795,9 +810,13 @@ impl Spawner {
         position: Vec2<f32>,
         sprite_atlas: &SpriteAtlas,
     ) -> Option<Entity> {
-        let entity = if self.countdown <= 0.0 && self.n_to_spawn > 0 {
+        let entity = if self.countdown <= 0.0
+            && self.n_to_spawn > 0
+            && self.n_alive_current < self.n_alive_max
+        {
             self.countdown += self.spawn_period;
             self.n_to_spawn -= 1;
+            self.n_alive_current += 1;
             let x = position.x
                 + frand(-self.spawn_range_x, self.spawn_range_x);
             let y = position.y
@@ -819,7 +838,7 @@ impl Spawner {
             None
         };
 
-        self.countdown -= dt;
+        self.countdown = (self.countdown - dt).max(0.0);
         entity
     }
 }

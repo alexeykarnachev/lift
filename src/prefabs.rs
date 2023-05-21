@@ -37,7 +37,7 @@ pub fn create_player(
 ) -> Entity {
     let max_health = 50000.0;
     let max_stamina = 50000.0;
-    let stamina_regen = 5000.0;
+    let stamina_regen = 50000.0;
     let move_speed = 100.0;
     let stamina = Stamina::new(max_stamina, stamina_regen);
     let collider =
@@ -48,7 +48,7 @@ pub fn create_player(
     );
 
     let weapons =
-        vec![Weapon::new(weapon_collider, 0.1, 0.3, 500.0, 10000.0)];
+        vec![Weapon::new(weapon_collider, 0.1, 0.3, 5000.0, 10000.0)];
     let dashing = Dashing::new(200.0, 0.5, 0.3, 15000.0);
 
     let light = Light {
@@ -357,7 +357,7 @@ pub fn create_rat_nest(
     );
     let collider =
         Rect::from_bot_center(Vec2::zeros(), Vec2::new(60.0, 30.0));
-    let spawner = Spawner::new(5.0, 9999, Behaviour::Rat, 50.0, 0.0);
+    let spawner = Spawner::new(5.0, 9999, 3, Behaviour::Rat, 50.0, 0.0);
 
     let mut entity = Entity::new(position);
     entity.behaviour = Some(Behaviour::Spawner);

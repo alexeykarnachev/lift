@@ -86,13 +86,11 @@ impl World {
         match self.state {
             Play => {
                 self.update_play_ui(input);
-                // self.update_bullets(dt);
                 self.update_attacks(dt);
                 self.update_enemies(dt);
                 self.update_player(dt, input);
                 self.update_lights(dt);
                 self.update_free_camera(input);
-                self.update_spawners(dt);
                 self.time += dt;
             }
             GameOver => {
@@ -118,16 +116,6 @@ impl World {
         }
     }
 
-    pub fn update_spawners(&mut self, dt: f32) {
-        // let floor_spawners = &mut self.spawners[floor_idx];
-        // let floor_enemies = &mut self.enemies[floor_idx];
-        // for spawner in floor_spawners.iter_mut() {
-        //     if let Some(entity) = spawner.update(dt) {
-        //         floor_enemies.push(entity);
-        //     }
-        // }
-    }
-
     pub fn update_enemies(&mut self, dt: f32) {
         use Behaviour::*;
         use State::*;
@@ -136,11 +124,18 @@ impl World {
         let enemies = &mut self.level.enemies;
         let player = &self.level.player;
 
-        for enemy in enemies.iter_mut() {
-            if enemy.check_if_dead() {
+        for enemy_id in 0..enemies.len() {
+            let enemy = &mut enemies[enemy_id];
+            if enemy.state != Dead && enemy.check_if_dead() {
                 enemy.state = Dead;
+                if let Some(spawner_id) = enemy.spawner_id {
+                    let spawner =
+                        &mut enemies[spawner_id].spawner.as_mut().unwrap();
+                    spawner.n_alive_current -= 1;
+                }
             }
 
+            let enemy = &mut enemies[enemy_id];
             let player_collider = player.get_collider().unwrap();
             let to_player = player.get_center() - enemy.get_center();
             let dist_to_player = to_player.abs();
@@ -334,7 +329,7 @@ impl World {
                             )
                         }
                     }
-                    if let Some(spawned) =
+                    if let Some(mut spawned) =
                         enemy.update_spawner(dt, &self.sprite_atlas)
                     {
                         enemies_to_spawn.push(spawned);
@@ -351,7 +346,9 @@ impl World {
             );
         }
 
-        self.level.enemies.extend_from_slice(&enemies_to_spawn);
+        for enemy in enemies_to_spawn {
+            self.level.spawn_enemy(enemy);
+        }
     }
 
     pub fn update_player(&mut self, dt: f32, input: &Input) {
@@ -446,41 +443,6 @@ impl World {
             dt,
         );
     }
-
-    /*
-    pub fn update_bullets(&mut self, dt: f32) {
-        let enemies = &mut self.level.enemies;
-        let player = &mut self.level.player;
-        let mut new_bullets = Vec::with_capacity(self.bullets.len());
-
-        'bullet: for bullet in self.bullets.iter_mut() {
-            let step = bullet.velocity.scale(dt);
-            bullet.position += step;
-            if room.collide_with_point(bullet.position) {
-                if bullet.is_player_friendly {
-                    for enemy in
-                        enemies.iter_mut().filter(|e| !e.check_if_dead())
-                    {
-                        if enemy.try_receive_bullet_damage(bullet) {
-                            if enemy.check_if_dead() {
-                                player.score += 100;
-                            }
-                            continue 'bullet;
-                        }
-                    }
-                } else if !player.check_if_dead() {
-                    if player.try_receive_bullet_damage(bullet) {
-                        continue 'bullet;
-                    }
-                }
-
-                new_bullets.push(bullet.clone());
-            }
-        }
-
-        self.bullets = new_bullets;
-    }
-    */
 
     pub fn update_attacks(&mut self, dt: f32) {
         let enemies = &mut self.level.enemies;
