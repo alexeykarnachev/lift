@@ -50,6 +50,21 @@ impl<T: From<f32>> Vec2<T> {
             y: 0.0.into(),
         }
     }
+
+    pub fn right() -> Self {
+        Self {
+            x: 1.0.into(),
+            y: 0.0.into(),
+        }
+    }
+
+    pub fn left() -> Self {
+        Self {
+            x: (-1.0).into(),
+            y: 0.0.into(),
+        }
+    }
+
     pub fn from_angle(theta: f32) -> Self {
         Self {
             x: theta.cos().into(),

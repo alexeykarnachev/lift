@@ -130,130 +130,105 @@ impl World {
 
     pub fn update_enemies(&mut self, dt: f32) {
         use Behaviour::*;
+        use State::*;
 
         let enemies = &mut self.level.enemies;
         let player = &self.level.player;
-        let target = player.get_center();
-        let player_collider = player.get_collider().unwrap();
-        let is_player_alive = !player.check_if_dead();
 
         for enemy in enemies.iter_mut() {
-            if !is_player_alive {
-                continue;
+            if enemy.check_if_dead() {
+                enemy.state = Dead;
             }
 
-            let position = enemy.get_center();
-            let dist_to_target = position.dist_to(target);
-
-            match enemy.behaviour {
-                Some(Rat {
-                    min_jump_distance,
-                    max_jump_distance,
-                }) => {
-                    if enemy.check_if_dead() {
-                        enemy.play_animation("death");
-                    } else if enemy
-                        .check_if_can_reach_by_melee(player_collider)
-                    {
-                        let attack = if enemy.is_on_floor {
-                            enemy.play_animation("melee_attack");
-                            enemy.attack_by_melee(None)
-                        } else {
-                            enemy.attack_by_melee(Some(0.0))
-                        };
-                        self.melee_attacks.push(attack);
-                    } else if enemy.check_if_can_jump()
-                        && dist_to_target <= max_jump_distance
-                        && dist_to_target >= min_jump_distance
-                    {
-                        let mut angle = PI * 0.1;
-                        if target.x - position.x < 0.0 {
-                            angle = PI - angle;
-                        }
-                        enemy.jump_at_angle(angle, None);
-                        enemy.play_animation("jump");
-                    } else if enemy.check_if_can_step() {
-                        let direction = (target - position).with_y(0.0);
-                        enemy.immediate_step(direction, dt);
-                        enemy.play_animation("move");
-                    } else if enemy.is_on_floor
-                        && enemy.check_if_cooling_down()
-                    {
+            let player_collider = player.get_collider().unwrap();
+            let to_player = player.get_center() - enemy.get_center();
+            let dist_to_player = to_player.abs();
+            match enemy.behaviour.as_ref() {
+                Some(Rat) => match enemy.state {
+                    Initial => {
+                        enemy.state = Idle;
+                    }
+                    Idle => {
                         enemy.play_animation("idle");
-                    }
-
-                    let can_flip =
-                        enemy.is_on_floor && !enemy.check_if_dead();
-                    if can_flip {
-                        let is_flip = target.x > position.x;
-                        enemy.animator.as_mut().unwrap().flip = is_flip;
-                        enemy.set_orientation(is_flip);
-                    }
-                }
-                Some(Bat) => {
-                    let deviation =
-                        Vec2::from_angle(self.time * 4.0).scale(0.5);
-                    let t = enemy.get_time_since_last_received_damage();
-                    if t < 0.3 {
-                        enemy.apply_gravity = true;
-                    } else if !enemy.check_if_dead() {
-                        enemy.apply_gravity = false;
-                        enemy.velocity.y = enemy.velocity.y.max(0.0);
-                    }
-
-                    if enemy.check_if_dead() {
-                        enemy.apply_gravity = true;
-                        enemy.play_animation("death");
-                    } else if enemy.get_health_ratio() < 0.6
-                        && enemy.check_if_can_start_healing()
-                    {
-                        if enemy.is_on_ceil {
-                            enemy.force_start_healing();
-                            enemy.velocity.x = 0.0;
-                        } else {
-                            let direction =
-                                Vec2::new(0.0, 1.0) + deviation;
-                            enemy.immediate_step(direction, dt);
-                            enemy.play_animation("wave");
+                        if enemy
+                            .check_if_can_reach_by_melee(player_collider)
+                        {
+                            self.melee_attacks
+                                .push(enemy.attack_by_melee(None));
+                            enemy.state = Attacking;
+                        } else if dist_to_player.x < 200.0
+                            && dist_to_player.y < 16.0
+                        {
+                            enemy.state = Running;
                         }
-                    } else if enemy
-                        .check_if_can_reach_by_melee(player_collider)
-                        && !enemy.check_if_healing()
-                    {
-                        let attack = enemy.attack_by_melee(None);
-                        self.melee_attacks.push(attack);
-                        enemy.play_animation("melee_attack");
-                    } else if enemy.check_if_can_step()
-                        && !enemy.check_if_healing()
-                    {
-                        let direction =
-                            (target - position).norm() + deviation;
-                        enemy.immediate_step(direction, dt);
-                        enemy.play_animation("wave");
-                    } else if !enemy.check_if_healing()
-                        && enemy.check_if_cooling_down()
-                    {
-                        enemy.immediate_step(deviation, dt * 0.3);
-                        enemy.play_animation("wave");
-                    } else if enemy.check_if_healing() {
-                        enemy.play_animation("sleep");
                     }
+                    Running => {
+                        enemy.play_animation("move");
+                        enemy.set_orientation(to_player.x.signum() > 0.0);
 
-                    let can_flip = !enemy.check_if_dead()
-                        && !enemy.check_if_healing();
-                    let animator = enemy.animator.as_mut().unwrap();
-                    if can_flip {
-                        let is_flip = target.x > position.x;
-                        animator.flip = is_flip;
-                        enemy.set_orientation(is_flip);
+                        if !enemy.is_on_floor {
+                            enemy.state = Falling;
+                        } else if dist_to_player.x >= 200.0
+                            || dist_to_player.y >= 16.0
+                        {
+                            enemy.state = Idle;
+                        } else if enemy.check_if_jump_ready()
+                            && dist_to_player.x >= 45.0
+                            && dist_to_player.x <= 60.0
+                        {
+                            let mut angle = PI * 0.1;
+                            if to_player.x.signum() < 0.0 {
+                                angle = PI - angle;
+                            };
+                            enemy.jump_at_angle(angle, None);
+                            enemy.state = Jumping;
+                        } else if enemy
+                            .check_if_can_reach_by_melee(player_collider)
+                        {
+                            self.melee_attacks
+                                .push(enemy.attack_by_melee(None));
+                            enemy.state = Attacking;
+                        } else if to_player.x.signum() > 0.0 {
+                            enemy.immediate_step(Vec2::right(), dt)
+                        } else {
+                            enemy.immediate_step(Vec2::left(), dt)
+                        }
                     }
-                }
-                _ => {
-                    panic!(
-                        "Enemy behaviour: {:?} is not implemented",
-                        enemy.behaviour
-                    )
-                }
+                    Attacking => {
+                        enemy.play_animation("melee_attack");
+                        if enemy.check_if_melee_weapon_ready() {
+                            enemy.state = Idle;
+                        }
+                    }
+                    Jumping => {
+                        enemy.play_animation("jump");
+                        if enemy.is_on_floor {
+                            enemy.state = Idle;
+                        } else if enemy
+                            .check_if_can_reach_by_melee(player_collider)
+                            && enemy.check_if_melee_weapon_ready()
+                        {
+                            self.melee_attacks
+                                .push(enemy.attack_by_melee(Some(0.0)));
+                        }
+                    }
+                    Falling => {
+                        enemy.play_animation("idle");
+                        if enemy.is_on_floor {
+                            enemy.state = Idle;
+                        }
+                    }
+                    Dead => {
+                        enemy.play_animation("death");
+                    }
+                    _ => {
+                        panic!(
+                            "Cant handle {:?} state for a Rat",
+                            enemy.state
+                        )
+                    }
+                },
+                _ => {}
             }
 
             enemy.update(
@@ -266,45 +241,77 @@ impl World {
     }
 
     pub fn update_player(&mut self, dt: f32, input: &Input) {
-        let player = &mut self.level.player;
-        let position = player.position;
-        let is_attacking =
-            player.check_if_attacking() || player.check_if_cooling_down();
-        let is_dashing = player.check_if_dashing();
-
         use Keyaction::*;
-        if let (Some(_), false, false) =
-            (input.lmb_press_pos, is_attacking, is_dashing)
-        {
-            let attack = player.attack_by_melee(None);
-            self.melee_attacks.push(attack);
-            player.animator.as_mut().unwrap().reset();
-            player.animator.as_mut().unwrap().play("attack");
-        } else if input.is_action(Right) && player.check_if_can_step() {
-            if input.is_action(Down) && player.check_if_can_start_dashing()
-            {
-                player.force_start_dashing();
-                player.animator.as_mut().unwrap().play("slide");
-            } else {
-                player.immediate_step(Vec2::new(1.0, 0.0), dt);
-                player.animator.as_mut().unwrap().play("run");
-            }
-            player.animator.as_mut().unwrap().flip = false;
-            player.set_orientation(true);
-        } else if input.is_action(Left) && player.check_if_can_step() {
-            if input.is_action(Down) && player.check_if_can_start_dashing()
-            {
-                player.force_start_dashing();
-                player.animator.as_mut().unwrap().play("slide");
-            } else {
-                player.immediate_step(Vec2::new(-1.0, 0.0), dt);
-                player.animator.as_mut().unwrap().play("run");
-            }
+        use State::*;
 
-            player.animator.as_mut().unwrap().flip = true;
-            player.set_orientation(false);
-        } else if !is_attacking && !is_dashing {
-            player.animator.as_mut().unwrap().play("idle");
+        let player = &mut self.level.player;
+
+        match player.state {
+            Initial => {
+                player.state = Idle;
+            }
+            Idle => {
+                player.play_animation("idle");
+                if input.is_action(Left) || input.is_action(Right) {
+                    player.state = Running;
+                } else if input.lmb_is_down
+                    && player.check_if_melee_weapon_ready()
+                {
+                    self.melee_attacks.push(player.attack_by_melee(None));
+                    player.state = Attacking;
+                }
+            }
+            Running => {
+                if !player.is_on_floor {
+                    player.state = Falling;
+                } else if input.lmb_is_down
+                    && player.check_if_melee_weapon_ready()
+                {
+                    self.melee_attacks.push(player.attack_by_melee(None));
+                    player.state = Attacking;
+                } else {
+                    let is_left_action = input.is_action(Left);
+                    let is_right_action = input.is_action(Right);
+                    if is_left_action || is_right_action {
+                        player.set_orientation(is_right_action);
+                        player.play_animation("run");
+                        if input.is_action(Down)
+                            && player.check_if_dashing_ready()
+                        {
+                            player.state = Dashing;
+                            player.force_start_dashing();
+                        } else if is_right_action {
+                            player.immediate_step(Vec2::right(), dt);
+                        } else {
+                            player.immediate_step(Vec2::left(), dt);
+                        }
+                    } else {
+                        player.play_animation("idle");
+                        player.state = Idle;
+                    }
+                }
+            }
+            Dashing => {
+                player.play_animation("slide");
+                if !player.check_if_dashing() {
+                    player.state = Idle;
+                }
+            }
+            Attacking => {
+                player.play_animation("attack");
+                if player.check_if_melee_weapon_ready() {
+                    player.state = Idle;
+                }
+            }
+            Falling => {
+                player.play_animation("idle");
+                if player.is_on_floor {
+                    player.state = Idle;
+                }
+            }
+            _ => {
+                panic!("Cant handle {:?} state for a Player", player.state)
+            }
         }
 
         player.update(

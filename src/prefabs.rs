@@ -40,7 +40,7 @@ pub fn create_player(
         Vec2::new(42.0, 48.0),
     );
 
-    let melee_weapon = MeleeWeapon::new(weapon_collider, 0.1, 0.22, 500.0);
+    let melee_weapon = MeleeWeapon::new(weapon_collider, 0.1, 0.3, 500.0);
     let dashing = Dashing::new(200.0, 0.5, 0.3);
 
     let light = Light {
@@ -127,11 +127,8 @@ pub fn create_rat(
         Vec2::new(8.0, 12.0),
     );
 
-    let melee_weapon = MeleeWeapon::new(weapon_collider, 0.5, 1.0, 500.0);
-    let behaviour = Behaviour::Rat {
-        min_jump_distance: 40.0,
-        max_jump_distance: 65.0,
-    };
+    let melee_weapon = MeleeWeapon::new(weapon_collider, 0.5, 0.3, 500.0);
+    let behaviour = Behaviour::Rat;
 
     let mut animator = Animator::new(AnimatedSprite::new(
         sprite_atlas,
@@ -185,7 +182,7 @@ pub fn create_rat(
         AnimatedSprite::new(
             sprite_atlas,
             "rat_melee_attack",
-            0.5,
+            0.8,
             Once,
             BotCenter,
         ),
@@ -198,7 +195,7 @@ pub fn create_rat(
         true,
         Some(collider),
         40.0,
-        250.0,
+        280.0,
         2.0,
         1000.0,
         None,

@@ -106,6 +106,33 @@
     "spriteSourceSize": { "x": 0, "y": 0, "w": 32, "h": 16 },
     "sourceSize": { "w": 32, "h": 16 },
     "duration": 50
+   },
+   {
+    "filename": "rat_melee_attack.12",
+    "frame": { "x": 409, "y": 1, "w": 32, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 32, "h": 16 },
+    "sourceSize": { "w": 32, "h": 16 },
+    "duration": 50
+   },
+   {
+    "filename": "rat_melee_attack.13",
+    "frame": { "x": 443, "y": 1, "w": 32, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 32, "h": 16 },
+    "sourceSize": { "w": 32, "h": 16 },
+    "duration": 50
+   },
+   {
+    "filename": "rat_melee_attack.14",
+    "frame": { "x": 477, "y": 1, "w": 32, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 32, "h": 16 },
+    "sourceSize": { "w": 32, "h": 16 },
+    "duration": 50
    }
  ],
  "meta": {
@@ -113,7 +140,7 @@
   "version": "1.3-rc2-x64",
   "image": "rat_melee_attack.png",
   "format": "RGBA8888",
-  "size": { "w": 408, "h": 18 },
+  "size": { "w": 510, "h": 18 },
   "scale": "1",
   "frameTags": [
   ],

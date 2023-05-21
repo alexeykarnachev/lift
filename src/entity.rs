@@ -12,14 +12,23 @@ use std::fs;
 #[derive(Clone, Debug, PartialEq)]
 pub enum Behaviour {
     Player,
-    Rat {
-        min_jump_distance: f32,
-        max_jump_distance: f32,
-    },
+    Rat,
     Bat,
 }
 
 #[derive(Clone, Copy, Debug)]
+pub enum State {
+    Initial,
+    Idle,
+    Running,
+    Dashing,
+    Attacking,
+    Falling,
+    Jumping,
+    Dead,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Orientation {
     Left,
     Right,
@@ -28,6 +37,7 @@ pub enum Orientation {
 #[derive(Clone)]
 pub struct Entity {
     time: f32,
+    pub state: State,
     pub is_on_floor: bool,
     pub is_on_ceil: bool,
 
@@ -82,6 +92,7 @@ impl Entity {
     ) -> Self {
         Self {
             time: 0.0,
+            state: State::Initial,
             is_on_floor: false,
             is_on_ceil: false,
             behaviour,
@@ -335,25 +346,16 @@ impl Entity {
         }
     }
 
-    pub fn check_if_can_jump(&self) -> bool {
-        !self.check_if_attacking()
-            && !self.check_if_cooling_down()
-            && self.is_on_floor
+    pub fn check_if_jump_ready(&self) -> bool {
+        self.is_on_floor
             && self.get_time_since_last_jump() >= self.jump_period
     }
 
-    pub fn check_if_can_step(&self) -> bool {
-        let mut can_step = !self.check_if_attacking();
-        can_step &= !self.check_if_cooling_down();
-        can_step &= !self.check_if_dashing();
-        if self.apply_gravity {
-            can_step &= self.is_on_floor;
-        }
-
-        can_step
+    pub fn check_if_melee_weapon_ready(&self) -> bool {
+        !self.check_if_attacking() && !self.check_if_cooling_down()
     }
 
-    pub fn check_if_can_start_dashing(&self) -> bool {
+    pub fn check_if_dashing_ready(&self) -> bool {
         if let Some(dashing) = self.dashing {
             self.dashing.as_ref().unwrap().check_if_can_start()
         } else {
@@ -361,7 +363,7 @@ impl Entity {
         }
     }
 
-    pub fn check_if_can_start_healing(&self) -> bool {
+    pub fn check_if_healing_ready(&self) -> bool {
         if let Some(healing) = self.healing {
             self.healing.as_ref().unwrap().check_if_can_start()
         } else {
@@ -374,8 +376,8 @@ impl Entity {
             let collider = weapon
                 .get_collider(self.orientation)
                 .translate(self.position);
-            !self.check_if_attacking()
-                && !self.check_if_cooling_down()
+
+            self.check_if_melee_weapon_ready()
                 && collider.collide_with_rect(target)
         } else {
             false
@@ -397,11 +399,15 @@ impl Entity {
         colliders: &Vec<Collider>,
         dt: f32,
     ) {
-        let was_on_floor = self.is_on_floor;
+        if !self.is_on_floor && self.apply_gravity {
+            self.velocity.y -= gravity * dt;
+        }
+        self.position += self.velocity.scale(dt);
+        self.velocity.x *= 1.0 - friction;
 
+        let was_on_floor = self.is_on_floor;
         self.is_on_ceil = false;
         self.is_on_floor = false;
-
         if let Some(self_rect) = self.get_collider() {
             for collider in colliders {
                 match collider {
@@ -452,13 +458,6 @@ impl Entity {
                 };
             }
         }
-
-        if !self.is_on_floor && self.apply_gravity {
-            self.velocity.y -= gravity * dt;
-        }
-
-        self.position += self.velocity.scale(dt);
-        self.velocity.x *= 1.0 - friction;
     }
 
     fn update_dashing(&mut self, dt: f32) {
@@ -485,6 +484,7 @@ impl Entity {
     fn update_animator(&mut self, dt: f32) {
         if let Some(animator) = self.animator.as_mut() {
             animator.update(dt);
+            animator.flip = self.orientation == Orientation::Left;
         }
     }
 
