@@ -61,8 +61,7 @@ pub struct Entity {
 
     dashing: Option<Dashing>,
     healing: Option<Healing>,
-    melee_weapon: Option<MeleeWeapon>,
-    range_weapon: Option<RangeWeapon>,
+    weapon: Option<Weapon>,
 
     pub light: Option<Light>,
     pub animator: Option<Animator>,
@@ -84,8 +83,7 @@ impl Entity {
         max_health: f32,
         dashing: Option<Dashing>,
         healing: Option<Healing>,
-        melee_weapon: Option<MeleeWeapon>,
-        range_weapon: Option<RangeWeapon>,
+        weapon: Option<Weapon>,
         light: Option<Light>,
         animator: Option<Animator>,
         effect: u32,
@@ -110,8 +108,7 @@ impl Entity {
             last_received_damage_time: -f32::INFINITY,
             dashing,
             healing,
-            melee_weapon,
-            range_weapon,
+            weapon,
             light,
             animator,
             effect,
@@ -191,18 +188,15 @@ impl Entity {
         false
     }
 
-    pub fn try_receive_melee_attack_damage(
-        &mut self,
-        melee_attack: &MeleeAttack,
-    ) -> bool {
+    pub fn try_receive_attack_damage(&mut self, attack: &Attack) -> bool {
         if self.check_if_dashing() {
             return false;
         }
 
-        let attack_collider = melee_attack.get_collider();
+        let attack_collider = attack.get_collider();
         if let Some(self_collider) = self.get_collider() {
             if self_collider.collide_with_rect(attack_collider) {
-                self.receive_damage(melee_attack.damage);
+                self.receive_damage(attack.damage);
                 return true;
             }
         }
@@ -242,47 +236,18 @@ impl Entity {
         self.dashing.as_mut().unwrap().force_start();
     }
 
-    pub fn attack_by_melee(
-        &mut self,
-        attack_delay: Option<f32>,
-    ) -> MeleeAttack {
+    pub fn attack(&mut self) -> Attack {
         use Orientation::*;
 
-        let weapon = self.melee_weapon.as_mut().unwrap();
+        let weapon = self.weapon.as_mut().unwrap();
         weapon.last_attack_time = self.time;
         let collider = weapon.get_collider(self.orientation);
 
-        let attack_delay = if let Some(delay) = attack_delay {
-            delay
-        } else {
-            weapon.attack_duration
-        };
-
-        MeleeAttack::new(
+        Attack::new(
             self.position,
             collider,
             weapon.damage,
-            attack_delay,
-            self.check_if_player(),
-        )
-    }
-
-    pub fn attack_by_range(&mut self, target: Vec2<f32>) -> Bullet {
-        let weapon = self.range_weapon.as_mut().unwrap();
-        weapon.last_attack_time = self.time;
-
-        let pivot = self.position + weapon.pivot;
-        let direction = target - pivot;
-        let position = pivot + direction.with_len(weapon.length);
-        let collider =
-            Rect::from_center(Vec2::zeros(), Vec2::new(0.2, 0.2));
-        let velocity = direction.with_len(weapon.bullet_speed);
-
-        Bullet::new(
-            position,
-            collider,
-            velocity,
-            weapon.bullet_damage,
+            weapon.attack_duration,
             self.check_if_player(),
         )
     }
@@ -299,35 +264,19 @@ impl Entity {
     }
 
     pub fn check_if_attacking(&self) -> bool {
-        let mut is_attacking = if let Some(weapon) = self.melee_weapon {
+        if let Some(weapon) = self.weapon {
             weapon.is_attacking(self.time)
         } else {
             false
-        };
-
-        is_attacking |= if let Some(weapon) = self.range_weapon {
-            weapon.is_attacking(self.time)
-        } else {
-            false
-        };
-
-        is_attacking
+        }
     }
 
     pub fn check_if_cooling_down(&self) -> bool {
-        let mut is_cooling_down = if let Some(weapon) = self.melee_weapon {
+        if let Some(weapon) = self.weapon {
             weapon.is_cooling_down(self.time)
         } else {
             false
-        };
-
-        is_cooling_down |= if let Some(weapon) = self.range_weapon {
-            weapon.is_cooling_down(self.time)
-        } else {
-            false
-        };
-
-        is_cooling_down
+        }
     }
 
     pub fn check_if_dashing(&self) -> bool {
@@ -351,7 +300,7 @@ impl Entity {
             && self.get_time_since_last_jump() >= self.jump_period
     }
 
-    pub fn check_if_melee_weapon_ready(&self) -> bool {
+    pub fn check_if_weapon_ready(&self) -> bool {
         !self.check_if_attacking() && !self.check_if_cooling_down()
     }
 
@@ -371,22 +320,14 @@ impl Entity {
         }
     }
 
-    pub fn check_if_can_reach_by_melee(&self, target: Rect) -> bool {
-        if let Some(weapon) = self.melee_weapon {
+    pub fn check_if_can_reach_by_weapon(&self, target: Rect) -> bool {
+        if let Some(weapon) = self.weapon {
             let collider = weapon
                 .get_collider(self.orientation)
                 .translate(self.position);
 
-            self.check_if_melee_weapon_ready()
+            self.check_if_weapon_ready()
                 && collider.collide_with_rect(target)
-        } else {
-            false
-        }
-    }
-
-    pub fn check_if_can_reach_by_range(&self, target: Vec2<f32>) -> bool {
-        if let Some(weapon) = self.range_weapon {
-            !self.check_if_attacking() && !self.check_if_cooling_down()
         } else {
             false
         }
@@ -508,48 +449,6 @@ impl Entity {
     }
 }
 
-#[derive(Clone, Copy)]
-pub struct RangeWeapon {
-    pub pivot: Vec2<f32>,
-    pub length: f32,
-    pub last_attack_time: f32,
-    pub attack_duration: f32,
-    pub attack_cooldown: f32,
-    pub bullet_speed: f32,
-    pub bullet_damage: f32,
-}
-
-impl RangeWeapon {
-    pub fn new(
-        pivot: Vec2<f32>,
-        length: f32,
-        attack_duration: f32,
-        attack_cooldown: f32,
-        bullet_speed: f32,
-        bullet_damage: f32,
-    ) -> Self {
-        Self {
-            pivot,
-            length,
-            last_attack_time: -(attack_duration + attack_cooldown),
-            attack_duration,
-            attack_cooldown,
-            bullet_speed,
-            bullet_damage,
-        }
-    }
-
-    pub fn is_attacking(&self, time: f32) -> bool {
-        (time - self.last_attack_time) < self.attack_duration
-    }
-
-    pub fn is_cooling_down(&self, time: f32) -> bool {
-        !self.is_attacking(time)
-            && (time - self.last_attack_time)
-                < self.attack_duration + self.attack_cooldown
-    }
-}
-
 #[derive(Clone, Copy, Debug)]
 pub struct Dashing {
     speed: f32,
@@ -645,7 +544,7 @@ impl Healing {
 }
 
 #[derive(Clone, Copy)]
-pub struct MeleeWeapon {
+pub struct Weapon {
     collider: Rect,
     pub last_attack_time: f32,
     pub attack_duration: f32,
@@ -653,7 +552,7 @@ pub struct MeleeWeapon {
     pub damage: f32,
 }
 
-impl MeleeWeapon {
+impl Weapon {
     pub fn new(
         collider: Rect,
         attack_duration: f32,
@@ -724,7 +623,7 @@ impl Bullet {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct MeleeAttack {
+pub struct Attack {
     pub position: Vec2<f32>,
     collider: Rect,
     pub damage: f32,
@@ -732,7 +631,7 @@ pub struct MeleeAttack {
     pub is_player_friendly: bool,
 }
 
-impl MeleeAttack {
+impl Attack {
     pub fn new(
         position: Vec2<f32>,
         collider: Rect,

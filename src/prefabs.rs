@@ -40,7 +40,7 @@ pub fn create_player(
         Vec2::new(42.0, 48.0),
     );
 
-    let melee_weapon = MeleeWeapon::new(weapon_collider, 0.1, 0.3, 500.0);
+    let weapon = Weapon::new(weapon_collider, 0.1, 0.3, 500.0);
     let dashing = Dashing::new(200.0, 0.5, 0.3);
 
     let light = Light {
@@ -108,8 +108,7 @@ pub fn create_player(
         5000.0,
         Some(dashing),
         None,
-        Some(melee_weapon),
-        None,
+        Some(weapon),
         Some(light),
         Some(animator),
         ApplyLightEffect as u32,
@@ -127,7 +126,7 @@ pub fn create_rat(
         Vec2::new(8.0, 12.0),
     );
 
-    let melee_weapon = MeleeWeapon::new(weapon_collider, 0.5, 0.3, 500.0);
+    let weapon = Weapon::new(weapon_collider, 0.5, 0.3, 500.0);
     let behaviour = Behaviour::Rat;
 
     let mut animator = Animator::new(AnimatedSprite::new(
@@ -200,8 +199,7 @@ pub fn create_rat(
         1000.0,
         None,
         None,
-        Some(melee_weapon),
-        None,
+        Some(weapon),
         None,
         Some(animator),
         ApplyLightEffect as u32,
@@ -219,7 +217,7 @@ pub fn create_bat(
         Vec2::new(4.0, 16.0),
     );
 
-    let melee_weapon = MeleeWeapon::new(weapon_collider, 0.25, 1.0, 500.0);
+    let weapon = Weapon::new(weapon_collider, 0.25, 1.0, 500.0);
     let behaviour = Behaviour::Bat;
     let healing = Healing::new(100.0, 5.0, 5.0);
 
@@ -283,8 +281,7 @@ pub fn create_bat(
         1000.0,
         None,
         Some(healing),
-        Some(melee_weapon),
-        None,
+        Some(weapon),
         None,
         Some(animator),
         ApplyLightEffect as u32,
@@ -318,7 +315,6 @@ pub fn create_torch(
         0.0,
         0.0,
         0.0,
-        None,
         None,
         None,
         None,

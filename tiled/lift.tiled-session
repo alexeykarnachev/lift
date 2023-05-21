@@ -29,8 +29,8 @@
             "scale": 2,
             "selectedLayer": 1,
             "viewCenter": {
-                "x": 345.5,
-                "y": 226.25
+                "x": 345,
+                "y": 225.75
             }
         },
         "lift.tsx": {

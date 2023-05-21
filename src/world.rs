@@ -33,7 +33,7 @@ pub struct World {
     pub level: Level,
 
     pub camera: Camera,
-    pub melee_attacks: Vec<MeleeAttack>,
+    pub attacks: Vec<Attack>,
     pub bullets: Vec<Bullet>,
 
     pub play_ui: UI,
@@ -50,7 +50,7 @@ impl World {
         let glyph_atlas = create_default_glyph_atlas();
         let level = Level::new("./assets/levels/0.json", &sprite_atlas);
 
-        let melee_attacks: Vec<MeleeAttack> = Vec::with_capacity(256);
+        let attacks: Vec<Attack> = Vec::with_capacity(256);
         let bullets: Vec<Bullet> = Vec::with_capacity(256);
         let camera = Camera::new(level.player.get_center().add_y(2.0));
 
@@ -66,7 +66,7 @@ impl World {
             friction: 0.02,
             level,
             camera,
-            melee_attacks,
+            attacks,
             bullets,
             play_ui,
             game_over_ui,
@@ -87,7 +87,7 @@ impl World {
             Play => {
                 self.update_play_ui(input);
                 // self.update_bullets(dt);
-                self.update_melee_attacks(dt);
+                self.update_attacks(dt);
                 self.update_enemies(dt);
                 self.update_player(dt, input);
                 self.update_lights(dt);
@@ -151,10 +151,9 @@ impl World {
                     Idle => {
                         enemy.play_animation("idle");
                         if enemy
-                            .check_if_can_reach_by_melee(player_collider)
+                            .check_if_can_reach_by_weapon(player_collider)
                         {
-                            self.melee_attacks
-                                .push(enemy.attack_by_melee(None));
+                            self.attacks.push(enemy.attack());
                             enemy.state = Attacking;
                         } else if dist_to_player.x < 200.0
                             && dist_to_player.y < 16.0
@@ -183,10 +182,9 @@ impl World {
                             enemy.jump_at_angle(angle, None);
                             enemy.state = Jumping;
                         } else if enemy
-                            .check_if_can_reach_by_melee(player_collider)
+                            .check_if_can_reach_by_weapon(player_collider)
                         {
-                            self.melee_attacks
-                                .push(enemy.attack_by_melee(None));
+                            self.attacks.push(enemy.attack());
                             enemy.state = Attacking;
                         } else if to_player.x.signum() > 0.0 {
                             enemy.immediate_step(Vec2::right(), dt)
@@ -196,7 +194,7 @@ impl World {
                     }
                     Attacking => {
                         enemy.play_animation("melee_attack");
-                        if enemy.check_if_melee_weapon_ready() {
+                        if enemy.check_if_weapon_ready() {
                             enemy.state = Idle;
                         }
                     }
@@ -205,11 +203,9 @@ impl World {
                         if enemy.is_on_floor {
                             enemy.state = Idle;
                         } else if enemy
-                            .check_if_can_reach_by_melee(player_collider)
-                            && enemy.check_if_melee_weapon_ready()
+                            .check_if_can_reach_by_weapon(player_collider)
                         {
-                            self.melee_attacks
-                                .push(enemy.attack_by_melee(Some(0.0)));
+                            self.attacks.push(enemy.attack());
                         }
                     }
                     Falling => {
@@ -255,9 +251,9 @@ impl World {
                 if input.is_action(Left) || input.is_action(Right) {
                     player.state = Running;
                 } else if input.lmb_is_down
-                    && player.check_if_melee_weapon_ready()
+                    && player.check_if_weapon_ready()
                 {
-                    self.melee_attacks.push(player.attack_by_melee(None));
+                    self.attacks.push(player.attack());
                     player.state = Attacking;
                 }
             }
@@ -265,9 +261,9 @@ impl World {
                 if !player.is_on_floor {
                     player.state = Falling;
                 } else if input.lmb_is_down
-                    && player.check_if_melee_weapon_ready()
+                    && player.check_if_weapon_ready()
                 {
-                    self.melee_attacks.push(player.attack_by_melee(None));
+                    self.attacks.push(player.attack());
                     player.state = Attacking;
                 } else {
                     let is_left_action = input.is_action(Left);
@@ -299,7 +295,7 @@ impl World {
             }
             Attacking => {
                 player.play_animation("attack");
-                if player.check_if_melee_weapon_ready() {
+                if player.check_if_weapon_ready() {
                     player.state = Idle;
                 }
             }
@@ -357,16 +353,15 @@ impl World {
     }
     */
 
-    pub fn update_melee_attacks(&mut self, dt: f32) {
+    pub fn update_attacks(&mut self, dt: f32) {
         let enemies = &mut self.level.enemies;
         let player = &mut self.level.player;
-        let mut new_melee_attacks =
-            Vec::with_capacity(self.melee_attacks.len());
+        let mut new_attacks = Vec::with_capacity(self.attacks.len());
 
-        'attack: for attack in self.melee_attacks.iter_mut() {
+        'attack: for attack in self.attacks.iter_mut() {
             attack.delay -= dt;
             if attack.delay > 0.0 {
-                new_melee_attacks.push(attack.clone());
+                new_attacks.push(attack.clone());
                 continue 'attack;
             }
 
@@ -374,7 +369,7 @@ impl World {
                 for enemy in
                     enemies.iter_mut().filter(|e| !e.check_if_dead())
                 {
-                    if enemy.try_receive_melee_attack_damage(attack) {
+                    if enemy.try_receive_attack_damage(attack) {
                         let mut angle = PI * 0.15;
                         if enemy.position.x - player.position.x < 0.0 {
                             angle = PI - angle;
@@ -387,13 +382,13 @@ impl World {
                     }
                 }
             } else if !player.check_if_dead() {
-                if player.try_receive_melee_attack_damage(attack) {
+                if player.try_receive_attack_damage(attack) {
                     continue 'attack;
                 }
             }
         }
 
-        self.melee_attacks = new_melee_attacks;
+        self.attacks = new_attacks;
     }
 
     fn update_lights(&mut self, dt: f32) {

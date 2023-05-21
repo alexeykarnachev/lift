@@ -152,9 +152,9 @@ impl Renderer {
         });
 
         // draw_collider(world.level.room, &mut self.primitives);
-        // world.melee_attacks.iter().for_each(|attack| {
-        //     draw_melee_attack(attack, &mut self.primitives);
-        // });
+        world.attacks.iter().for_each(|attack| {
+            draw_attack(attack, &mut self.primitives);
+        });
         // world.enemies[floor_idx].iter().for_each(|enemy| {
         //     draw_collider(enemy, &mut self.primitives);
         // });
