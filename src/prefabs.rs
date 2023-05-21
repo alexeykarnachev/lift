@@ -36,7 +36,10 @@ pub fn create_player(
     sprite_atlas: &SpriteAtlas,
 ) -> Entity {
     let max_health = 50000.0;
+    let max_stamina = 50000.0;
+    let stamina_regen = 5000.0;
     let move_speed = 100.0;
+    let stamina = Stamina::new(max_stamina, stamina_regen);
     let collider =
         Rect::from_bot_center(Vec2::zeros(), Vec2::new(20.0, 40.0));
     let weapon_collider = Rect::from_right_center(
@@ -44,8 +47,9 @@ pub fn create_player(
         Vec2::new(42.0, 48.0),
     );
 
-    let weapons = vec![Weapon::new(weapon_collider, 0.1, 0.3, 500.0)];
-    let dashing = Dashing::new(200.0, 0.5, 0.3);
+    let weapons =
+        vec![Weapon::new(weapon_collider, 0.1, 0.3, 500.0, 10000.0)];
+    let dashing = Dashing::new(200.0, 0.5, 0.3, 15000.0);
 
     let light = Light {
         position: collider.get_top_center(),
@@ -107,6 +111,7 @@ pub fn create_player(
     entity.move_speed = move_speed;
     entity.max_health = max_health;
     entity.current_health = max_health;
+    entity.stamina = Some(stamina);
     entity.dashing = Some(dashing);
     entity.weapons = weapons;
     entity.light = Some(light);
@@ -135,12 +140,14 @@ pub fn create_rat(
         0.5,
         0.3,
         200.0,
+        0.0,
     );
     let jump_weapon = Weapon::new(
         Rect::from_center(collider.get_center(), Vec2::new(128.0, 12.0)),
         0.1,
         jump_period,
         200.0,
+        0.0,
     );
 
     let weapons = vec![floor_weapon, jump_weapon];
@@ -236,7 +243,7 @@ pub fn create_bat(
         Vec2::new(4.0, 16.0),
     );
 
-    let weapons = vec![Weapon::new(weapon_collider, 0.2, 0.1, 500.0)];
+    let weapons = vec![Weapon::new(weapon_collider, 0.2, 0.1, 500.0, 0.0)];
     let healing =
         Healing::new(healing_speed, healing_duration, healing_cooldown);
 

@@ -208,8 +208,15 @@ impl Color {
     }
 
     pub fn healthbar(ratio: f32) -> Self {
-        let alive = Self::green(1.0);
-        let dead = Self::red(1.0);
+        let alive = Self::new(0.8, 0.0, 0.0, 1.0);
+        let dead = Self::new(0.3, 0.0, 0.0, 1.0);
+
+        alive.lerp(&dead, ratio)
+    }
+
+    pub fn staminabar(ratio: f32) -> Self {
+        let alive = Self::new(0.0, 0.8, 0.0, 1.0);
+        let dead = Self::new(0.0, 0.3, 0.0, 1.0);
 
         alive.lerp(&dead, ratio)
     }

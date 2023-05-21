@@ -22,5 +22,17 @@
         },
         "width": 0.2,
         "height": 0.025
+    },
+    {
+        "id": "stamina",
+        "type": "rect",
+        "is_interactive": false,
+        "position": {
+            "origin": "TopLeft",
+            "x": -0.95,
+            "y": 0.89
+        },
+        "width": 0.2,
+        "height": 0.025
     }
 ]

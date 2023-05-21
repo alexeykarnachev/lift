@@ -157,7 +157,7 @@ impl World {
                         if enemy
                             .check_if_can_reach_by_weapon(player_collider)
                         {
-                            self.attacks.push(enemy.attack());
+                            self.attacks.push(enemy.force_attack());
                             enemy.state = Attacking;
                         } else if dist_to_player.x < 200.0
                             && dist_to_player.y < 16.0
@@ -189,7 +189,7 @@ impl World {
                         } else if enemy
                             .check_if_can_reach_by_weapon(player_collider)
                         {
-                            self.attacks.push(enemy.attack());
+                            self.attacks.push(enemy.force_attack());
                             enemy.state = Attacking;
                         } else if to_player.x.signum() > 0.0 {
                             enemy.immediate_step(Vec2::right(), dt)
@@ -212,7 +212,7 @@ impl World {
                         } else if enemy
                             .check_if_can_reach_by_weapon(player_collider)
                         {
-                            self.attacks.push(enemy.attack());
+                            self.attacks.push(enemy.force_attack());
                         }
                     }
                     Falling => {
@@ -252,7 +252,7 @@ impl World {
                             if enemy.check_if_can_reach_by_weapon(
                                 player_collider,
                             ) {
-                                self.attacks.push(enemy.attack());
+                                self.attacks.push(enemy.force_attack());
                                 enemy.state = Attacking;
                             } else if dist_to_player.x < 200.0
                                 && dist_to_player.y < 200.0
@@ -283,7 +283,7 @@ impl World {
                             } else if enemy.check_if_can_reach_by_weapon(
                                 player_collider,
                             ) {
-                                self.attacks.push(enemy.attack());
+                                self.attacks.push(enemy.force_attack());
                                 enemy.state = Attacking;
                             } else {
                                 enemy.immediate_step(
@@ -372,8 +372,9 @@ impl World {
                     player.state = Running;
                 } else if input.lmb_is_down
                     && player.check_if_weapon_ready()
+                    && player.check_if_enough_stamina_for_attack()
                 {
-                    self.attacks.push(player.attack());
+                    self.attacks.push(player.force_attack());
                     player.state = Attacking;
                 }
             }
@@ -382,8 +383,9 @@ impl World {
                     player.state = Falling;
                 } else if input.lmb_is_down
                     && player.check_if_weapon_ready()
+                    && player.check_if_enough_stamina_for_attack()
                 {
-                    self.attacks.push(player.attack());
+                    self.attacks.push(player.force_attack());
                     player.state = Attacking;
                 } else {
                     if is_left_action || is_right_action {
@@ -391,6 +393,7 @@ impl World {
                         player.play_animation("run");
                         if input.is_action(Down)
                             && player.check_if_dashing_ready()
+                            && player.check_if_enough_stamina_for_dashing()
                         {
                             player.state = Dashing;
                             player.force_start_dashing();
@@ -566,10 +569,16 @@ impl World {
     fn update_play_ui(&mut self, input: &Input) {
         let score = format!("Score: {}", self.level.player.score);
         let health_ratio = self.level.player.get_health_ratio();
+        let stamina_ratio = self.level.player.get_stamina_ratio();
         self.play_ui.set_element_string("score", &score);
         self.play_ui
             .set_element_color("health", Color::healthbar(health_ratio));
         self.play_ui.set_element_filling("health", health_ratio);
+        self.play_ui.set_element_color(
+            "stamina",
+            Color::staminabar(stamina_ratio),
+        );
+        self.play_ui.set_element_filling("stamina", stamina_ratio);
 
         _ = self.play_ui.update(input, &self.glyph_atlas);
     }

@@ -61,6 +61,7 @@ pub struct Entity {
 
     pub max_health: f32,
     pub current_health: f32,
+    pub stamina: Option<Stamina>,
     pub last_received_damage_time: f32,
 
     pub knockback_resist: f32,
@@ -96,8 +97,9 @@ impl Entity {
             last_jump_time: -f32::INFINITY,
             velocity: Vec2::zeros(),
             max_health: 0.0,
-            knockback_resist: 0.0,
             current_health: 0.0,
+            stamina: None,
+            knockback_resist: 0.0,
             last_received_damage_time: -f32::INFINITY,
             dashing: None,
             healing: None,
@@ -222,6 +224,10 @@ impl Entity {
         self.current_health / self.max_health
     }
 
+    pub fn get_stamina_ratio(&self) -> f32 {
+        self.stamina.unwrap().get_ratio()
+    }
+
     pub fn immediate_step(&mut self, direction: Vec2<f32>, dt: f32) {
         let step = direction.norm().with_len(self.move_speed * dt);
         self.position += step;
@@ -251,15 +257,24 @@ impl Entity {
     }
 
     pub fn force_start_dashing(&mut self) {
-        self.dashing.as_mut().unwrap().force_start();
+        let dashing = self.dashing.as_mut().unwrap();
+        if let Some(stamina) = self.stamina.as_mut() {
+            stamina.sub(dashing.stamina_cost);
+        }
+
+        dashing.force_start();
     }
 
-    pub fn attack(&mut self) -> Attack {
+    pub fn force_attack(&mut self) -> Attack {
         use Orientation::*;
 
         let weapon = &mut self.weapons[self.weapon_idx];
         weapon.last_attack_time = self.time;
         let collider = weapon.get_collider(self.orientation);
+
+        if let Some(stamina) = self.stamina.as_mut() {
+            stamina.sub(weapon.stamina_cost);
+        }
 
         Attack::new(
             self.position,
@@ -303,6 +318,29 @@ impl Entity {
         } else {
             false
         }
+    }
+
+    pub fn check_if_enough_stamina_for_attack(&self) -> bool {
+        let weapon = &self.weapons[self.weapon_idx];
+        if let Some(stamina) = self.stamina.as_ref() {
+            if stamina.current < weapon.stamina_cost {
+                return false;
+            }
+        }
+
+        true
+    }
+
+    pub fn check_if_enough_stamina_for_dashing(&self) -> bool {
+        if let (Some(dashing), Some(stamina)) =
+            (self.dashing, self.stamina)
+        {
+            if stamina.current < dashing.stamina_cost {
+                return false;
+            }
+        }
+
+        true
     }
 
     pub fn check_if_jump_ready(&self) -> bool {
@@ -428,6 +466,12 @@ impl Entity {
         }
     }
 
+    fn update_stamina(&mut self, dt: f32) {
+        if let Some(stamina) = self.stamina.as_mut() {
+            stamina.update(dt);
+        }
+    }
+
     fn update_animator(&mut self, dt: f32) {
         if let Some(animator) = self.animator.as_mut() {
             animator.update(dt);
@@ -459,6 +503,7 @@ impl Entity {
         self.update_kinematic(gravity, friction, colliders, dt);
         self.update_dashing(dt);
         self.update_healing(dt);
+        self.update_stamina(dt);
         self.update_animator(dt);
     }
 
@@ -475,16 +520,23 @@ pub struct Dashing {
     cooldown: f32,
     time_since_start: f32,
     is_started: bool,
+    pub stamina_cost: f32,
 }
 
 impl Dashing {
-    pub fn new(speed: f32, duration: f32, cooldown: f32) -> Self {
+    pub fn new(
+        speed: f32,
+        duration: f32,
+        cooldown: f32,
+        stamina_cost: f32,
+    ) -> Self {
         Self {
             speed,
             duration,
             cooldown,
             time_since_start: cooldown + duration,
             is_started: false,
+            stamina_cost,
         }
     }
 
@@ -512,6 +564,35 @@ impl Dashing {
         };
 
         value
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct Stamina {
+    max: f32,
+    current: f32,
+    regen: f32,
+}
+
+impl Stamina {
+    pub fn new(max: f32, regen: f32) -> Self {
+        Self {
+            max,
+            current: max,
+            regen,
+        }
+    }
+
+    pub fn get_ratio(&self) -> f32 {
+        self.current / self.max
+    }
+
+    pub fn update(&mut self, dt: f32) {
+        self.current = (self.current + dt * self.regen).min(self.max);
+    }
+
+    pub fn sub(&mut self, value: f32) {
+        self.current = (self.current - value).max(0.0);
     }
 }
 
@@ -574,6 +655,7 @@ pub struct Weapon {
     pub attack_duration: f32,
     pub attack_cooldown: f32,
     pub damage: f32,
+    pub stamina_cost: f32,
 }
 
 impl Weapon {
@@ -582,6 +664,7 @@ impl Weapon {
         attack_duration: f32,
         attack_cooldown: f32,
         damage: f32,
+        stamina_cost: f32,
     ) -> Self {
         Self {
             collider,
@@ -589,6 +672,7 @@ impl Weapon {
             attack_duration,
             attack_cooldown,
             damage,
+            stamina_cost,
         }
     }
 
