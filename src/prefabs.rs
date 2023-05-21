@@ -35,6 +35,8 @@ pub fn create_player(
     position: Vec2<f32>,
     sprite_atlas: &SpriteAtlas,
 ) -> Entity {
+    let max_health = 50000.0;
+    let move_speed = 100.0;
     let collider =
         Rect::from_bot_center(Vec2::zeros(), Vec2::new(20.0, 40.0));
     let weapon_collider = Rect::from_right_center(
@@ -98,25 +100,20 @@ pub fn create_player(
         ),
     );
 
-    Entity::new(
-        true,
-        Some(Behaviour::Player),
-        position,
-        true,
-        Some(collider),
-        100.0,
-        0.0,
-        0.0,
-        50000.0,
-        0.0,
-        Some(dashing),
-        None,
-        weapons,
-        Some(light),
-        Some(animator),
-        None,
-        ApplyLightEffect as u32,
-    )
+    let mut entity = Entity::new(position);
+    entity.behaviour = Some(Behaviour::Player);
+    entity.apply_gravity = true;
+    entity.collider = Some(collider);
+    entity.move_speed = move_speed;
+    entity.max_health = max_health;
+    entity.current_health = max_health;
+    entity.dashing = Some(dashing);
+    entity.weapons = weapons;
+    entity.light = Some(light);
+    entity.animator = Some(animator);
+    entity.effect = ApplyLightEffect as u32;
+
+    entity
 }
 
 pub fn create_rat(
@@ -147,7 +144,6 @@ pub fn create_rat(
     );
 
     let weapons = vec![floor_weapon, jump_weapon];
-    let behaviour = Behaviour::Rat;
 
     let mut animator = Animator::new(AnimatedSprite::new(
         sprite_atlas,
@@ -207,31 +203,27 @@ pub fn create_rat(
         ),
     );
 
-    Entity::new(
-        false,
-        Some(behaviour),
-        position,
-        true,
-        Some(collider),
-        move_speed,
-        jump_speed,
-        jump_period,
-        max_health,
-        0.0,
-        None,
-        None,
-        weapons,
-        None,
-        Some(animator),
-        None,
-        ApplyLightEffect as u32,
-    )
+    let mut entity = Entity::new(position);
+    entity.behaviour = Some(Behaviour::Rat);
+    entity.apply_gravity = true;
+    entity.collider = Some(collider);
+    entity.move_speed = move_speed;
+    entity.jump_speed = jump_speed;
+    entity.jump_period = jump_period;
+    entity.max_health = max_health;
+    entity.current_health = max_health;
+    entity.weapons = weapons;
+    entity.animator = Some(animator);
+    entity.effect = ApplyLightEffect as u32;
+
+    entity
 }
 
 pub fn create_bat(
     position: Vec2<f32>,
     sprite_atlas: &SpriteAtlas,
 ) -> Entity {
+    let max_health = 1000.0;
     let move_speed = frand(60.0, 80.0);
     let healing_speed = frand(80.0, 100.0);
     let healing_duration = frand(4.0, 5.0);
@@ -245,7 +237,6 @@ pub fn create_bat(
     );
 
     let weapons = vec![Weapon::new(weapon_collider, 0.2, 0.1, 500.0)];
-    let behaviour = Behaviour::Bat;
     let healing =
         Healing::new(healing_speed, healing_duration, healing_cooldown);
 
@@ -297,25 +288,18 @@ pub fn create_bat(
         ),
     );
 
-    Entity::new(
-        false,
-        Some(behaviour),
-        position,
-        false,
-        Some(collider),
-        move_speed,
-        0.0,
-        0.0,
-        1000.0,
-        0.0,
-        None,
-        Some(healing),
-        weapons,
-        None,
-        Some(animator),
-        None,
-        ApplyLightEffect as u32,
-    )
+    let mut entity = Entity::new(position);
+    entity.behaviour = Some(Behaviour::Bat);
+    entity.collider = Some(collider);
+    entity.move_speed = move_speed;
+    entity.max_health = max_health;
+    entity.current_health = max_health;
+    entity.healing = Some(healing);
+    entity.weapons = weapons;
+    entity.animator = Some(animator);
+    entity.effect = ApplyLightEffect as u32;
+
+    entity
 }
 
 pub fn create_torch(
@@ -335,31 +319,18 @@ pub fn create_torch(
         attenuation: [0.05, 0.005, 0.005],
     };
 
-    Entity::new(
-        false,
-        None,
-        position,
-        false,
-        None,
-        0.0,
-        0.0,
-        0.0,
-        0.0,
-        0.0,
-        None,
-        None,
-        vec![],
-        Some(light),
-        Some(animator),
-        None,
-        0,
-    )
+    let mut entity = Entity::new(position);
+    entity.light = Some(light);
+    entity.animator = Some(animator);
+
+    entity
 }
 
 pub fn create_rat_nest(
     position: Vec2<f32>,
     sprite_atlas: &SpriteAtlas,
 ) -> Entity {
+    let max_health = 20000.0;
     let mut animator = Animator::new(AnimatedSprite::new(
         sprite_atlas,
         "rat_nest_idle",
@@ -381,23 +352,16 @@ pub fn create_rat_nest(
         Rect::from_bot_center(Vec2::zeros(), Vec2::new(60.0, 30.0));
     let spawner = Spawner::new(5.0, 9999, Behaviour::Rat, 50.0, 0.0);
 
-    Entity::new(
-        false,
-        Some(Behaviour::Spawner),
-        position,
-        true,
-        Some(collider),
-        0.0,
-        0.0,
-        0.0,
-        50000.0,
-        1.0,
-        None,
-        None,
-        vec![],
-        None,
-        Some(animator),
-        Some(spawner),
-        ApplyLightEffect as u32,
-    )
+    let mut entity = Entity::new(position);
+    entity.behaviour = Some(Behaviour::Spawner);
+    entity.apply_gravity = true;
+    entity.collider = Some(collider);
+    entity.max_health = max_health;
+    entity.current_health = max_health;
+    entity.knockback_resist = 1.0;
+    entity.animator = Some(animator);
+    entity.spawner = Some(spawner);
+    entity.effect = ApplyLightEffect as u32;
+
+    entity
 }
