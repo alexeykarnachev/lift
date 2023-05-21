@@ -5,15 +5,17 @@
 
 use crate::graphics::*;
 use crate::level::Collider;
+use crate::prefabs::create_rat;
 use crate::vec::*;
 use std::collections::HashMap;
 use std::fs;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Behaviour {
     Player,
     Rat,
     Bat,
+    Spawner,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -60,6 +62,8 @@ pub struct Entity {
     current_health: f32,
     last_received_damage_time: f32,
 
+    pub knockback_resist: f32,
+
     dashing: Option<Dashing>,
     healing: Option<Healing>,
     weapons: Vec<Weapon>,
@@ -67,6 +71,7 @@ pub struct Entity {
 
     pub light: Option<Light>,
     pub animator: Option<Animator>,
+    pub spawner: Option<Spawner>,
     pub effect: u32,
 
     pub score: u32,
@@ -83,11 +88,13 @@ impl Entity {
         jump_speed: f32,
         jump_period: f32,
         max_health: f32,
+        knockback_resist: f32,
         dashing: Option<Dashing>,
         healing: Option<Healing>,
         weapons: Vec<Weapon>,
         light: Option<Light>,
         animator: Option<Animator>,
+        spawner: Option<Spawner>,
         effect: u32,
     ) -> Self {
         Self {
@@ -106,6 +113,7 @@ impl Entity {
             last_jump_time: -f32::INFINITY,
             velocity: Vec2::zeros(),
             max_health,
+            knockback_resist,
             current_health: max_health,
             last_received_damage_time: -f32::INFINITY,
             dashing,
@@ -114,6 +122,7 @@ impl Entity {
             weapon_idx: 0,
             light,
             animator,
+            spawner,
             effect,
             score: 0,
         }
@@ -436,6 +445,18 @@ impl Entity {
         }
     }
 
+    pub fn update_spawner(
+        &mut self,
+        dt: f32,
+        sprite_atlas: &SpriteAtlas,
+    ) -> Option<Entity> {
+        if let Some(spawner) = self.spawner.as_mut() {
+            return spawner.update(dt, sprite_atlas);
+        };
+
+        None
+    }
+
     pub fn update(
         &mut self,
         gravity: f32,
@@ -665,11 +686,12 @@ impl Attack {
     }
 }
 
+#[derive(Clone)]
 pub struct Spawner {
     position: Vec2<f32>,
     spawn_period: f32,
-    n_to_spawn: usize,
-    entity_to_spawn: Entity,
+    n_to_spawn: u32,
+    behaviour: Behaviour,
     countdown: f32,
 }
 
@@ -677,24 +699,36 @@ impl Spawner {
     pub fn new(
         position: Vec2<f32>,
         spawn_period: f32,
-        n_to_spawn: usize,
-        entity_to_spawn: Entity,
+        n_to_spawn: u32,
+        behaviour: Behaviour,
     ) -> Self {
         Self {
             position,
             spawn_period,
             n_to_spawn,
-            entity_to_spawn,
+            behaviour,
             countdown: 0.0,
         }
     }
 
-    pub fn update(&mut self, dt: f32) -> Option<Entity> {
+    pub fn update(
+        &mut self,
+        dt: f32,
+        sprite_atlas: &SpriteAtlas,
+    ) -> Option<Entity> {
         let entity = if (self.countdown <= 0.0) && self.n_to_spawn > 0 {
             self.countdown += self.spawn_period;
             self.n_to_spawn -= 1;
-            let mut entity = self.entity_to_spawn.clone();
-            entity.position = self.position;
+
+            let entity = match self.behaviour {
+                Behaviour::Rat => create_rat(self.position, sprite_atlas),
+                _ => {
+                    panic!(
+                        "Spawner for {:?} is not implemented",
+                        self.behaviour
+                    )
+                }
+            };
 
             Some(entity)
         } else {

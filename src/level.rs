@@ -132,6 +132,13 @@ impl Level {
                                     create_bat(position, sprite_atlas);
                                 enemies.push(bat);
                             }
+                            "rat_nest" => {
+                                let rat_nest = create_rat_nest(
+                                    position,
+                                    sprite_atlas,
+                                );
+                                enemies.push(rat_nest);
+                            }
                             "torch" => {
                                 let torch =
                                     create_torch(position, sprite_atlas);

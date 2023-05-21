@@ -132,6 +132,7 @@ impl World {
         use Behaviour::*;
         use State::*;
 
+        let mut enemies_to_spawn = vec![];
         let enemies = &mut self.level.enemies;
         let player = &self.level.player;
 
@@ -176,8 +177,8 @@ impl World {
                         {
                             enemy.state = Idle;
                         } else if enemy.check_if_jump_ready()
-                            && dist_to_player.x >= 50.0
-                            && dist_to_player.x <= 80.0
+                            && dist_to_player.x >= 20.0
+                            && dist_to_player.x <= 100.0
                         {
                             let mut angle = PI * 0.1;
                             if to_player.x.signum() < 0.0 {
@@ -225,7 +226,7 @@ impl World {
                     }
                     _ => {
                         panic!(
-                            "Cant handle {:?} state for a Rat",
+                            "Can't handle {:?} state for a Rat",
                             enemy.state
                         )
                     }
@@ -312,10 +313,31 @@ impl World {
                         }
                         _ => {
                             panic!(
-                                "Cant handle {:?} state for a Bat",
+                                "Can't handle {:?} state for a Bat",
                                 enemy.state
                             )
                         }
+                    }
+                }
+                Some(Spawner) => {
+                    match enemy.state {
+                        Initial => {
+                            enemy.state = Idle;
+                        }
+                        Idle => {
+                            enemy.play_animation("idle");
+                        }
+                        _ => {
+                            panic!(
+                                "Can't handle {:?} state for a Spawner",
+                                enemy.state
+                            )
+                        }
+                    }
+                    if let Some(spawned) =
+                        enemy.update_spawner(dt, &self.sprite_atlas)
+                    {
+                        enemies_to_spawn.push(spawned);
                     }
                 }
                 _ => {}
@@ -328,6 +350,8 @@ impl World {
                 dt,
             );
         }
+
+        self.level.enemies.extend_from_slice(&enemies_to_spawn);
     }
 
     pub fn update_player(&mut self, dt: f32, input: &Input) {
@@ -335,6 +359,8 @@ impl World {
         use State::*;
 
         let player = &mut self.level.player;
+        let is_left_action = input.is_action(Left);
+        let is_right_action = input.is_action(Right);
 
         match player.state {
             Initial => {
@@ -360,8 +386,6 @@ impl World {
                     self.attacks.push(player.attack());
                     player.state = Attacking;
                 } else {
-                    let is_left_action = input.is_action(Left);
-                    let is_right_action = input.is_action(Right);
                     if is_left_action || is_right_action {
                         player.set_orientation(is_right_action);
                         player.play_animation("run");
@@ -395,12 +419,20 @@ impl World {
             }
             Falling => {
                 player.play_animation("idle");
+                player.set_orientation(is_right_action);
                 if player.is_on_floor {
                     player.state = Idle;
+                } else if is_right_action {
+                    player.immediate_step(Vec2::right(), dt);
+                } else {
+                    player.immediate_step(Vec2::left(), dt);
                 }
             }
             _ => {
-                panic!("Cant handle {:?} state for a Player", player.state)
+                panic!(
+                    "Can't handle {:?} state for a Player",
+                    player.state
+                )
             }
         }
 
@@ -468,7 +500,9 @@ impl World {
                         if enemy.position.x - player.position.x < 0.0 {
                             angle = PI - angle;
                         }
-                        enemy.jump_at_angle(angle, Some(120.0));
+                        let knockback = 1.0 - enemy.knockback_resist;
+                        enemy
+                            .jump_at_angle(angle, Some(120.0 * knockback));
 
                         if enemy.check_if_dead() {
                             player.score += 100;

@@ -108,11 +108,13 @@ pub fn create_player(
         0.0,
         0.0,
         50000.0,
+        0.0,
         Some(dashing),
         None,
         weapons,
         Some(light),
         Some(animator),
+        None,
         ApplyLightEffect as u32,
     )
 }
@@ -215,11 +217,13 @@ pub fn create_rat(
         jump_speed,
         jump_period,
         max_health,
+        0.0,
         None,
         None,
         weapons,
         None,
         Some(animator),
+        None,
         ApplyLightEffect as u32,
     )
 }
@@ -303,11 +307,13 @@ pub fn create_bat(
         0.0,
         0.0,
         1000.0,
+        0.0,
         None,
         Some(healing),
         weapons,
         None,
         Some(animator),
+        None,
         ApplyLightEffect as u32,
     )
 }
@@ -325,7 +331,7 @@ pub fn create_torch(
     ));
     let light = Light {
         position,
-        color: Color::new(8.0, 2.0, 0.0, 1.0),
+        color: Color::new(4.0, 0.5, 0.0, 1.0),
         attenuation: [0.05, 0.005, 0.005],
     };
 
@@ -339,31 +345,61 @@ pub fn create_torch(
         0.0,
         0.0,
         0.0,
+        0.0,
         None,
         None,
         vec![],
         Some(light),
         Some(animator),
+        None,
         0,
     )
 }
 
-pub fn create_bat_spawner(
+pub fn create_rat_nest(
     position: Vec2<f32>,
     sprite_atlas: &SpriteAtlas,
-) -> Spawner {
-    let entity = create_bat(position, sprite_atlas);
+) -> Entity {
+    let mut animator = Animator::new(AnimatedSprite::new(
+        sprite_atlas,
+        "rat_nest_idle",
+        1.0,
+        Repeat,
+        TopCenter,
+    ));
+    animator.add(
+        "idle",
+        AnimatedSprite::new(
+            sprite_atlas,
+            "rat_nest_idle",
+            1.0,
+            Repeat,
+            BotCenter,
+        ),
+    );
+    let collider =
+        Rect::from_bot_center(Vec2::zeros(), Vec2::new(20.0, 40.0));
+    let spawner = Spawner::new(position, 5.0, 9999, Behaviour::Rat);
 
-    Spawner::new(position, 5.0, 1, entity)
-}
-
-pub fn create_rat_spawner(
-    position: Vec2<f32>,
-    sprite_atlas: &SpriteAtlas,
-) -> Spawner {
-    let entity = create_rat(position, sprite_atlas);
-
-    Spawner::new(position, 5.0, 1, entity)
+    Entity::new(
+        false,
+        Some(Behaviour::Spawner),
+        position,
+        true,
+        Some(collider),
+        0.0,
+        0.0,
+        0.0,
+        50000.0,
+        1.0,
+        None,
+        None,
+        vec![],
+        None,
+        Some(animator),
+        Some(spawner),
+        ApplyLightEffect as u32,
+    )
 }
 
 fn frand(min: f32, max: f32) -> f32 {

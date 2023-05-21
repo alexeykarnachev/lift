@@ -142,10 +142,10 @@ impl Renderer {
             .iter()
             .for_each(|light| draw_entity(light, &mut self.primitives));
 
-        draw_entity(&world.level.player, &mut self.primitives);
         world.level.enemies.iter().for_each(|enemy| {
             draw_entity(enemy, &mut self.primitives);
         });
+        draw_entity(&world.level.player, &mut self.primitives);
 
         world.bullets.iter().for_each(|bullet| {
             draw_bullet(bullet, &mut self.primitives);
