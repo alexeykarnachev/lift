@@ -492,25 +492,35 @@ impl World {
             }
 
             if attack.is_player_friendly {
+                let mut attacked_enemies =
+                    Vec::with_capacity(enemies.len());
+
                 for enemy in
                     enemies.iter_mut().filter(|e| !e.check_if_dead())
                 {
-                    if enemy.try_receive_attack_damage(attack) {
-                        let mut angle = PI * 0.15;
-                        if enemy.position.x - player.position.x < 0.0 {
-                            angle = PI - angle;
-                        }
-                        let knockback = 1.0 - enemy.knockback_resist;
-                        enemy
-                            .jump_at_angle(angle, Some(120.0 * knockback));
+                    if enemy.collide_with_attack(attack) {
+                        attacked_enemies.push(enemy);
+                    }
+                }
 
-                        if enemy.check_if_dead() {
-                            player.score += 100;
-                        }
+                let damage = attack.damage / attacked_enemies.len() as f32;
+                for enemy in attacked_enemies.iter_mut() {
+                    enemy.receive_damage(damage);
+
+                    let mut angle = PI * 0.15;
+                    if enemy.position.x - player.position.x < 0.0 {
+                        angle = PI - angle;
+                    }
+                    let knockback = 1.0 - enemy.knockback_resist;
+                    enemy.jump_at_angle(angle, Some(120.0 * knockback));
+
+                    if enemy.check_if_dead() {
+                        player.score += 100;
                     }
                 }
             } else if !player.check_if_dead() {
-                if player.try_receive_attack_damage(attack) {
+                if player.collide_with_attack(attack) {
+                    player.receive_damage(attack.damage);
                     continue 'attack;
                 }
             }

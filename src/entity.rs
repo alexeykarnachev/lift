@@ -221,7 +221,7 @@ impl Entity {
         false
     }
 
-    pub fn try_receive_attack_damage(&mut self, attack: &Attack) -> bool {
+    pub fn collide_with_attack(&self, attack: &Attack) -> bool {
         if self.check_if_dashing() {
             return false;
         }
@@ -229,7 +229,6 @@ impl Entity {
         let attack_collider = attack.get_collider();
         if let Some(self_collider) = self.get_collider() {
             if self_collider.collide_with_rect(attack_collider) {
-                self.receive_damage(attack.damage);
                 return true;
             }
         }
