@@ -6,6 +6,7 @@
 use crate::graphics::*;
 use crate::level::Collider;
 use crate::prefabs::create_rat;
+use crate::utils::frand;
 use crate::vec::*;
 use std::collections::HashMap;
 use std::fs;
@@ -147,6 +148,14 @@ impl Entity {
     pub fn get_top_left(&self) -> Vec2<f32> {
         if let Some(collider) = self.get_collider() {
             return collider.get_top_left();
+        }
+
+        self.position
+    }
+
+    pub fn get_bot_center(&self) -> Vec2<f32> {
+        if let Some(collider) = self.get_collider() {
+            return collider.get_bot_center();
         }
 
         self.position
@@ -450,8 +459,9 @@ impl Entity {
         dt: f32,
         sprite_atlas: &SpriteAtlas,
     ) -> Option<Entity> {
+        let position = self.get_bot_center();
         if let Some(spawner) = self.spawner.as_mut() {
-            return spawner.update(dt, sprite_atlas);
+            return spawner.update(dt, position, sprite_atlas);
         };
 
         None
@@ -688,40 +698,49 @@ impl Attack {
 
 #[derive(Clone)]
 pub struct Spawner {
-    position: Vec2<f32>,
     spawn_period: f32,
     n_to_spawn: u32,
     behaviour: Behaviour,
     countdown: f32,
+    spawn_range_x: f32,
+    spawn_range_y: f32,
 }
 
 impl Spawner {
     pub fn new(
-        position: Vec2<f32>,
         spawn_period: f32,
         n_to_spawn: u32,
         behaviour: Behaviour,
+        spawn_range_x: f32,
+        spawn_range_y: f32,
     ) -> Self {
         Self {
-            position,
             spawn_period,
             n_to_spawn,
             behaviour,
             countdown: 0.0,
+            spawn_range_x,
+            spawn_range_y,
         }
     }
 
     pub fn update(
         &mut self,
         dt: f32,
+        position: Vec2<f32>,
         sprite_atlas: &SpriteAtlas,
     ) -> Option<Entity> {
-        let entity = if (self.countdown <= 0.0) && self.n_to_spawn > 0 {
+        let entity = if self.countdown <= 0.0 && self.n_to_spawn > 0 {
             self.countdown += self.spawn_period;
             self.n_to_spawn -= 1;
+            let x = position.x
+                + frand(-self.spawn_range_x, self.spawn_range_x);
+            let y = position.y
+                + frand(-self.spawn_range_y, self.spawn_range_y);
+            let position = Vec2::new(x, y);
 
             let entity = match self.behaviour {
-                Behaviour::Rat => create_rat(self.position, sprite_atlas),
+                Behaviour::Rat => create_rat(position, sprite_atlas),
                 _ => {
                     panic!(
                         "Spawner for {:?} is not implemented",

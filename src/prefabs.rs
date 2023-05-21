@@ -1,7 +1,7 @@
 use crate::entity::*;
 use crate::graphics::*;
 use crate::ui::*;
-use rand::Rng;
+use crate::utils::frand;
 
 use crate::vec::*;
 use AnimationMode::*;
@@ -378,8 +378,8 @@ pub fn create_rat_nest(
         ),
     );
     let collider =
-        Rect::from_bot_center(Vec2::zeros(), Vec2::new(20.0, 40.0));
-    let spawner = Spawner::new(position, 5.0, 9999, Behaviour::Rat);
+        Rect::from_bot_center(Vec2::zeros(), Vec2::new(60.0, 30.0));
+    let spawner = Spawner::new(5.0, 9999, Behaviour::Rat, 50.0, 0.0);
 
     Entity::new(
         false,
@@ -400,9 +400,4 @@ pub fn create_rat_nest(
         Some(spawner),
         ApplyLightEffect as u32,
     )
-}
-
-fn frand(min: f32, max: f32) -> f32 {
-    let mut rng = rand::thread_rng();
-    rng.gen_range(min..=max)
 }

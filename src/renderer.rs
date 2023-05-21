@@ -155,9 +155,12 @@ impl Renderer {
         world.attacks.iter().for_each(|attack| {
             draw_attack(attack, &mut self.primitives);
         });
-        // world.enemies[floor_idx].iter().for_each(|enemy| {
-        //     draw_collider(enemy, &mut self.primitives);
-        // });
+        world.level.enemies.iter().for_each(|enemy| {
+            draw_collider(
+                enemy.get_collider().unwrap(),
+                &mut self.primitives,
+            );
+        });
         // draw_collider(&world.player, &mut self.primitives);
 
         use WorldState::*;
