@@ -143,6 +143,7 @@ impl World {
             let player_collider = player.get_collider().unwrap();
             let to_player = player.get_center() - enemy.get_center();
             let dist_to_player = to_player.abs();
+
             match enemy.behaviour.as_ref() {
                 Some(Rat) => match enemy.state {
                     Initial => {
@@ -150,6 +151,8 @@ impl World {
                     }
                     Idle => {
                         enemy.play_animation("idle");
+                        enemy.set_weapon(0);
+
                         if enemy
                             .check_if_can_reach_by_weapon(player_collider)
                         {
@@ -164,6 +167,7 @@ impl World {
                     Running => {
                         enemy.play_animation("move");
                         enemy.set_orientation(to_player.x.signum() > 0.0);
+                        enemy.set_weapon(0);
 
                         if !enemy.is_on_floor {
                             enemy.state = Falling;
@@ -172,8 +176,8 @@ impl World {
                         {
                             enemy.state = Idle;
                         } else if enemy.check_if_jump_ready()
-                            && dist_to_player.x >= 45.0
-                            && dist_to_player.x <= 60.0
+                            && dist_to_player.x >= 50.0
+                            && dist_to_player.x <= 80.0
                         {
                             let mut angle = PI * 0.1;
                             if to_player.x.signum() < 0.0 {
@@ -200,6 +204,8 @@ impl World {
                     }
                     Jumping => {
                         enemy.play_animation("jump");
+                        enemy.set_weapon(1);
+
                         if enemy.is_on_floor {
                             enemy.state = Idle;
                         } else if enemy
@@ -224,6 +230,94 @@ impl World {
                         )
                     }
                 },
+                Some(Bat) => {
+                    let deviation =
+                        Vec2::from_angle(self.time * 4.0).scale(0.25);
+                    let t = enemy.get_time_since_last_received_damage();
+                    if t < 0.3 {
+                        enemy.apply_gravity = true;
+                    } else if !enemy.check_if_dead() {
+                        enemy.apply_gravity = false;
+                        enemy.velocity.y = 0.0;
+                    }
+
+                    match enemy.state {
+                        Initial => {
+                            enemy.state = Idle;
+                        }
+                        Idle => {
+                            enemy.play_animation("wave");
+
+                            if enemy.check_if_can_reach_by_weapon(
+                                player_collider,
+                            ) {
+                                self.attacks.push(enemy.attack());
+                                enemy.state = Attacking;
+                            } else if dist_to_player.x < 200.0
+                                && dist_to_player.y < 200.0
+                            {
+                                enemy.state = Running;
+                            }
+                        }
+                        Running => {
+                            enemy.play_animation("wave");
+                            enemy.set_orientation(
+                                to_player.x.signum() > 0.0,
+                            );
+
+                            if enemy.get_health_ratio() < 0.6
+                                && enemy.check_if_healing_ready()
+                            {
+                                if enemy.is_on_ceil {
+                                    enemy.force_start_healing();
+                                    enemy.velocity = Vec2::zeros();
+                                    enemy.state = Healing;
+                                } else {
+                                    enemy.immediate_step(Vec2::up(), dt);
+                                }
+                            } else if dist_to_player.x >= 200.0
+                                || dist_to_player.y >= 200.0
+                            {
+                                enemy.state = Idle;
+                            } else if enemy.check_if_can_reach_by_weapon(
+                                player_collider,
+                            ) {
+                                self.attacks.push(enemy.attack());
+                                enemy.state = Attacking;
+                            } else {
+                                enemy.immediate_step(
+                                    to_player.norm() + deviation,
+                                    dt,
+                                )
+                            }
+                        }
+                        Attacking => {
+                            enemy.play_animation("melee_attack");
+                            if enemy.check_if_weapon_ready() {
+                                enemy.state = Idle;
+                            }
+                        }
+                        Healing => {
+                            enemy.play_animation("sleep");
+                            if !enemy.check_if_healing()
+                                || enemy.velocity.x != 0.0
+                            {
+                                enemy.force_stop_healing();
+                                enemy.state = Idle;
+                            }
+                        }
+                        Dead => {
+                            enemy.play_animation("death");
+                            enemy.apply_gravity = true;
+                        }
+                        _ => {
+                            panic!(
+                                "Cant handle {:?} state for a Bat",
+                                enemy.state
+                            )
+                        }
+                    }
+                }
                 _ => {}
             }
 

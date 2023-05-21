@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.10.1" orientation="orthogonal" renderorder="right-down" width="46" height="12" tilewidth="16" tileheight="16" infinite="0" nextlayerid="5" nextobjectid="49">
+<map version="1.10" tiledversion="1.10.1" orientation="orthogonal" renderorder="right-down" width="46" height="12" tilewidth="16" tileheight="16" infinite="0" nextlayerid="5" nextobjectid="70">
  <editorsettings>
   <export target="../assets/levels/0.json" format="json"/>
  </editorsettings>
@@ -21,7 +21,7 @@
 </data>
  </layer>
  <objectgroup id="3" name="objects">
-  <object id="8" name="player" x="331.724" y="171.044">
+  <object id="8" name="player" x="176.224" y="75.544">
    <point/>
   </object>
   <object id="17" name="torch" x="111.5" y="48.75">
@@ -43,14 +43,65 @@
   <object id="40" name="torch" x="58.5" y="141.5">
    <point/>
   </object>
-  <object id="41" name="rat" x="178" y="164.5">
+  <object id="41" name="bat" x="186" y="138.5">
    <point/>
   </object>
-  <object id="44" name="collider" type="rigid" x="1.0205" y="184.513" width="735.959" height="9.97352"/>
+  <object id="44" name="collider" type="rigid" x="0.0205" y="183.513" width="735.959" height="9.97352"/>
   <object id="47" name="torch" x="277" y="138.5">
    <point/>
   </object>
   <object id="48" name="torch" x="128" y="140">
+   <point/>
+  </object>
+  <object id="50" name="torch" x="396.5" y="124.5">
+   <point/>
+  </object>
+  <object id="52" name="torch" x="499.5" y="126">
+   <point/>
+  </object>
+  <object id="54" name="torch" x="581.5" y="124.5">
+   <point/>
+  </object>
+  <object id="56" name="torch" x="712" y="122">
+   <point/>
+  </object>
+  <object id="57" name="torch" x="129" y="160">
+   <point/>
+  </object>
+  <object id="58" name="torch" x="126" y="106">
+   <point/>
+  </object>
+  <object id="59" name="torch" x="278" y="156.5">
+   <point/>
+  </object>
+  <object id="60" name="torch" x="276" y="107">
+   <point/>
+  </object>
+  <object id="61" name="bat" x="65.25" y="113.75">
+   <point/>
+  </object>
+  <object id="62" name="bat" x="83.75" y="148.5">
+   <point/>
+  </object>
+  <object id="63" name="bat" x="373.25" y="100.75">
+   <point/>
+  </object>
+  <object id="64" name="rat" x="344" y="168.75">
+   <point/>
+  </object>
+  <object id="65" name="rat" x="233.25" y="76.5">
+   <point/>
+  </object>
+  <object id="66" name="rat" x="21.25" y="152.25">
+   <point/>
+  </object>
+  <object id="67" name="rat" x="453.75" y="143.25">
+   <point/>
+  </object>
+  <object id="68" name="rat" x="542.75" y="164">
+   <point/>
+  </object>
+  <object id="69" name="bat" x="43.75" y="49.5">
    <point/>
   </object>
  </objectgroup>

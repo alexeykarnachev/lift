@@ -25,6 +25,7 @@ pub enum State {
     Attacking,
     Falling,
     Jumping,
+    Healing,
     Dead,
 }
 
@@ -61,7 +62,8 @@ pub struct Entity {
 
     dashing: Option<Dashing>,
     healing: Option<Healing>,
-    weapon: Option<Weapon>,
+    weapons: Vec<Weapon>,
+    weapon_idx: usize,
 
     pub light: Option<Light>,
     pub animator: Option<Animator>,
@@ -83,7 +85,7 @@ impl Entity {
         max_health: f32,
         dashing: Option<Dashing>,
         healing: Option<Healing>,
-        weapon: Option<Weapon>,
+        weapons: Vec<Weapon>,
         light: Option<Light>,
         animator: Option<Animator>,
         effect: u32,
@@ -108,7 +110,8 @@ impl Entity {
             last_received_damage_time: -f32::INFINITY,
             dashing,
             healing,
-            weapon,
+            weapons,
+            weapon_idx: 0,
             light,
             animator,
             effect,
@@ -165,6 +168,18 @@ impl Entity {
         } else {
             self.orientation = Left;
         }
+    }
+
+    pub fn set_weapon(&mut self, weapon_idx: usize) {
+        if weapon_idx >= self.weapons.len() {
+            panic!(
+                "Can't set weapon with idx: {:?}.
+                   There are {:?} weapons on this entity",
+                weapon_idx,
+                self.weapons.len()
+            );
+        }
+        self.weapon_idx = weapon_idx;
     }
 
     pub fn receive_damage(&mut self, value: f32) {
@@ -232,6 +247,10 @@ impl Entity {
         self.healing.as_mut().unwrap().force_start();
     }
 
+    pub fn force_stop_healing(&mut self) {
+        self.healing.as_mut().unwrap().force_stop();
+    }
+
     pub fn force_start_dashing(&mut self) {
         self.dashing.as_mut().unwrap().force_start();
     }
@@ -239,7 +258,7 @@ impl Entity {
     pub fn attack(&mut self) -> Attack {
         use Orientation::*;
 
-        let weapon = self.weapon.as_mut().unwrap();
+        let weapon = &mut self.weapons[self.weapon_idx];
         weapon.last_attack_time = self.time;
         let collider = weapon.get_collider(self.orientation);
 
@@ -264,19 +283,11 @@ impl Entity {
     }
 
     pub fn check_if_attacking(&self) -> bool {
-        if let Some(weapon) = self.weapon {
-            weapon.is_attacking(self.time)
-        } else {
-            false
-        }
+        self.weapons[self.weapon_idx].is_attacking(self.time)
     }
 
     pub fn check_if_cooling_down(&self) -> bool {
-        if let Some(weapon) = self.weapon {
-            weapon.is_cooling_down(self.time)
-        } else {
-            false
-        }
+        self.weapons[self.weapon_idx].is_cooling_down(self.time)
     }
 
     pub fn check_if_dashing(&self) -> bool {
@@ -321,16 +332,12 @@ impl Entity {
     }
 
     pub fn check_if_can_reach_by_weapon(&self, target: Rect) -> bool {
-        if let Some(weapon) = self.weapon {
-            let collider = weapon
-                .get_collider(self.orientation)
-                .translate(self.position);
+        let weapon = self.weapons[self.weapon_idx];
+        let collider = weapon
+            .get_collider(self.orientation)
+            .translate(self.position);
 
-            self.check_if_weapon_ready()
-                && collider.collide_with_rect(target)
-        } else {
-            false
-        }
+        self.check_if_weapon_ready() && collider.collide_with_rect(target)
     }
 
     fn update_kinematic(
@@ -524,6 +531,11 @@ impl Healing {
     pub fn force_start(&mut self) {
         self.is_started = true;
         self.time_since_start = 0.0;
+    }
+
+    pub fn force_stop(&mut self) {
+        self.is_started = false;
+        self.time_since_start = self.duration;
     }
 
     pub fn update(&mut self, dt: f32) -> f32 {

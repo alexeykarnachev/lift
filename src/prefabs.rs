@@ -1,6 +1,8 @@
 use crate::entity::*;
 use crate::graphics::*;
 use crate::ui::*;
+use rand::Rng;
+
 use crate::vec::*;
 use AnimationMode::*;
 use EffectType::*;
@@ -40,7 +42,7 @@ pub fn create_player(
         Vec2::new(42.0, 48.0),
     );
 
-    let weapon = Weapon::new(weapon_collider, 0.1, 0.3, 500.0);
+    let weapons = vec![Weapon::new(weapon_collider, 0.1, 0.3, 500.0)];
     let dashing = Dashing::new(200.0, 0.5, 0.3);
 
     let light = Light {
@@ -105,10 +107,10 @@ pub fn create_player(
         100.0,
         0.0,
         0.0,
-        5000.0,
+        50000.0,
         Some(dashing),
         None,
-        Some(weapon),
+        weapons,
         Some(light),
         Some(animator),
         ApplyLightEffect as u32,
@@ -119,14 +121,30 @@ pub fn create_rat(
     position: Vec2<f32>,
     sprite_atlas: &SpriteAtlas,
 ) -> Entity {
+    let jump_period = frand(1.8, 2.2);
+    let jump_speed = frand(280.0, 320.0);
+    let move_speed = frand(30.0, 40.0);
+    let max_health = 1000.0;
+
     let collider =
         Rect::from_bot_center(Vec2::zeros(), Vec2::new(20.0, 12.0));
-    let weapon_collider = Rect::from_right_center(
-        collider.get_right_center(),
-        Vec2::new(8.0, 12.0),
+    let floor_weapon = Weapon::new(
+        Rect::from_right_center(
+            collider.get_right_center(),
+            Vec2::new(8.0, 12.0),
+        ),
+        0.5,
+        0.3,
+        200.0,
+    );
+    let jump_weapon = Weapon::new(
+        Rect::from_center(collider.get_center(), Vec2::new(128.0, 12.0)),
+        0.1,
+        jump_period,
+        200.0,
     );
 
-    let weapon = Weapon::new(weapon_collider, 0.5, 0.3, 500.0);
+    let weapons = vec![floor_weapon, jump_weapon];
     let behaviour = Behaviour::Rat;
 
     let mut animator = Animator::new(AnimatedSprite::new(
@@ -193,13 +211,13 @@ pub fn create_rat(
         position,
         true,
         Some(collider),
-        40.0,
-        280.0,
-        2.0,
-        1000.0,
+        move_speed,
+        jump_speed,
+        jump_period,
+        max_health,
         None,
         None,
-        Some(weapon),
+        weapons,
         None,
         Some(animator),
         ApplyLightEffect as u32,
@@ -210,6 +228,11 @@ pub fn create_bat(
     position: Vec2<f32>,
     sprite_atlas: &SpriteAtlas,
 ) -> Entity {
+    let move_speed = frand(60.0, 80.0);
+    let healing_speed = frand(80.0, 100.0);
+    let healing_duration = frand(4.0, 5.0);
+    let healing_cooldown = frand(4.0, 5.0);
+
     let collider =
         Rect::from_top_center(Vec2::zeros(), Vec2::new(16.0, 16.0));
     let weapon_collider = Rect::from_right_center(
@@ -217,9 +240,10 @@ pub fn create_bat(
         Vec2::new(4.0, 16.0),
     );
 
-    let weapon = Weapon::new(weapon_collider, 0.25, 1.0, 500.0);
+    let weapons = vec![Weapon::new(weapon_collider, 0.2, 0.1, 500.0)];
     let behaviour = Behaviour::Bat;
-    let healing = Healing::new(100.0, 5.0, 5.0);
+    let healing =
+        Healing::new(healing_speed, healing_duration, healing_cooldown);
 
     let mut animator = Animator::new(AnimatedSprite::new(
         sprite_atlas,
@@ -275,13 +299,13 @@ pub fn create_bat(
         position,
         false,
         Some(collider),
-        50.0,
+        move_speed,
         0.0,
         0.0,
         1000.0,
         None,
         Some(healing),
-        Some(weapon),
+        weapons,
         None,
         Some(animator),
         ApplyLightEffect as u32,
@@ -317,7 +341,7 @@ pub fn create_torch(
         0.0,
         None,
         None,
-        None,
+        vec![],
         Some(light),
         Some(animator),
         0,
@@ -340,4 +364,9 @@ pub fn create_rat_spawner(
     let entity = create_rat(position, sprite_atlas);
 
     Spawner::new(position, 5.0, 1, entity)
+}
+
+fn frand(min: f32, max: f32) -> f32 {
+    let mut rng = rand::thread_rng();
+    rng.gen_range(min..=max)
 }
