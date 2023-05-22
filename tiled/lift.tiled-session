@@ -26,11 +26,11 @@
             }
         },
         "level0.tmx": {
-            "scale": 0.75,
+            "scale": 8,
             "selectedLayer": 1,
             "viewCenter": {
-                "x": 247.33333333333337,
-                "y": 473.99999999999994
+                "x": 132.1875,
+                "y": 106.4375
             }
         },
         "lift.tsx": {
@@ -54,8 +54,8 @@
     "project": "lift.tiled-project",
     "property.type": "bool",
     "recentFiles": [
-        "lift.tsx",
         "level0.tmx",
+        "lift.tsx",
         "/home/akarnachev/src/lift/assets/tilemaps/level0.json",
         "level0.json"
     ],

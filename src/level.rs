@@ -120,15 +120,6 @@ impl Level {
                             }
                             "stair" => {
                                 colliders.push(Collider::Stair(rect));
-                                draw_primitives.push(
-                                    DrawPrimitive::from_rect(
-                                        rect,
-                                        SpaceType::WorldSpace,
-                                        0.0,
-                                        0,
-                                        Color::red(0.8),
-                                    ),
-                                );
                             }
                             "stone_wall" => {
                                 let stone_wall = create_stone_wall(rect);

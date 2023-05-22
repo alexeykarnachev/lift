@@ -445,6 +445,7 @@ impl World {
                     player.play_animation("idle");
                 } else {
                     player.play_animation("climb");
+                    player.set_orientation(true);
                 }
 
                 if !player.is_on_stair {
@@ -465,9 +466,7 @@ impl World {
                 player.play_animation("idle");
                 if player.is_on_floor {
                     player.state = Idle;
-                } else if (is_down_action || is_up_action)
-                    && player.is_on_stair
-                {
+                } else if player.is_on_stair {
                     player.state = Climbing;
                 } else if is_right_action {
                     player.immediate_step(Vec2::right(), dt);
