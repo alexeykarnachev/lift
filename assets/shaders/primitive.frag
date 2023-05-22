@@ -17,6 +17,10 @@ uniform sampler2D glyph_atlas_tex;
 
 out vec4 frag_color;
 
+vec2 random2(vec2 p) {
+    return fract(sin(vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)))) * 43758.5453);
+}
+
 vec4 get_color() {
     vec4 color;
 
@@ -44,18 +48,47 @@ vec4 get_color() {
 
 vec4 apply_light(vec4 color) {
     vec3 rgb = vec3(0.0);
+    vec2 pos = floor(vs_pos); 
     for (int i = 0; i < n_lights; ++i) {
         Light light = lights[i];
-        float d = distance(light.position, vs_pos);
+        float d = distance(light.position, pos);
         float k = 1.0 / dot(light.attenuation, vec3(1.0, d, d * d));
+
         rgb += color.rgb * k * light.color;
     }
+
     return vec4(rgb, color.a);
 }
 
 vec4 apply_stone_wall(vec4 color) {
-    vec3 rgb = color.rgb;
-    return vec4(0.5 * rgb + 0.5 * vec3(vs_pos, 0.0), color.a);
+    float squareness = 0.2;
+    vec2 scale = vec2(1.0, 1.5) * 0.02;
+    vec2 pos = floor(vs_pos); 
+    vec2 tile = pos * scale;
+    vec2 itile = floor(tile);
+
+    float dist0 = 1.0;
+    float dist1 = 1.0;
+    for (int y = -1; y <= 1; ++y) {
+        for (int x = -1; x <= 1; ++x) {
+            vec2 neighbor = vec2(x, y);
+            vec2 rnd = random2(itile + neighbor);
+            vec2 center = neighbor + itile + (1.0 - squareness) * rnd;
+            vec2 diff = tile - center;
+            float dist = length(diff);
+            if (dist < dist0) {
+                dist1 = dist0;
+                dist0 = dist;
+            } else if (dist < dist1) {
+                dist1 = dist;
+            }
+        }
+    }
+
+    float edge = dist1 - dist0;
+    vec3 c = color.rgb * edge;
+    c = floor(c * 8.0) / 8.0;
+    return vec4(c * 0.2, color.a);
 }
 
 void main(void) {

@@ -52,9 +52,9 @@ pub fn create_player(
     let dashing = Dashing::new(200.0, 0.5, 0.3, 15000.0);
 
     let light = Light {
-        position: collider.get_top_center(),
-        color: Color::new(1.0, 1.0, 1.0, 1.0),
-        attenuation: [1.0, 0.05, 0.0],
+        position: collider.get_top_center().add_y(16.0),
+        color: Color::new(3.0, 3.0, 3.0, 1.0),
+        attenuation: [1.0, 0.04, 0.005],
     };
     let mut animator = Animator::new(AnimatedSprite::new(
         sprite_atlas,
@@ -362,8 +362,8 @@ pub fn create_torch(
     ));
     let light = Light {
         position,
-        color: Color::new(4.0, 0.5, 0.0, 1.0),
-        attenuation: [0.05, 0.005, 0.005],
+        color: Color::new(7.0, 1.5, 0.0, 1.0),
+        attenuation: [1.0, 0.0, 0.0025],
     };
 
     let mut entity = Entity::new(position);
@@ -381,6 +381,6 @@ pub fn create_stone_wall(rect: Rect) -> DrawPrimitive {
         SpaceType::WorldSpace,
         -1.0,
         effect,
-        Color::new(0.4, 0.3, 0.2, 1.0),
+        Color::gray(0.6, 1.0),
     )
 }

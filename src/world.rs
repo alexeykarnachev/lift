@@ -90,7 +90,8 @@ impl World {
                 self.update_enemies(dt);
                 self.update_player(dt, input);
                 self.update_lights(dt);
-                self.update_free_camera(input);
+                // self.update_free_camera(input);
+                self.update_player_camera();
                 self.time += dt;
             }
             GameOver => {
@@ -503,6 +504,10 @@ impl World {
                 dt,
             )
         }
+    }
+
+    fn update_player_camera(&mut self) {
+        self.camera.position = self.level.player.position.add_y(64.0);
     }
 
     fn update_free_camera(&mut self, input: &Input) {

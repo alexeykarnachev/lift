@@ -26,11 +26,11 @@
             }
         },
         "level0.tmx": {
-            "scale": 4,
+            "scale": 2,
             "selectedLayer": 1,
             "viewCenter": {
-                "x": 265.25,
-                "y": 120.625
+                "x": 152.5,
+                "y": 187.75
             }
         },
         "lift.tsx": {

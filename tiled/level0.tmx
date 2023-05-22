@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.10.1" orientation="orthogonal" renderorder="right-down" width="46" height="12" tilewidth="16" tileheight="16" infinite="0" nextlayerid="5" nextobjectid="72">
+<map version="1.10" tiledversion="1.10.1" orientation="orthogonal" renderorder="right-down" width="46" height="12" tilewidth="16" tileheight="16" infinite="0" nextlayerid="5" nextobjectid="73">
  <editorsettings>
   <export target="../assets/levels/0.json" format="json"/>
  </editorsettings>
@@ -27,12 +27,6 @@
   <object id="17" name="torch" x="111.5" y="48.75">
    <point/>
   </object>
-  <object id="18" name="torch" x="14.5" y="49.25">
-   <point/>
-  </object>
-  <object id="19" name="torch" x="167" y="34.75">
-   <point/>
-  </object>
   <object id="20" name="collider" type="rigid" x="1.52825" y="88.6382" width="254.459" height="6.97352"/>
   <object id="21" name="collider" type="rigid" x="-11.3545" y="-2.99509" width="11.334" height="194.607"/>
   <object id="22" name="collider" type="rigid" x="-0.0045" y="-3.01454" width="735.959" height="9.97352"/>
@@ -40,19 +34,7 @@
   <object id="29" name="torch" x="255.5" y="48">
    <point/>
   </object>
-  <object id="40" name="torch" x="58.5" y="141.5">
-   <point/>
-  </object>
   <object id="44" name="collider" type="rigid" x="0.0205" y="183.513" width="735.959" height="9.97352"/>
-  <object id="47" name="torch" x="277" y="138.5">
-   <point/>
-  </object>
-  <object id="48" name="torch" x="128" y="140">
-   <point/>
-  </object>
-  <object id="50" name="torch" x="396.5" y="124.5">
-   <point/>
-  </object>
   <object id="52" name="torch" x="499.5" y="126">
    <point/>
   </object>
@@ -62,16 +44,10 @@
   <object id="56" name="torch" x="712" y="122">
    <point/>
   </object>
-  <object id="57" name="torch" x="129" y="160">
+  <object id="57" name="torch" x="75" y="138.75">
    <point/>
   </object>
-  <object id="58" name="torch" x="126" y="106">
-   <point/>
-  </object>
-  <object id="59" name="torch" x="278" y="156.5">
-   <point/>
-  </object>
-  <object id="60" name="torch" x="276" y="107">
+  <object id="60" name="torch" x="262.75" y="138.75">
    <point/>
   </object>
   <object id="70" name="rat_nest" x="191.75" y="177.5">
