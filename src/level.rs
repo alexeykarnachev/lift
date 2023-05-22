@@ -91,6 +91,7 @@ impl Level {
 
                                 let primitive = DrawPrimitive::from_sprite(
                                     SpaceType::WorldSpace,
+                                    0.0,
                                     ApplyLightEffect as u32,
                                     position,
                                     sprite,
@@ -108,13 +109,17 @@ impl Level {
                     for object in objects {
                         let position =
                             Vec2::new(object.x, global_height - object.y);
+                        let rect = Rect::from_top_left(
+                            position,
+                            Vec2::new(object.width, object.height),
+                        );
                         match object.name.as_str() {
                             "collider" => {
-                                let size =
-                                    Vec2::new(object.width, object.height);
-                                let rect =
-                                    Rect::from_top_left(position, size);
                                 colliders.push(Collider::Rigid(rect));
+                            }
+                            "stone_wall" => {
+                                let stone_wall = create_stone_wall(rect);
+                                draw_primitives.push(stone_wall);
                             }
                             "player" => {
                                 player = Some(create_player(

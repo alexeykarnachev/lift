@@ -147,6 +147,7 @@ impl UI {
                     let primitive = DrawPrimitive::from_rect(
                         rect,
                         SpaceType::ScreenSpace,
+                        0.0,
                         0,
                         element.color,
                     );

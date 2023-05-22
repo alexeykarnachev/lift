@@ -286,8 +286,19 @@
                  "type":"",
                  "visible":true,
                  "width":0,
-                 "x":193.75,
-                 "y":172
+                 "x":191.75,
+                 "y":177.5
+                }, 
+                {
+                 "height":201.47352,
+                 "id":71,
+                 "name":"stone_wall",
+                 "rotation":0,
+                 "type":"rigid",
+                 "visible":true,
+                 "width":764.459,
+                 "x":-14.4795,
+                 "y":-5.48676
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -296,7 +307,7 @@
          "y":0
         }],
  "nextlayerid":5,
- "nextobjectid":71,
+ "nextobjectid":72,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.10.1",

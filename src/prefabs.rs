@@ -309,30 +309,6 @@ pub fn create_bat(
     entity
 }
 
-pub fn create_torch(
-    position: Vec2<f32>,
-    sprite_atlas: &SpriteAtlas,
-) -> Entity {
-    let animator = Animator::new(AnimatedSprite::new(
-        sprite_atlas,
-        "torch_burn",
-        0.5,
-        Repeat,
-        TopCenter,
-    ));
-    let light = Light {
-        position,
-        color: Color::new(4.0, 0.5, 0.0, 1.0),
-        attenuation: [0.05, 0.005, 0.005],
-    };
-
-    let mut entity = Entity::new(position);
-    entity.light = Some(light);
-    entity.animator = Some(animator);
-
-    entity
-}
-
 pub fn create_rat_nest(
     position: Vec2<f32>,
     sprite_atlas: &SpriteAtlas,
@@ -371,4 +347,40 @@ pub fn create_rat_nest(
     entity.effect = ApplyLightEffect as u32;
 
     entity
+}
+
+pub fn create_torch(
+    position: Vec2<f32>,
+    sprite_atlas: &SpriteAtlas,
+) -> Entity {
+    let animator = Animator::new(AnimatedSprite::new(
+        sprite_atlas,
+        "torch_burn",
+        0.5,
+        Repeat,
+        TopCenter,
+    ));
+    let light = Light {
+        position,
+        color: Color::new(4.0, 0.5, 0.0, 1.0),
+        attenuation: [0.05, 0.005, 0.005],
+    };
+
+    let mut entity = Entity::new(position);
+    entity.light = Some(light);
+    entity.animator = Some(animator);
+
+    entity
+}
+
+pub fn create_stone_wall(rect: Rect) -> DrawPrimitive {
+    use EffectType::*;
+    let effect = ApplyLightEffect as u32 | StoneWallEffect as u32;
+    DrawPrimitive::from_rect(
+        rect,
+        SpaceType::WorldSpace,
+        -1.0,
+        effect,
+        Color::new(0.4, 0.3, 0.2, 1.0),
+    )
 }

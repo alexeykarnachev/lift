@@ -53,10 +53,19 @@ vec4 apply_light(vec4 color) {
     return vec4(rgb, color.a);
 }
 
+vec4 apply_stone_wall(vec4 color) {
+    vec3 rgb = color.rgb;
+    return vec4(0.5 * rgb + 0.5 * vec3(vs_pos, 0.0), color.a);
+}
+
 void main(void) {
     vec4 color = get_color();
 
-    if ((vs_effect & ApplyLightEffect) == 1) {
+    if ((vs_effect & StoneWallEffect) > 0) {
+        color = apply_stone_wall(color);
+    }
+
+    if ((vs_effect & ApplyLightEffect) > 0) {
         color = apply_light(color);
     }
 

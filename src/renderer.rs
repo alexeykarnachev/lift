@@ -83,7 +83,8 @@ impl Renderer {
 
         unsafe {
             self.gl.clear_color(0.0, 0.0, 0.0, 1.0);
-            self.gl.clear(glow::COLOR_BUFFER_BIT);
+            self.gl
+                .clear(glow::COLOR_BUFFER_BIT | glow::DEPTH_BUFFER_BIT);
         }
 
         let screen_size =
@@ -169,6 +170,9 @@ impl Renderer {
         } else if world.state == GameOver {
             draw_ui(&world.game_over_ui, &mut self.primitives);
         }
+
+        self.primitives
+            .sort_by(|a, b| a.z.partial_cmp(&b.z).unwrap());
     }
 
     pub fn fill_lights(&mut self, world: &World) {
@@ -320,8 +324,6 @@ impl PrimitiveRenderer {
 
         unsafe {
             gl.use_program(Some(self.program));
-            gl.enable(glow::BLEND);
-            gl.blend_func(glow::SRC_ALPHA, glow::ONE_MINUS_SRC_ALPHA);
             set_uniform_2_f32(
                 gl,
                 self.program,
@@ -348,6 +350,8 @@ impl PrimitiveRenderer {
 
         set_uniform_camera(gl, self.program, camera);
         unsafe {
+            gl.enable(glow::BLEND);
+            gl.blend_func(glow::SRC_ALPHA, glow::ONE_MINUS_SRC_ALPHA);
             gl.draw_arrays_instanced(
                 glow::TRIANGLE_STRIP,
                 0,

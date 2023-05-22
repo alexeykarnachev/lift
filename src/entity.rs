@@ -898,6 +898,7 @@ impl Animator {
 
         DrawPrimitive::from_sprite(
             SpaceType::WorldSpace,
+            0.0,
             effect,
             position,
             sprite,
@@ -947,6 +948,7 @@ impl Text {
             primitive_position.y += glyph.metrics.ymin as f32;
             let mut primitive = DrawPrimitive::from_sprite(
                 space,
+                0.0,
                 0,
                 Vec2::zeros(),
                 sprite,

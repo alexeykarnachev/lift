@@ -246,6 +246,7 @@ pub struct DrawPrimitive {
     pub space: SpaceType,
     pub effect: u32,
     pub flip: bool,
+    pub z: f32,
 
     pub color: Option<Color>,
     pub sprite: Option<Sprite>,
@@ -256,12 +257,14 @@ impl DrawPrimitive {
     pub fn from_rect(
         rect: Rect,
         space: SpaceType,
+        z: f32,
         effect: u32,
         color: Color,
     ) -> Self {
         Self {
             rect,
             space,
+            z,
             effect,
             flip: false,
             color: Some(color),
@@ -272,6 +275,7 @@ impl DrawPrimitive {
 
     pub fn from_sprite(
         space: SpaceType,
+        z: f32,
         effect: u32,
         position: Vec2<f32>,
         sprite: Sprite,
@@ -285,6 +289,7 @@ impl DrawPrimitive {
         Self {
             rect,
             space,
+            z,
             effect,
             color,
             sprite: Some(sprite),
@@ -428,6 +433,7 @@ pub fn draw_entity(entity: &Entity, draw_queue: &mut Vec<DrawPrimitive>) {
         let primitive = DrawPrimitive::from_rect(
             collider,
             SpaceType::WorldSpace,
+            0.0,
             0,
             Color::new(1.0, 0.0, 0.0, 0.75),
         );
@@ -469,6 +475,7 @@ fn draw_healthbar(entity: &Entity, draw_queue: &mut Vec<DrawPrimitive>) {
     draw_queue.push(DrawPrimitive::from_rect(
         background_rect,
         SpaceType::WorldSpace,
+        0.0,
         0,
         Color::gray(0.2, a),
     ));
@@ -480,6 +487,7 @@ fn draw_healthbar(entity: &Entity, draw_queue: &mut Vec<DrawPrimitive>) {
     draw_queue.push(DrawPrimitive::from_rect(
         health_rect,
         SpaceType::WorldSpace,
+        0.0,
         0,
         color,
     ));
@@ -490,6 +498,7 @@ pub fn draw_bullet(bullet: &Bullet, draw_queue: &mut Vec<DrawPrimitive>) {
     draw_queue.push(DrawPrimitive::from_rect(
         rect,
         SpaceType::WorldSpace,
+        0.0,
         0,
         Color::red(1.0),
     ));
@@ -499,6 +508,7 @@ pub fn draw_collider(collider: Rect, draw_queue: &mut Vec<DrawPrimitive>) {
     draw_queue.push(DrawPrimitive::from_rect(
         collider,
         SpaceType::WorldSpace,
+        0.0,
         0,
         Color::new(1.0, 0.0, 0.0, 0.1),
     ));
@@ -555,6 +565,7 @@ impl From<SpaceType> for u32 {
 #[derive(Copy, Clone, Debug, Sequence)]
 pub enum EffectType {
     ApplyLightEffect = 1 << 0,
+    StoneWallEffect = 1 << 1,
 }
 
 impl From<EffectType> for u32 {
