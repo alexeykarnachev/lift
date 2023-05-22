@@ -39,7 +39,7 @@
   <object id="75" name="torch" x="187" y="153">
    <point/>
   </object>
-  <object id="77" name="stair" type="stair" x="145.333" y="41.6965" width="15.334" height="140.607"/>
-  <object id="78" name="collider" x="12.333" y="87.8215" width="121.584" height="7.857"/>
+  <object id="77" name="stair" type="stair" x="145.333" y="41.6965" width="11.709" height="140.607"/>
+  <object id="78" name="collider" x="12.333" y="87.8215" width="122.709" height="7.857"/>
  </objectgroup>
 </map>

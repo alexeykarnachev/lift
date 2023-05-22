@@ -441,6 +441,12 @@ impl World {
                 }
             }
             Climbing => {
+                if player.is_on_floor {
+                    player.play_animation("idle");
+                } else {
+                    player.play_animation("climb");
+                }
+
                 if !player.is_on_stair {
                     player.state = Idle;
                 } else if is_up_action {
@@ -451,6 +457,8 @@ impl World {
                     player.immediate_step(Vec2::left(), dt);
                 } else if is_right_action {
                     player.immediate_step(Vec2::right(), dt);
+                } else {
+                    player.pause_animation();
                 }
             }
             Falling => {

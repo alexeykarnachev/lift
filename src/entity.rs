@@ -541,6 +541,11 @@ impl Entity {
         let animator = self.animator.as_mut().unwrap();
         animator.play(name);
     }
+
+    pub fn pause_animation(&mut self) {
+        let animator = self.animator.as_mut().unwrap();
+        animator.pause();
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -868,6 +873,7 @@ pub struct Animator {
     pub flip: bool,
     pub animation: &'static str,
     animation_to_sprite: HashMap<&'static str, AnimatedSprite>,
+    is_paused: bool,
 }
 
 impl Animator {
@@ -879,6 +885,7 @@ impl Animator {
             flip: false,
             animation: "default",
             animation_to_sprite,
+            is_paused: false,
         }
     }
 
@@ -903,6 +910,11 @@ impl Animator {
         }
 
         self.animation = name;
+        self.is_paused = false;
+    }
+
+    pub fn pause(&mut self) {
+        self.is_paused = true;
     }
 
     pub fn get_draw_primitive(
@@ -929,10 +941,12 @@ impl Animator {
     }
 
     pub fn update(&mut self, dt: f32) {
-        self.animation_to_sprite
-            .get_mut(self.animation)
-            .unwrap()
-            .update(dt);
+        if !self.is_paused {
+            self.animation_to_sprite
+                .get_mut(self.animation)
+                .unwrap()
+                .update(dt);
+        }
     }
 }
 

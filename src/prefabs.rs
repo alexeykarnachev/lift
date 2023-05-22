@@ -94,6 +94,16 @@ pub fn create_player(
         ),
     );
     animator.add(
+        "climb",
+        AnimatedSprite::new(
+            sprite_atlas,
+            "knight_climb",
+            1.0,
+            Repeat,
+            BotCenter,
+        ),
+    );
+    animator.add(
         "attack",
         AnimatedSprite::new(
             sprite_atlas,
