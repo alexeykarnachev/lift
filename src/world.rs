@@ -357,8 +357,18 @@ impl World {
         use State::*;
 
         let player = &mut self.level.player;
+        if !player.is_on_stair {
+            player.apply_gravity = true;
+        } else {
+            player.apply_gravity = false;
+            player.velocity.y = 0.0;
+        }
+
+        let is_attack_action = input.is_action(Attack);
         let is_left_action = input.is_action(Left);
         let is_right_action = input.is_action(Right);
+        let is_up_action = input.is_action(Up);
+        let is_down_action = input.is_action(Down);
 
         match player.state {
             Initial => {
@@ -366,20 +376,28 @@ impl World {
             }
             Idle => {
                 player.play_animation("idle");
-                if input.is_action(Left) || input.is_action(Right) {
+                if is_left_action || is_right_action {
                     player.state = Running;
-                } else if input.lmb_is_down
+                } else if is_attack_action
                     && player.check_if_weapon_ready()
                     && player.check_if_enough_stamina_for_attack()
                 {
                     self.attacks.push(player.force_attack());
                     player.state = Attacking;
+                } else if (is_down_action || is_up_action)
+                    && player.is_on_stair
+                {
+                    player.state = Climbing;
                 }
             }
             Running => {
                 if !player.is_on_floor {
                     player.state = Falling;
-                } else if input.lmb_is_down
+                } else if (is_down_action || is_up_action)
+                    && player.is_on_stair
+                {
+                    player.state = Climbing;
+                } else if is_attack_action
                     && player.check_if_weapon_ready()
                     && player.check_if_enough_stamina_for_attack()
                 {
@@ -389,7 +407,7 @@ impl World {
                     if is_left_action || is_right_action {
                         player.set_orientation(is_right_action);
                         player.play_animation("run");
-                        if input.is_action(Down)
+                        if input.is_action(Dash)
                             && player.check_if_dashing_ready()
                             && player.check_if_enough_stamina_for_dashing()
                         {
@@ -410,6 +428,10 @@ impl World {
                 player.play_animation("slide");
                 if !player.check_if_dashing() {
                     player.state = Idle;
+                } else if (is_down_action || is_up_action)
+                    && player.is_on_stair
+                {
+                    player.state = Climbing;
                 }
             }
             Attacking => {
@@ -418,15 +440,33 @@ impl World {
                     player.state = Idle;
                 }
             }
-            Falling => {
-                player.play_animation("idle");
-                player.set_orientation(is_right_action);
-                if player.is_on_floor {
+            Climbing => {
+                if !player.is_on_stair {
                     player.state = Idle;
+                } else if is_up_action {
+                    player.immediate_step(Vec2::up(), dt);
+                } else if is_down_action {
+                    player.immediate_step(Vec2::down(), dt);
+                } else if is_left_action {
+                    player.immediate_step(Vec2::left(), dt);
                 } else if is_right_action {
                     player.immediate_step(Vec2::right(), dt);
-                } else {
+                }
+            }
+            Falling => {
+                player.play_animation("idle");
+                if player.is_on_floor {
+                    player.state = Idle;
+                } else if (is_down_action || is_up_action)
+                    && player.is_on_stair
+                {
+                    player.state = Climbing;
+                } else if is_right_action {
+                    player.immediate_step(Vec2::right(), dt);
+                    player.set_orientation(true);
+                } else if is_left_action {
                     player.immediate_step(Vec2::left(), dt);
+                    player.set_orientation(false);
                 }
             }
             _ => {

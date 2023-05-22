@@ -9,6 +9,8 @@ pub enum Keyaction {
     Right,
     Up,
     Down,
+    Attack,
+    Dash,
     _N,
 }
 
@@ -20,6 +22,8 @@ pub fn keycode_to_keyaction(code: Keycode) -> Option<Keyaction> {
         Keycode::Right | Keycode::D => Some(Keyaction::Right),
         Keycode::Up | Keycode::W => Some(Keyaction::Up),
         Keycode::Down | Keycode::S => Some(Keyaction::Down),
+        Keycode::Space => Some(Keyaction::Attack),
+        Keycode::LCtrl => Some(Keyaction::Dash),
         _ => None,
     }
 }

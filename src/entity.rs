@@ -29,6 +29,7 @@ pub enum State {
     Falling,
     Jumping,
     Healing,
+    Climbing,
     Dead,
 }
 
@@ -45,6 +46,7 @@ pub struct Entity {
     pub state: State,
     pub is_on_floor: bool,
     pub is_on_ceil: bool,
+    pub is_on_stair: bool,
 
     pub behaviour: Option<Behaviour>,
     pub position: Vec2<f32>,
@@ -90,6 +92,7 @@ impl Entity {
             state: State::Initial,
             is_on_floor: false,
             is_on_ceil: false,
+            is_on_stair: false,
             behaviour: None,
             position,
             orientation: Orientation::Right,
@@ -165,6 +168,11 @@ impl Entity {
         };
 
         None
+    }
+
+    pub fn set_apply_gravity(&mut self, apply_gravity: bool) {
+        self.apply_gravity = apply_gravity;
+        self.velocity.y = 0.0;
     }
 
     pub fn set_orientation(&mut self, is_right: bool) {
@@ -392,12 +400,14 @@ impl Entity {
         if !self.is_on_floor && self.apply_gravity {
             self.velocity.y -= gravity * dt;
         }
+
         self.position += self.velocity.scale(dt);
         self.velocity.x *= 1.0 - friction;
 
         let was_on_floor = self.is_on_floor;
         self.is_on_ceil = false;
         self.is_on_floor = false;
+        self.is_on_stair = false;
         if let Some(self_rect) = self.get_collider() {
             for collider in colliders {
                 match collider {
@@ -443,6 +453,16 @@ impl Entity {
                                 self.is_on_ceil = is_on_ceil;
                                 self.is_on_floor = is_on_floor;
                             }
+                        }
+                    }
+                    Collider::Stair(rect) => {
+                        if rect.collide_with_rect(self_rect)
+                            && (rect.get_center().x
+                                - self_rect.get_center().x)
+                                .abs()
+                                < 0.5 * rect.get_size().x
+                        {
+                            self.is_on_stair = true;
                         }
                     }
                 };
