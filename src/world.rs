@@ -91,7 +91,7 @@ impl World {
                 self.update_player(dt, input);
                 self.update_lights(dt);
                 // self.update_free_camera(input);
-                self.update_player_camera();
+                self.update_player_camera(input);
                 self.time += dt;
             }
             GameOver => {
@@ -506,8 +506,27 @@ impl World {
         }
     }
 
-    fn update_player_camera(&mut self) {
-        self.camera.position = self.level.player.position.add_y(64.0);
+    fn update_player_camera(&mut self, input: &Input) {
+        let ws = input.window_size;
+        let cp = self.camera.position;
+        let pp = self.level.player.position.add_y(64.0);
+        let sp = world_to_screen(&self.camera, ws, pp);
+        let sp = Vec2::new(
+            2.0 * sp.x as f32 / ws.x as f32 - 1.0,
+            2.0 * sp.y as f32 / ws.y as f32 - 1.0,
+        );
+        let k = 0.2;
+        if sp.x > k {
+            self.camera.position.x += 0.25 * ws.x as f32 * (sp.x - k);
+        } else if sp.x < -k {
+            self.camera.position.x += 0.25 * ws.x as f32 * (sp.x + k);
+        }
+
+        if sp.y > k {
+            self.camera.position.y -= 0.25 * ws.y as f32 * (sp.y - k);
+        } else if sp.y < -k {
+            self.camera.position.y -= 0.25 * ws.y as f32 * (sp.y + k);
+        }
     }
 
     fn update_free_camera(&mut self, input: &Input) {
