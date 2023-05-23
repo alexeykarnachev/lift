@@ -138,8 +138,29 @@ impl World {
 
             let enemy = &mut enemies[enemy_id];
             let player_collider = player.get_collider().unwrap();
-            let to_player = player.get_center() - enemy.get_center();
+            let enemy_center = enemy.get_center();
+            let player_center = player.get_center();
+            let to_player = player_center - enemy_center;
             let dist_to_player = to_player.abs();
+
+            let mut can_see_player =
+                to_player.len() <= enemy.view_distance;
+            if can_see_player && enemy.state != Dead {
+                'collider: for collider in self.level.colliders.iter() {
+                    match collider {
+                        Collider::Rigid(rect) => {
+                            if rect.collide_with_line(
+                                enemy_center,
+                                player_center,
+                            ) {
+                                can_see_player = false;
+                                break 'collider;
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
 
             match enemy.behaviour.as_ref() {
                 Some(Rat) => match enemy.state {
@@ -150,15 +171,15 @@ impl World {
                         enemy.play_animation("idle");
                         enemy.set_weapon(0);
 
-                        if enemy
-                            .check_if_can_reach_by_weapon(player_collider)
-                        {
-                            self.attacks.push(enemy.force_attack());
-                            enemy.state = Attacking;
-                        } else if dist_to_player.x < 200.0
-                            && dist_to_player.y < 16.0
-                        {
-                            enemy.state = Running;
+                        if can_see_player {
+                            if enemy.check_if_can_reach_by_weapon(
+                                player_collider,
+                            ) {
+                                self.attacks.push(enemy.force_attack());
+                                enemy.state = Attacking;
+                            } else {
+                                enemy.state = Running;
+                            }
                         }
                     }
                     Running => {
@@ -168,9 +189,7 @@ impl World {
 
                         if !enemy.is_on_floor {
                             enemy.state = Falling;
-                        } else if dist_to_player.x >= 200.0
-                            || dist_to_player.y >= 16.0
-                        {
+                        } else if !can_see_player {
                             enemy.state = Idle;
                         } else if enemy.check_if_jump_ready()
                             && dist_to_player.x >= 20.0
@@ -245,15 +264,16 @@ impl World {
                         Idle => {
                             enemy.play_animation("wave");
 
-                            if enemy.check_if_can_reach_by_weapon(
-                                player_collider,
-                            ) {
-                                self.attacks.push(enemy.force_attack());
-                                enemy.state = Attacking;
-                            } else if dist_to_player.x < 200.0
-                                && dist_to_player.y < 200.0
-                            {
-                                enemy.state = Running;
+                            if can_see_player {
+                                if enemy.check_if_can_reach_by_weapon(
+                                    player_collider,
+                                ) {
+                                    self.attacks
+                                        .push(enemy.force_attack());
+                                    enemy.state = Attacking;
+                                } else {
+                                    enemy.state = Running;
+                                }
                             }
                         }
                         Running => {
@@ -272,9 +292,7 @@ impl World {
                                 } else {
                                     enemy.immediate_step(Vec2::up(), dt);
                                 }
-                            } else if dist_to_player.x >= 200.0
-                                || dist_to_player.y >= 200.0
-                            {
+                            } else if !can_see_player {
                                 enemy.state = Idle;
                             } else if enemy.check_if_can_reach_by_weapon(
                                 player_collider,

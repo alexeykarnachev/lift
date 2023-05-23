@@ -441,6 +441,52 @@ impl Rect {
         width <= sum_width && height <= sum_height
     }
 
+    pub fn collide_with_line(
+        &self,
+        start: Vec2<f32>,
+        end: Vec2<f32>,
+    ) -> bool {
+        let mut x_min = start.x.min(end.x);
+        let mut x_max = start.x.max(end.x);
+        let rect_x_min = self.get_x_min();
+        let rect_x_max = self.get_x_max();
+        let rect_y_min = self.get_y_min();
+        let rect_y_max = self.get_y_max();
+
+        x_max = x_max.min(rect_x_max);
+        x_min = x_min.max(rect_x_min);
+
+        if x_min > x_max {
+            return false;
+        }
+
+        let dx = end.x - start.x;
+
+        let mut y_min = start.y;
+        let mut y_max = end.y;
+        if dx.abs() > f32::EPSILON {
+            let a = (end.y - start.y) / dx;
+            let b = start.y - a * start.x;
+            y_min = a * x_min + b;
+            y_max = a * x_max + b;
+        }
+
+        if y_min > y_max {
+            let tmp = y_max;
+            y_max = y_min;
+            y_min = tmp;
+        }
+
+        y_max = y_max.min(rect_y_max);
+        y_min = y_min.max(rect_y_min);
+
+        if y_min > y_max {
+            return false;
+        }
+
+        true
+    }
+
     pub fn to_xywh(&self) -> [f32; 4] {
         let center = self.get_center();
         let size = self.get_size();

@@ -53,6 +53,7 @@ pub struct Entity {
     pub orientation: Orientation,
     pub apply_gravity: bool,
     pub collider: Option<Rect>,
+    pub view_distance: f32,
 
     pub move_speed: f32,
 
@@ -98,6 +99,7 @@ impl Entity {
             orientation: Orientation::Right,
             apply_gravity: false,
             collider: None,
+            view_distance: 0.0,
             move_speed: 0.0,
             jump_speed: 0.0,
             jump_period: 0.0,
