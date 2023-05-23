@@ -335,6 +335,7 @@ pub fn create_rat_king(
 ) -> Entity {
     let max_health = 10000.0;
     let view_distance = 300.0;
+    let move_speed = 50.0;
 
     let collider =
         Rect::from_bot_center(Vec2::zeros(), Vec2::new(20.0, 12.0));
@@ -367,12 +368,23 @@ pub fn create_rat_king(
             BotCenter,
         ),
     );
+    animator.add(
+        "move",
+        AnimatedSprite::new(
+            sprite_atlas,
+            "rat_king_move",
+            0.5,
+            Repeat,
+            BotCenter,
+        ),
+    );
 
     let mut entity = Entity::new(position);
     entity.behaviour = Some(Behaviour::RatKing);
     entity.apply_gravity = true;
     entity.collider = Some(collider);
     entity.view_distance = view_distance;
+    entity.move_speed = move_speed;
     entity.max_health = max_health;
     entity.current_health = max_health;
     entity.weapons = weapons;

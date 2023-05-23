@@ -39,7 +39,7 @@
                  "type":"",
                  "visible":true,
                  "width":0,
-                 "x":285.0574,
+                 "x":285.057,
                  "y":158.211
                 }, 
                 {
@@ -74,8 +74,8 @@
                  "type":"",
                  "visible":true,
                  "width":0,
-                 "x":358.151181818182,
-                 "y":143.590909090909
+                 "x":358.151,
+                 "y":143.591
                 }, 
                 {
                  "height":130.058,
@@ -120,8 +120,19 @@
                  "type":"",
                  "visible":true,
                  "width":0,
-                 "x":441.863818181818,
-                 "y":143.136181818182
+                 "x":441.864,
+                 "y":143.136
+                }, 
+                {
+                 "height":173.474,
+                 "id":90,
+                 "name":"stone_wall",
+                 "rotation":0,
+                 "type":"rigid",
+                 "visible":true,
+                 "width":713.459,
+                 "x":11.2705,
+                 "y":5.26300000000001
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -130,7 +141,7 @@
          "y":0
         }],
  "nextlayerid":5,
- "nextobjectid":90,
+ "nextobjectid":91,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.10.1",

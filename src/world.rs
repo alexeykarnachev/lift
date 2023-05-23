@@ -219,7 +219,7 @@ impl World {
                         {
                             self.attacks.push(enemy.force_attack());
                             enemy.state = Attacking;
-                        } else if to_player.x.signum() > 0.0 {
+                        } else if to_player_orientation {
                             enemy.immediate_step(Vec2::right(), dt)
                         } else {
                             enemy.immediate_step(Vec2::left(), dt)
@@ -375,6 +375,7 @@ impl World {
                 Some(RatKing) => match enemy.state {
                     Initial => {
                         enemy.play_animation("rise");
+                        enemy.set_orientation(to_player_orientation);
                         if enemy.get_current_animation_cycle() >= 1.0 {
                             enemy.state = Idle;
                         }
@@ -382,6 +383,24 @@ impl World {
                     Idle => {
                         enemy.play_animation("idle");
                         enemy.set_orientation(to_player_orientation);
+
+                        if can_see_player {
+                            enemy.state = Running;
+                        }
+                    }
+                    Running => {
+                        enemy.play_animation("move");
+                        enemy.set_orientation(to_player_orientation);
+
+                        if !enemy.is_on_floor {
+                            enemy.state = Falling;
+                        } else if !can_see_player {
+                            enemy.state = Idle;
+                        } else if to_player_orientation {
+                            enemy.immediate_step(Vec2::right(), dt)
+                        } else {
+                            enemy.immediate_step(Vec2::left(), dt)
+                        }
                     }
                     _ => {
                         panic!(

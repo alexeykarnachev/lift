@@ -29,15 +29,18 @@
             "scale": 2,
             "selectedLayer": 1,
             "viewCenter": {
-                "x": 432.25,
-                "y": 208.25
+                "x": 318.25,
+                "y": 252.25
             }
         },
         "level1.tmx": {
+            "expandedObjectLayers": [
+                3
+            ],
             "scale": 3,
-            "selectedLayer": 0,
+            "selectedLayer": 1,
             "viewCenter": {
-                "x": 311.83333333333326,
+                "x": 311.1666666666667,
                 "y": 150.16666666666669
             }
         },
@@ -56,13 +59,14 @@
     "map.tileWidth": 16,
     "map.width": 60,
     "openFiles": [
-        "level0.tmx"
+        "level0.tmx",
+        "level1.tmx"
     ],
     "project": "lift.tiled-project",
     "property.type": "bool",
     "recentFiles": [
-        "level0.tmx",
         "level1.tmx",
+        "level0.tmx",
         "lift.tsx",
         "/home/akarnachev/src/lift/assets/tilemaps/level0.json",
         "level0.json"
