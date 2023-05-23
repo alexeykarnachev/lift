@@ -16,7 +16,8 @@ pub enum Behaviour {
     Player,
     Rat,
     Bat,
-    Spawner,
+    RatNest,
+    RatKing,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -44,6 +45,7 @@ pub struct Entity {
     pub id: i32,
     pub time: f32,
     pub state: State,
+
     pub is_on_floor: bool,
     pub is_on_ceil: bool,
     pub is_on_stair: bool,
@@ -170,6 +172,10 @@ impl Entity {
         };
 
         None
+    }
+
+    pub fn get_current_animation_cycle(&self) -> f32 {
+        self.animator.as_ref().unwrap().get_current_cycle()
     }
 
     pub fn set_apply_gravity(&mut self, apply_gravity: bool) {
@@ -540,13 +546,11 @@ impl Entity {
     }
 
     pub fn play_animation(&mut self, name: &'static str) {
-        let animator = self.animator.as_mut().unwrap();
-        animator.play(name);
+        self.animator.as_mut().unwrap().play(name);
     }
 
     pub fn pause_animation(&mut self) {
-        let animator = self.animator.as_mut().unwrap();
-        animator.pause();
+        self.animator.as_mut().unwrap().pause();
     }
 }
 
@@ -889,6 +893,10 @@ impl Animator {
             animation_to_sprite,
             is_paused: false,
         }
+    }
+
+    pub fn get_current_cycle(&self) -> f32 {
+        self.animation_to_sprite.get(self.animation).unwrap().cycle
     }
 
     pub fn add(

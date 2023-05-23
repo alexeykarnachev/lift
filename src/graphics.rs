@@ -100,7 +100,7 @@ pub struct AnimatedSprite {
     pub duration: f32,
     pub animation_mode: AnimationMode,
     pub origin: Origin,
-    cycle: f32,
+    pub cycle: f32,
 
     frames: Vec<Sprite>,
 }

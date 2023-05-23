@@ -21,25 +21,22 @@
 </data>
  </layer>
  <objectgroup id="3" name="objects">
-  <object id="8" name="player" x="48.0574" y="158.211">
+  <object id="8" name="player" x="285.057" y="158.211">
    <point/>
   </object>
   <object id="73" name="collider" x="-0.167" y="183.697" width="736.334" height="7.607"/>
   <object id="74" name="torch" x="93.6667" y="118">
    <point/>
   </object>
-  <object id="75" name="torch" x="276.833" y="130.5">
+  <object id="75" name="torch" x="358.151" y="143.591">
    <point/>
   </object>
   <object id="77" name="stair" type="stair" x="241.652" y="52.6662" width="11.9916" height="130.058"/>
-  <object id="86" name="bat" x="141.333" y="157">
-   <point/>
-  </object>
   <object id="87" name="collider" x="260.136" y="87.2571" width="237.243" height="8.87973"/>
-  <object id="88" name="rat" x="399.091" y="149.455">
+  <object id="88" name="rat_nest" x="399.091" y="149.455">
    <point/>
   </object>
-  <object id="89" name="torch" x="464.182" y="125.818">
+  <object id="89" name="torch" x="441.864" y="143.136">
    <point/>
   </object>
  </objectgroup>

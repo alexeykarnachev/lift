@@ -1,0 +1,72 @@
+{ "frames": [
+   {
+    "filename": "rat_king_rise.0",
+    "frame": { "x": 1, "y": 1, "w": 100, "h": 58 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 100, "h": 58 },
+    "sourceSize": { "w": 100, "h": 58 },
+    "duration": 100
+   },
+   {
+    "filename": "rat_king_rise.1",
+    "frame": { "x": 103, "y": 1, "w": 100, "h": 58 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 100, "h": 58 },
+    "sourceSize": { "w": 100, "h": 58 },
+    "duration": 100
+   },
+   {
+    "filename": "rat_king_rise.2",
+    "frame": { "x": 205, "y": 1, "w": 100, "h": 58 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 100, "h": 58 },
+    "sourceSize": { "w": 100, "h": 58 },
+    "duration": 100
+   },
+   {
+    "filename": "rat_king_rise.3",
+    "frame": { "x": 307, "y": 1, "w": 100, "h": 58 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 100, "h": 58 },
+    "sourceSize": { "w": 100, "h": 58 },
+    "duration": 100
+   },
+   {
+    "filename": "rat_king_rise.4",
+    "frame": { "x": 409, "y": 1, "w": 100, "h": 58 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 100, "h": 58 },
+    "sourceSize": { "w": 100, "h": 58 },
+    "duration": 100
+   },
+   {
+    "filename": "rat_king_rise.5",
+    "frame": { "x": 511, "y": 1, "w": 100, "h": 58 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 100, "h": 58 },
+    "sourceSize": { "w": 100, "h": 58 },
+    "duration": 100
+   }
+ ],
+ "meta": {
+  "app": "http://www.aseprite.org/",
+  "version": "1.3-rc2-x64",
+  "image": "rat_king_rise.png",
+  "format": "RGBA8888",
+  "size": { "w": 612, "h": 60 },
+  "scale": "1",
+  "frameTags": [
+  ],
+  "layers": [
+   { "name": "ghost", "opacity": 255, "blendMode": "normal" }
+  ],
+  "slices": [
+  ]
+ }
+}

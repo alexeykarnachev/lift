@@ -127,12 +127,23 @@ impl World {
 
         for enemy_id in 0..enemies.len() {
             let enemy = &mut enemies[enemy_id];
+            let position = enemy.position;
+            let behaviour = enemy.behaviour.unwrap();
             if enemy.state != Dead && enemy.check_if_dead() {
                 enemy.state = Dead;
                 if let Some(spawner_id) = enemy.spawner_id {
                     let spawner =
                         &mut enemies[spawner_id].spawner.as_mut().unwrap();
                     spawner.n_alive_current -= 1;
+                }
+
+                match behaviour {
+                    RatNest => {
+                        let rat_king =
+                            create_rat_king(position, &self.sprite_atlas);
+                        enemies_to_spawn.push(rat_king);
+                    }
+                    _ => {}
                 }
             }
 
@@ -141,6 +152,7 @@ impl World {
             let enemy_center = enemy.get_center();
             let player_center = player.get_center();
             let to_player = player_center - enemy_center;
+            let to_player_orientation = to_player.x.signum() > 0.0;
             let dist_to_player = to_player.abs();
 
             let mut can_see_player =
@@ -169,6 +181,7 @@ impl World {
                     }
                     Idle => {
                         enemy.play_animation("idle");
+                        enemy.set_orientation(to_player_orientation);
                         enemy.set_weapon(0);
 
                         if can_see_player {
@@ -184,7 +197,7 @@ impl World {
                     }
                     Running => {
                         enemy.play_animation("move");
-                        enemy.set_orientation(to_player.x.signum() > 0.0);
+                        enemy.set_orientation(to_player_orientation);
                         enemy.set_weapon(0);
 
                         if !enemy.is_on_floor {
@@ -263,6 +276,7 @@ impl World {
                         }
                         Idle => {
                             enemy.play_animation("wave");
+                            enemy.set_orientation(to_player_orientation);
 
                             if can_see_player {
                                 if enemy.check_if_can_reach_by_weapon(
@@ -278,9 +292,7 @@ impl World {
                         }
                         Running => {
                             enemy.play_animation("wave");
-                            enemy.set_orientation(
-                                to_player.x.signum() > 0.0,
-                            );
+                            enemy.set_orientation(to_player_orientation);
 
                             if enemy.get_health_ratio() < 0.6
                                 && enemy.check_if_healing_ready()
@@ -333,7 +345,7 @@ impl World {
                         }
                     }
                 }
-                Some(Spawner) => {
+                Some(RatNest) => {
                     match enemy.state {
                         Initial => {
                             enemy.state = Idle;
@@ -341,19 +353,43 @@ impl World {
                         Idle => {
                             enemy.play_animation("idle");
                         }
+                        Dead => {
+                            enemy.play_animation("death");
+                        }
                         _ => {
                             panic!(
-                                "Can't handle {:?} state for a Spawner",
+                                "Can't handle {:?} state for a RatNest",
                                 enemy.state
                             )
                         }
                     }
-                    if let Some(mut spawned) =
-                        enemy.update_spawner(dt, &self.sprite_atlas)
-                    {
-                        enemies_to_spawn.push(spawned);
+
+                    if enemy.state != Dead {
+                        if let Some(mut spawned) =
+                            enemy.update_spawner(dt, &self.sprite_atlas)
+                        {
+                            enemies_to_spawn.push(spawned);
+                        }
                     }
                 }
+                Some(RatKing) => match enemy.state {
+                    Initial => {
+                        enemy.play_animation("rise");
+                        if enemy.get_current_animation_cycle() >= 1.0 {
+                            enemy.state = Idle;
+                        }
+                    }
+                    Idle => {
+                        enemy.play_animation("idle");
+                        enemy.set_orientation(to_player_orientation);
+                    }
+                    _ => {
+                        panic!(
+                            "Can't handle {:?} state for a RatKing",
+                            enemy.state
+                        )
+                    }
+                },
                 _ => {}
             }
 
