@@ -21,7 +21,7 @@
 </data>
  </layer>
  <objectgroup id="3" name="objects">
-  <object id="8" name="player" x="49.3907" y="70.2107">
+  <object id="8" name="player" x="116.057" y="70.2107">
    <point/>
   </object>
   <object id="21" name="collider" x="-0.687833" y="0.005" width="11.334" height="183.607"/>
