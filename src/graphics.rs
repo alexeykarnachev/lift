@@ -510,7 +510,7 @@ pub fn draw_collider(collider: Rect, draw_queue: &mut Vec<DrawPrimitive>) {
     //     SpaceType::WorldSpace,
     //     0.0,
     //     0,
-    //     Color::new(1.0, 0.0, 0.0, 0.1),
+    //     Color::new(1.0, 0.0, 0.0, 0.5),
     // ));
 }
 
@@ -519,6 +519,7 @@ pub fn draw_attack(attack: &Attack, draw_queue: &mut Vec<DrawPrimitive>) {
     // draw_queue.push(DrawPrimitive::from_rect(
     //     rect,
     //     SpaceType::WorldSpace,
+    //     0.0,
     //     0,
     //     Color::yellow(0.5),
     // ));

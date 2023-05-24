@@ -36,10 +36,10 @@ pub fn create_player(
     sprite_atlas: &SpriteAtlas,
 ) -> Entity {
     let max_health = 20000.0;
-    let max_stamina = 50000.0;
+    let max_stamina = 80000.0;
     let stamina_regen = 5000.0;
     let move_speed = 100.0;
-    let weapon_damage = 10000.0;
+    let weapon_damage = 5000.0;
     let stamina = Stamina::new(max_stamina, stamina_regen);
     let collider =
         Rect::from_bot_center(Vec2::zeros(), Vec2::new(20.0, 40.0));
@@ -336,10 +336,28 @@ pub fn create_rat_king(
     let max_health = 10000.0;
     let view_distance = 300.0;
     let move_speed = 50.0;
+    let dashing = Dashing::new(300.0, 0.5, 5.0, 0.0);
 
     let collider =
-        Rect::from_bot_center(Vec2::zeros(), Vec2::new(20.0, 12.0));
-    let weapons = vec![];
+        Rect::from_bot_center(Vec2::zeros(), Vec2::new(50.0, 40.0));
+    let floor_weapon = Weapon::new(
+        Rect::from_right_center(
+            collider.get_center(),
+            Vec2::new(30.0, 20.0),
+        ),
+        0.4,
+        0.2,
+        200.0,
+        0.0,
+    );
+    let roll_weapon = Weapon::new(
+        Rect::from_center(collider.get_center(), Vec2::new(128.0, 12.0)),
+        0.0,
+        3.0,
+        2000.0,
+        0.0,
+    );
+    let weapons = vec![floor_weapon, roll_weapon];
 
     let mut animator = Animator::new(AnimatedSprite::new(
         sprite_atlas,
@@ -378,6 +396,36 @@ pub fn create_rat_king(
             BotCenter,
         ),
     );
+    animator.add(
+        "melee_attack",
+        AnimatedSprite::new(
+            sprite_atlas,
+            "rat_king_melee_attack",
+            0.6,
+            Once,
+            BotCenter,
+        ),
+    );
+    animator.add(
+        "roll",
+        AnimatedSprite::new(
+            sprite_atlas,
+            "rat_king_roll",
+            0.3,
+            Repeat,
+            BotCenter,
+        ),
+    );
+    animator.add(
+        "death",
+        AnimatedSprite::new(
+            sprite_atlas,
+            "rat_king_death",
+            1.2,
+            Once,
+            BotCenter,
+        ),
+    );
 
     let mut entity = Entity::new(position);
     entity.behaviour = Some(Behaviour::RatKing);
@@ -385,8 +433,10 @@ pub fn create_rat_king(
     entity.collider = Some(collider);
     entity.view_distance = view_distance;
     entity.move_speed = move_speed;
+    entity.dashing = Some(dashing);
     entity.max_health = max_health;
     entity.current_health = max_health;
+    entity.knockback_resist = 1.0;
     entity.weapons = weapons;
     entity.animator = Some(animator);
     entity.effect = ApplyLightEffect as u32;

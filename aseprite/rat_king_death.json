@@ -1,0 +1,117 @@
+{ "frames": [
+   {
+    "filename": "rat_king_death.0",
+    "frame": { "x": 1, "y": 1, "w": 98, "h": 58 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 98, "h": 58 },
+    "sourceSize": { "w": 98, "h": 58 },
+    "duration": 100
+   },
+   {
+    "filename": "rat_king_death.1",
+    "frame": { "x": 101, "y": 1, "w": 98, "h": 58 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 98, "h": 58 },
+    "sourceSize": { "w": 98, "h": 58 },
+    "duration": 100
+   },
+   {
+    "filename": "rat_king_death.2",
+    "frame": { "x": 201, "y": 1, "w": 98, "h": 58 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 98, "h": 58 },
+    "sourceSize": { "w": 98, "h": 58 },
+    "duration": 100
+   },
+   {
+    "filename": "rat_king_death.3",
+    "frame": { "x": 301, "y": 1, "w": 98, "h": 58 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 98, "h": 58 },
+    "sourceSize": { "w": 98, "h": 58 },
+    "duration": 100
+   },
+   {
+    "filename": "rat_king_death.4",
+    "frame": { "x": 401, "y": 1, "w": 98, "h": 58 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 98, "h": 58 },
+    "sourceSize": { "w": 98, "h": 58 },
+    "duration": 100
+   },
+   {
+    "filename": "rat_king_death.5",
+    "frame": { "x": 501, "y": 1, "w": 98, "h": 58 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 98, "h": 58 },
+    "sourceSize": { "w": 98, "h": 58 },
+    "duration": 100
+   },
+   {
+    "filename": "rat_king_death.6",
+    "frame": { "x": 601, "y": 1, "w": 98, "h": 58 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 98, "h": 58 },
+    "sourceSize": { "w": 98, "h": 58 },
+    "duration": 100
+   },
+   {
+    "filename": "rat_king_death.7",
+    "frame": { "x": 701, "y": 1, "w": 98, "h": 58 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 98, "h": 58 },
+    "sourceSize": { "w": 98, "h": 58 },
+    "duration": 100
+   },
+   {
+    "filename": "rat_king_death.8",
+    "frame": { "x": 801, "y": 1, "w": 98, "h": 58 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 98, "h": 58 },
+    "sourceSize": { "w": 98, "h": 58 },
+    "duration": 100
+   },
+   {
+    "filename": "rat_king_death.9",
+    "frame": { "x": 901, "y": 1, "w": 98, "h": 58 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 98, "h": 58 },
+    "sourceSize": { "w": 98, "h": 58 },
+    "duration": 100
+   },
+   {
+    "filename": "rat_king_death.10",
+    "frame": { "x": 1001, "y": 1, "w": 98, "h": 58 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 98, "h": 58 },
+    "sourceSize": { "w": 98, "h": 58 },
+    "duration": 100
+   }
+ ],
+ "meta": {
+  "app": "http://www.aseprite.org/",
+  "version": "1.3-rc2-x64",
+  "image": "rat_king_death.png",
+  "format": "RGBA8888",
+  "size": { "w": 1100, "h": 60 },
+  "scale": "1",
+  "frameTags": [
+  ],
+  "layers": [
+   { "name": "ghost", "opacity": 255, "blendMode": "normal" }
+  ],
+  "slices": [
+  ]
+ }
+}

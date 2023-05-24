@@ -1,0 +1,109 @@
+{ "frames": [
+   {
+    "filename": "rat_king_melee_attack.0",
+    "frame": { "x": 1, "y": 1, "w": 86, "h": 58 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 86, "h": 58 },
+    "sourceSize": { "w": 86, "h": 58 },
+    "duration": 100
+   },
+   {
+    "filename": "rat_king_melee_attack.1",
+    "frame": { "x": 89, "y": 1, "w": 86, "h": 58 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 86, "h": 58 },
+    "sourceSize": { "w": 86, "h": 58 },
+    "duration": 100
+   },
+   {
+    "filename": "rat_king_melee_attack.2",
+    "frame": { "x": 177, "y": 1, "w": 86, "h": 58 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 86, "h": 58 },
+    "sourceSize": { "w": 86, "h": 58 },
+    "duration": 100
+   },
+   {
+    "filename": "rat_king_melee_attack.3",
+    "frame": { "x": 265, "y": 1, "w": 86, "h": 58 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 86, "h": 58 },
+    "sourceSize": { "w": 86, "h": 58 },
+    "duration": 100
+   },
+   {
+    "filename": "rat_king_melee_attack.4",
+    "frame": { "x": 353, "y": 1, "w": 86, "h": 58 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 86, "h": 58 },
+    "sourceSize": { "w": 86, "h": 58 },
+    "duration": 100
+   },
+   {
+    "filename": "rat_king_melee_attack.5",
+    "frame": { "x": 441, "y": 1, "w": 86, "h": 58 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 86, "h": 58 },
+    "sourceSize": { "w": 86, "h": 58 },
+    "duration": 100
+   },
+   {
+    "filename": "rat_king_melee_attack.6",
+    "frame": { "x": 529, "y": 1, "w": 86, "h": 58 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 86, "h": 58 },
+    "sourceSize": { "w": 86, "h": 58 },
+    "duration": 100
+   },
+   {
+    "filename": "rat_king_melee_attack.7",
+    "frame": { "x": 617, "y": 1, "w": 86, "h": 58 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 86, "h": 58 },
+    "sourceSize": { "w": 86, "h": 58 },
+    "duration": 100
+   },
+   {
+    "filename": "rat_king_melee_attack.8",
+    "frame": { "x": 705, "y": 1, "w": 86, "h": 58 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 86, "h": 58 },
+    "sourceSize": { "w": 86, "h": 58 },
+    "duration": 100
+   },
+   {
+    "filename": "rat_king_melee_attack.9",
+    "frame": { "x": 793, "y": 1, "w": 86, "h": 58 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 86, "h": 58 },
+    "sourceSize": { "w": 86, "h": 58 },
+    "duration": 100
+   }
+ ],
+ "meta": {
+  "app": "http://www.aseprite.org/",
+  "version": "1.3-rc2-x64",
+  "image": "rat_king_melee_attack.png",
+  "format": "RGBA8888",
+  "size": { "w": 880, "h": 60 },
+  "scale": "1",
+  "frameTags": [
+  ],
+  "layers": [
+   { "name": "ghost", "opacity": 255, "blendMode": "normal" },
+   { "name": "Layer 1", "opacity": 255, "blendMode": "normal" }
+  ],
+  "slices": [
+  ]
+ }
+}

@@ -148,6 +148,7 @@ impl World {
             }
 
             let enemy = &mut enemies[enemy_id];
+            let enemy_collider = enemy.get_collider().unwrap();
             let player_collider = player.get_collider().unwrap();
             let enemy_center = enemy.get_center();
             let player_center = player.get_center();
@@ -209,7 +210,7 @@ impl World {
                             && dist_to_player.x <= 100.0
                         {
                             let mut angle = PI * 0.1;
-                            if to_player.x.signum() < 0.0 {
+                            if !to_player_orientation {
                                 angle = PI - angle;
                             };
                             enemy.jump_at_angle(angle, None);
@@ -383,9 +384,17 @@ impl World {
                     Idle => {
                         enemy.play_animation("idle");
                         enemy.set_orientation(to_player_orientation);
+                        enemy.set_weapon(0);
 
                         if can_see_player {
-                            enemy.state = Running;
+                            if enemy.check_if_can_reach_by_weapon(
+                                player_collider,
+                            ) {
+                                self.attacks.push(enemy.force_attack());
+                                enemy.state = Attacking;
+                            } else {
+                                enemy.state = Running;
+                            }
                         }
                     }
                     Running => {
@@ -396,11 +405,44 @@ impl World {
                             enemy.state = Falling;
                         } else if !can_see_player {
                             enemy.state = Idle;
+                        } else if enemy.check_if_dashing_ready()
+                            && dist_to_player.x >= 50.0
+                            && dist_to_player.x <= 200.0
+                        {
+                            enemy.state = Dashing;
+                            enemy.force_start_dashing();
+                        } else if enemy
+                            .check_if_can_reach_by_weapon(player_collider)
+                        {
+                            self.attacks.push(enemy.force_attack());
+                            enemy.state = Attacking;
                         } else if to_player_orientation {
                             enemy.immediate_step(Vec2::right(), dt)
                         } else {
                             enemy.immediate_step(Vec2::left(), dt)
                         }
+                    }
+                    Dashing => {
+                        enemy.play_animation("roll");
+                        enemy.set_weapon(1);
+
+                        if !enemy.check_if_dashing() {
+                            enemy.state = Idle;
+                        } else if enemy_collider
+                            .collide_with_rect(player_collider)
+                            && enemy.check_if_weapon_ready()
+                        {
+                            self.attacks.push(enemy.force_attack());
+                        }
+                    }
+                    Attacking => {
+                        enemy.play_animation("melee_attack");
+                        if enemy.check_if_weapon_ready() {
+                            enemy.state = Idle;
+                        }
+                    }
+                    Dead => {
+                        enemy.play_animation("death");
                     }
                     _ => {
                         panic!(
