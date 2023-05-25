@@ -148,10 +148,6 @@ impl Renderer {
         });
         draw_entity(&world.level.player, &mut self.primitives);
 
-        world.bullets.iter().for_each(|bullet| {
-            draw_bullet(bullet, &mut self.primitives);
-        });
-
         // draw_collider(world.level.room, &mut self.primitives);
         world.attacks.iter().for_each(|attack| {
             draw_attack(attack, &mut self.primitives);
@@ -165,10 +161,17 @@ impl Renderer {
         // draw_collider(&world.player, &mut self.primitives);
 
         use WorldState::*;
-        if world.state == Play {
-            draw_ui(&world.play_ui, &mut self.primitives);
-        } else if world.state == GameOver {
-            draw_ui(&world.game_over_ui, &mut self.primitives);
+        match world.state {
+            MainMenu => {
+                draw_ui(&world.main_menu_ui, &mut self.primitives);
+            }
+            Play => {
+                draw_ui(&world.play_ui, &mut self.primitives);
+            }
+            GameOver => {
+                draw_ui(&world.game_over_ui, &mut self.primitives);
+            }
+            _ => {}
         }
 
         self.primitives

@@ -1,0 +1,38 @@
+[
+    {
+        "id": "new_game",
+        "type": "text",
+        "is_interactive": true,
+        "position": {
+            "origin": "Center",
+            "x": 0.0,
+            "y": 0.2
+        },
+        "string": "New Game",
+        "font_size": 67
+    },
+    {
+        "id": "options",
+        "type": "text",
+        "is_interactive": true,
+        "position": {
+            "origin": "Center",
+            "x": 0.0,
+            "y": 0.0
+        },
+        "string": "Options",
+        "font_size": 67
+    },
+    {
+        "id": "quit",
+        "type": "text",
+        "is_interactive": true,
+        "position": {
+            "origin": "Center",
+            "x": 0.0,
+            "y": -0.2
+        },
+        "string": "Quit",
+        "font_size": 67
+    }
+]

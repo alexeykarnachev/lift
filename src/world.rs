@@ -17,6 +17,7 @@ use std::time::SystemTime;
 
 #[derive(PartialEq, Debug)]
 pub enum WorldState {
+    MainMenu,
     Play,
     GameOver,
     Restart,
@@ -34,8 +35,8 @@ pub struct World {
 
     pub camera: Camera,
     pub attacks: Vec<Attack>,
-    pub bullets: Vec<Bullet>,
 
+    pub main_menu_ui: UI,
     pub play_ui: UI,
     pub game_over_ui: UI,
     pub game_over_ui_last_modified: u64,
@@ -51,23 +52,23 @@ impl World {
         let level = Level::new("./assets/levels/0.json", &sprite_atlas);
 
         let attacks: Vec<Attack> = Vec::with_capacity(256);
-        let bullets: Vec<Bullet> = Vec::with_capacity(256);
         let camera = Camera::new(level.player.get_center().add_y(2.0));
 
+        let main_menu_ui = create_default_main_menu_ui();
         let play_ui = create_default_play_ui();
         let mut game_over_ui = create_default_game_over_ui();
         let game_over_ui_last_modified =
             get_last_modified(game_over_ui.file_path);
 
         Self {
-            state: WorldState::Play,
+            state: WorldState::MainMenu,
             time: 0.0,
             gravity: 400.0,
             friction: 0.02,
             level,
             camera,
             attacks,
-            bullets,
+            main_menu_ui,
             play_ui,
             game_over_ui,
             game_over_ui_last_modified,
@@ -84,6 +85,9 @@ impl World {
 
         use WorldState::*;
         match self.state {
+            MainMenu => {
+                self.update_main_menu_ui(input);
+            }
             Play => {
                 self.update_play_ui(input);
                 self.update_attacks(dt);
@@ -99,6 +103,7 @@ impl World {
             }
             Restart => {
                 *self = Self::new();
+                self.state = Play;
             }
             Quit => {}
         }
@@ -714,6 +719,24 @@ impl World {
         }
     }
 
+    fn update_main_menu_ui(&mut self, input: &Input) {
+        use UIEvent::*;
+
+        let events = self.main_menu_ui.update(input, &self.glyph_atlas);
+        for event in events.iter() {
+            match event {
+                LMBPress(id) => match id.as_str() {
+                    "new_game" => self.state = WorldState::Play,
+                    "quit" => {
+                        self.state = WorldState::Quit;
+                    }
+                    _ => {}
+                },
+                _ => {}
+            }
+        }
+    }
+
     fn update_play_ui(&mut self, input: &Input) {
         let score = format!("Score: {}", self.level.player.score);
         let health_ratio = self.level.player.get_health_ratio();
@@ -744,16 +767,6 @@ impl World {
                     }
                     _ => {}
                 },
-                Hover(id) => {
-                    self.game_over_ui.set_element_color(
-                        &id,
-                        Color::new(0.9, 0.9, 0.5, 1.0),
-                    );
-                }
-                Empty(id) => {
-                    self.game_over_ui
-                        .set_element_color(&id, Color::default());
-                }
                 _ => {}
             }
         }

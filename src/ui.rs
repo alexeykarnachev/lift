@@ -112,7 +112,7 @@ impl UI {
         self.texts.clear();
         self.rects.clear();
         let mut events = Vec::with_capacity(self.elements.len());
-        for element in self.elements.iter() {
+        for element in self.elements.iter_mut() {
             let origin = Origin::from_str(&element.position.origin);
             let mut position =
                 Vec2::new(element.position.x, element.position.y);
@@ -168,10 +168,10 @@ impl UI {
                     } else if input.rmb_press_pos.is_some() {
                         events.push(UIEvent::RMBPress(id));
                     } else {
-                        events.push(UIEvent::Hover(id));
+                        element.color = Color::new(0.9, 0.9, 0.5, 1.0);
                     }
                 } else {
-                    events.push(UIEvent::Empty(id));
+                    element.color = Color::default();
                 }
             }
         }

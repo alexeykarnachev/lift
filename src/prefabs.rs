@@ -8,6 +8,152 @@ use AnimationMode::*;
 use EffectType::*;
 use Origin::*;
 
+mod player {
+    pub const MAX_HEALTH: f32 = 20000.0;
+    pub const MOVE_SPEED: f32 = 100.0;
+
+    pub mod stamina {
+        pub const MAX: f32 = 80000.0;
+        pub const REGEN: f32 = 5000.0;
+    }
+
+    pub mod weapon {
+        pub const ATTACK_DURATION: f32 = 0.1;
+        pub const ATTACK_COOLDOWN: f32 = 0.3;
+        pub const DAMAGE: f32 = 5000.0;
+        pub const STAMINA_COST: f32 = 10000.0;
+    }
+
+    pub mod dashing {
+        pub const SPEED: f32 = 200.0;
+        pub const DURATION: f32 = 0.5;
+        pub const COOLDOWN: f32 = 0.3;
+        pub const STAMINA_COST: f32 = 15000.0;
+    }
+
+    pub mod light {
+        pub const Y_OFFSET: f32 = 16.0;
+        pub const RGBA: [f32; 4] = [3.0, 3.0, 3.0, 1.0];
+        pub const ATTENUATION: [f32; 3] = [1.0, 0.04, 0.005];
+    }
+
+    pub mod animator {
+        pub const IDLE_DURATION: f32 = 1.2;
+        pub const RUN_DURATION: f32 = 0.8;
+        pub const SLIDE_DURATION: f32 = 0.5;
+        pub const CLIMB_DURATION: f32 = 1.0;
+        pub const ATTACK_DURATION: f32 = 0.3;
+    }
+}
+
+mod rat {
+    pub const MAX_HEALTH: f32 = 1000.0;
+    pub const VIEW_DISTANCE: f32 = 300.0;
+    pub const MOVE_SPEED_RANGE: (f32, f32) = (30.0, 40.0);
+    pub const JUMP_PERIOD_RANGE: (f32, f32) = (1.8, 2.2);
+    pub const JUMP_SPEED_RANGE: (f32, f32) = (280.0, 320.0);
+
+    pub mod floor_weapon {
+        pub const ATTACK_DURATION: f32 = 0.5;
+        pub const ATTACK_COOLDOWN: f32 = 0.3;
+        pub const DAMAGE: f32 = 200.0;
+    }
+
+    pub mod jump_weapon {
+        pub const ATTACK_DURATION: f32 = 0.1;
+        pub const DAMAGE: f32 = 200.0;
+    }
+
+    pub mod animator {
+        pub const IDLE_DURATION: f32 = 0.5;
+        pub const JUMP_DURATION: f32 = 0.5;
+        pub const MOVE_DURATION: f32 = 0.5;
+        pub const DEATH_DURATION: f32 = 0.5;
+        pub const MELEE_ATTACK_DURATION: f32 = 0.8;
+    }
+}
+
+mod bat {
+    pub const MAX_HEALTH: f32 = 1000.0;
+    pub const VIEW_DISTANCE: f32 = 300.0;
+    pub const MOVE_SPEED_RANGE: (f32, f32) = (60.0, 80.0);
+    pub const HEALING_SPEED_RANGE: (f32, f32) = (80.0, 100.0);
+    pub const HEALING_DURATION_RANGE: (f32, f32) = (4.0, 5.0);
+    pub const HEALING_COOLDOWN_RANGE: (f32, f32) = (4.0, 5.0);
+
+    pub mod weapon {
+        pub const ATTACK_DURATION: f32 = 0.2;
+        pub const ATTACK_COOLDOWN: f32 = 0.1;
+        pub const DAMAGE: f32 = 500.0;
+    }
+
+    pub mod animator {
+        pub const WAVE_DURATION: f32 = 0.25;
+        pub const SLEEP_DURATION: f32 = 1.0;
+        pub const DEATH_DURATION: f32 = 0.5;
+        pub const MELEE_ATTACK_DURATION: f32 = 0.25;
+    }
+}
+
+mod rat_king {
+    pub const MAX_HEALTH: f32 = 10000.0;
+    pub const VIEW_DISTANCE: f32 = 300.0;
+    pub const MOVE_SPEED: f32 = 50.0;
+
+    pub mod dashing {
+        pub const SPEED: f32 = 300.0;
+        pub const DURATION: f32 = 0.5;
+        pub const COOLDOWN: f32 = 5.0;
+    }
+
+    pub mod floor_weapon {
+        pub const ATTACK_DURATION: f32 = 0.4;
+        pub const ATTACK_COOLDOWN: f32 = 0.2;
+        pub const DAMAGE: f32 = 200.0;
+    }
+
+    pub mod roll_weapon {
+        pub const ATTACK_COOLDOWN: f32 = 3.0;
+        pub const DAMAGE: f32 = 2000.0;
+    }
+
+    pub mod animator {
+        pub const RISE_DURATION: f32 = 0.6;
+        pub const IDLE_DURATION: f32 = 0.5;
+        pub const MOVE_DURATION: f32 = 0.5;
+        pub const MELEE_ATTACK_DURATION: f32 = 0.6;
+        pub const ROLL_DURATION: f32 = 0.3;
+        pub const DEATH_DURATION: f32 = 1.2;
+    }
+}
+
+mod rat_nest {
+    pub const MAX_HEALTH: f32 = 20000.0;
+
+    pub mod spawner {
+        pub const SPAWN_PERIOD: f32 = 5.0;
+        pub const N_ALIVE_MAX: u32 = 3;
+        pub const SPAWN_RANGE_X: f32 = 50.0;
+    }
+
+    pub mod animator {
+        pub const IDLE_DURATION: f32 = 1.0;
+        pub const DEATH_DURATION: f32 = 0.8;
+    }
+}
+
+mod torch {
+    pub mod animator {
+        pub const BURN_DURATION: f32 = 0.5;
+    }
+
+    pub mod light {
+        pub const Y_OFFSET: f32 = 0.0;
+        pub const RGBA: [f32; 4] = [7.0, 1.5, 0.5, 1.0];
+        pub const ATTENUATION: [f32; 3] = [1.0, 0.0, 0.0025];
+    }
+}
+
 pub fn create_default_sprite_atlas() -> SpriteAtlas {
     SpriteAtlas::new(
         "./assets/sprites/atlas.json",
@@ -23,6 +169,10 @@ pub fn create_default_glyph_atlas() -> GlyphAtlas {
     )
 }
 
+pub fn create_default_main_menu_ui() -> UI {
+    UI::new("./assets/ui/main_menu.json")
+}
+
 pub fn create_default_game_over_ui() -> UI {
     UI::new("./assets/ui/game_over.json")
 }
@@ -35,12 +185,9 @@ pub fn create_player(
     position: Vec2<f32>,
     sprite_atlas: &SpriteAtlas,
 ) -> Entity {
-    let max_health = 20000.0;
-    let max_stamina = 80000.0;
-    let stamina_regen = 5000.0;
-    let move_speed = 100.0;
-    let weapon_damage = 5000.0;
-    let stamina = Stamina::new(max_stamina, stamina_regen);
+    use player::*;
+
+    let stamina = Stamina::new(stamina::MAX, stamina::REGEN);
     let collider =
         Rect::from_bot_center(Vec2::zeros(), Vec2::new(20.0, 40.0));
     let weapon_collider = Rect::from_right_center(
@@ -50,22 +197,27 @@ pub fn create_player(
 
     let weapons = vec![Weapon::new(
         weapon_collider,
-        0.1,
-        0.3,
-        weapon_damage,
-        10000.0,
+        weapon::ATTACK_DURATION,
+        weapon::ATTACK_COOLDOWN,
+        weapon::DAMAGE,
+        weapon::STAMINA_COST,
     )];
-    let dashing = Dashing::new(200.0, 0.5, 0.3, 15000.0);
+    let dashing = Dashing::new(
+        dashing::SPEED,
+        dashing::DURATION,
+        dashing::COOLDOWN,
+        dashing::STAMINA_COST,
+    );
 
     let light = Light {
-        position: collider.get_top_center().add_y(16.0),
-        color: Color::new(3.0, 3.0, 3.0, 1.0),
-        attenuation: [1.0, 0.04, 0.005],
+        position: collider.get_top_center().add_y(light::Y_OFFSET),
+        color: Color::from_slice(&light::RGBA),
+        attenuation: light::ATTENUATION,
     };
     let mut animator = Animator::new(AnimatedSprite::new(
         sprite_atlas,
         "knight_idle",
-        1.2,
+        animator::IDLE_DURATION,
         Repeat,
         BotCenter,
     ));
@@ -74,7 +226,7 @@ pub fn create_player(
         AnimatedSprite::new(
             sprite_atlas,
             "knight_idle",
-            1.2,
+            animator::IDLE_DURATION,
             Repeat,
             BotCenter,
         ),
@@ -84,7 +236,7 @@ pub fn create_player(
         AnimatedSprite::new(
             sprite_atlas,
             "knight_run",
-            0.8,
+            animator::RUN_DURATION,
             Repeat,
             BotCenter,
         ),
@@ -94,7 +246,7 @@ pub fn create_player(
         AnimatedSprite::new(
             sprite_atlas,
             "knight_slide",
-            0.5,
+            animator::SLIDE_DURATION,
             Once,
             BotCenter,
         ),
@@ -104,7 +256,7 @@ pub fn create_player(
         AnimatedSprite::new(
             sprite_atlas,
             "knight_climb",
-            1.0,
+            animator::CLIMB_DURATION,
             Repeat,
             BotCenter,
         ),
@@ -114,7 +266,7 @@ pub fn create_player(
         AnimatedSprite::new(
             sprite_atlas,
             "knight_attack",
-            0.3,
+            animator::ATTACK_DURATION,
             Once,
             BotCenter,
         ),
@@ -124,9 +276,9 @@ pub fn create_player(
     entity.behaviour = Some(Behaviour::Player);
     entity.apply_gravity = true;
     entity.collider = Some(collider);
-    entity.move_speed = move_speed;
-    entity.max_health = max_health;
-    entity.current_health = max_health;
+    entity.move_speed = player::MOVE_SPEED;
+    entity.max_health = player::MAX_HEALTH;
+    entity.current_health = player::MAX_HEALTH;
     entity.stamina = Some(stamina);
     entity.dashing = Some(dashing);
     entity.weapons = weapons;
@@ -141,11 +293,11 @@ pub fn create_rat(
     position: Vec2<f32>,
     sprite_atlas: &SpriteAtlas,
 ) -> Entity {
-    let jump_period = frand(1.8, 2.2);
-    let jump_speed = frand(280.0, 320.0);
-    let move_speed = frand(30.0, 40.0);
-    let max_health = 1000.0;
-    let view_distance = 300.0;
+    use rat::*;
+
+    let jump_period = frand(JUMP_PERIOD_RANGE.0, JUMP_PERIOD_RANGE.1);
+    let jump_speed = frand(JUMP_SPEED_RANGE.0, JUMP_SPEED_RANGE.1);
+    let move_speed = frand(MOVE_SPEED_RANGE.0, MOVE_SPEED_RANGE.1);
 
     let collider =
         Rect::from_bot_center(Vec2::zeros(), Vec2::new(20.0, 12.0));
@@ -154,16 +306,16 @@ pub fn create_rat(
             collider.get_right_center(),
             Vec2::new(8.0, 12.0),
         ),
-        0.5,
-        0.3,
-        200.0,
+        floor_weapon::ATTACK_DURATION,
+        floor_weapon::ATTACK_COOLDOWN,
+        floor_weapon::DAMAGE,
         0.0,
     );
     let jump_weapon = Weapon::new(
         Rect::from_center(collider.get_center(), Vec2::new(128.0, 12.0)),
-        0.1,
+        jump_weapon::ATTACK_DURATION,
         jump_period,
-        200.0,
+        jump_weapon::DAMAGE,
         0.0,
     );
 
@@ -172,7 +324,7 @@ pub fn create_rat(
     let mut animator = Animator::new(AnimatedSprite::new(
         sprite_atlas,
         "rat_idle",
-        0.5,
+        animator::IDLE_DURATION,
         Repeat,
         BotCenter,
     ));
@@ -181,7 +333,7 @@ pub fn create_rat(
         AnimatedSprite::new(
             sprite_atlas,
             "rat_idle",
-            0.5,
+            animator::IDLE_DURATION,
             Repeat,
             BotCenter,
         ),
@@ -191,7 +343,7 @@ pub fn create_rat(
         AnimatedSprite::new(
             sprite_atlas,
             "rat_jump",
-            0.5,
+            animator::JUMP_DURATION,
             Once,
             BotCenter,
         ),
@@ -201,7 +353,7 @@ pub fn create_rat(
         AnimatedSprite::new(
             sprite_atlas,
             "rat_move",
-            0.5,
+            animator::MOVE_DURATION,
             Repeat,
             BotCenter,
         ),
@@ -211,7 +363,7 @@ pub fn create_rat(
         AnimatedSprite::new(
             sprite_atlas,
             "rat_death",
-            0.5,
+            animator::DEATH_DURATION,
             Once,
             BotCenter,
         ),
@@ -221,7 +373,7 @@ pub fn create_rat(
         AnimatedSprite::new(
             sprite_atlas,
             "rat_melee_attack",
-            0.8,
+            animator::MELEE_ATTACK_DURATION,
             Once,
             BotCenter,
         ),
@@ -231,12 +383,12 @@ pub fn create_rat(
     entity.behaviour = Some(Behaviour::Rat);
     entity.apply_gravity = true;
     entity.collider = Some(collider);
-    entity.view_distance = view_distance;
+    entity.view_distance = VIEW_DISTANCE;
     entity.move_speed = move_speed;
     entity.jump_speed = jump_speed;
     entity.jump_period = jump_period;
-    entity.max_health = max_health;
-    entity.current_health = max_health;
+    entity.max_health = MAX_HEALTH;
+    entity.current_health = MAX_HEALTH;
     entity.weapons = weapons;
     entity.animator = Some(animator);
     entity.effect = ApplyLightEffect as u32;
@@ -248,12 +400,15 @@ pub fn create_bat(
     position: Vec2<f32>,
     sprite_atlas: &SpriteAtlas,
 ) -> Entity {
-    let max_health = 1000.0;
-    let move_speed = frand(60.0, 80.0);
-    let healing_speed = frand(80.0, 100.0);
-    let healing_duration = frand(4.0, 5.0);
-    let healing_cooldown = frand(4.0, 5.0);
-    let view_distance = 300.0;
+    use bat::*;
+
+    let move_speed = frand(MOVE_SPEED_RANGE.0, MOVE_SPEED_RANGE.1);
+    let healing_speed =
+        frand(HEALING_SPEED_RANGE.0, HEALING_SPEED_RANGE.1);
+    let healing_duration =
+        frand(HEALING_DURATION_RANGE.0, HEALING_DURATION_RANGE.1);
+    let healing_cooldown =
+        frand(HEALING_COOLDOWN_RANGE.0, HEALING_COOLDOWN_RANGE.1);
 
     let collider =
         Rect::from_top_center(Vec2::zeros(), Vec2::new(16.0, 16.0));
@@ -262,14 +417,20 @@ pub fn create_bat(
         Vec2::new(4.0, 16.0),
     );
 
-    let weapons = vec![Weapon::new(weapon_collider, 0.2, 0.1, 500.0, 0.0)];
+    let weapons = vec![Weapon::new(
+        weapon_collider,
+        weapon::ATTACK_DURATION,
+        weapon::ATTACK_COOLDOWN,
+        weapon::DAMAGE,
+        0.0,
+    )];
     let healing =
         Healing::new(healing_speed, healing_duration, healing_cooldown);
 
     let mut animator = Animator::new(AnimatedSprite::new(
         sprite_atlas,
         "bat_wave",
-        0.25,
+        animator::WAVE_DURATION,
         Repeat,
         TopCenter,
     ));
@@ -278,7 +439,7 @@ pub fn create_bat(
         AnimatedSprite::new(
             sprite_atlas,
             "bat_wave",
-            0.25,
+            animator::WAVE_DURATION,
             Repeat,
             TopCenter,
         ),
@@ -288,7 +449,7 @@ pub fn create_bat(
         AnimatedSprite::new(
             sprite_atlas,
             "bat_sleep",
-            1.0,
+            animator::SLEEP_DURATION,
             Repeat,
             TopCenter,
         ),
@@ -298,7 +459,7 @@ pub fn create_bat(
         AnimatedSprite::new(
             sprite_atlas,
             "bat_melee_attack",
-            0.25,
+            animator::MELEE_ATTACK_DURATION,
             Once,
             TopCenter,
         ),
@@ -308,7 +469,7 @@ pub fn create_bat(
         AnimatedSprite::new(
             sprite_atlas,
             "bat_death",
-            0.5,
+            animator::DEATH_DURATION,
             Once,
             TopCenter,
         ),
@@ -317,10 +478,10 @@ pub fn create_bat(
     let mut entity = Entity::new(position);
     entity.behaviour = Some(Behaviour::Bat);
     entity.collider = Some(collider);
-    entity.view_distance = view_distance;
+    entity.view_distance = VIEW_DISTANCE;
     entity.move_speed = move_speed;
-    entity.max_health = max_health;
-    entity.current_health = max_health;
+    entity.max_health = MAX_HEALTH;
+    entity.current_health = MAX_HEALTH;
     entity.healing = Some(healing);
     entity.weapons = weapons;
     entity.animator = Some(animator);
@@ -333,10 +494,14 @@ pub fn create_rat_king(
     position: Vec2<f32>,
     sprite_atlas: &SpriteAtlas,
 ) -> Entity {
-    let max_health = 10000.0;
-    let view_distance = 300.0;
-    let move_speed = 50.0;
-    let dashing = Dashing::new(300.0, 0.5, 5.0, 0.0);
+    use rat_king::*;
+
+    let dashing = Dashing::new(
+        dashing::SPEED,
+        dashing::DURATION,
+        dashing::COOLDOWN,
+        0.0,
+    );
 
     let collider =
         Rect::from_bot_center(Vec2::zeros(), Vec2::new(50.0, 40.0));
@@ -345,16 +510,16 @@ pub fn create_rat_king(
             collider.get_center(),
             Vec2::new(30.0, 20.0),
         ),
-        0.4,
-        0.2,
-        200.0,
+        floor_weapon::ATTACK_DURATION,
+        floor_weapon::ATTACK_COOLDOWN,
+        floor_weapon::DAMAGE,
         0.0,
     );
     let roll_weapon = Weapon::new(
         Rect::from_center(collider.get_center(), Vec2::new(128.0, 12.0)),
         0.0,
-        3.0,
-        2000.0,
+        roll_weapon::ATTACK_COOLDOWN,
+        roll_weapon::DAMAGE,
         0.0,
     );
     let weapons = vec![floor_weapon, roll_weapon];
@@ -362,7 +527,7 @@ pub fn create_rat_king(
     let mut animator = Animator::new(AnimatedSprite::new(
         sprite_atlas,
         "rat_king_rise",
-        0.6,
+        animator::RISE_DURATION,
         Once,
         BotCenter,
     ));
@@ -371,7 +536,7 @@ pub fn create_rat_king(
         AnimatedSprite::new(
             sprite_atlas,
             "rat_king_rise",
-            0.6,
+            animator::RISE_DURATION,
             Once,
             BotCenter,
         ),
@@ -381,7 +546,7 @@ pub fn create_rat_king(
         AnimatedSprite::new(
             sprite_atlas,
             "rat_king_idle",
-            0.5,
+            animator::IDLE_DURATION,
             Repeat,
             BotCenter,
         ),
@@ -391,7 +556,7 @@ pub fn create_rat_king(
         AnimatedSprite::new(
             sprite_atlas,
             "rat_king_move",
-            0.5,
+            animator::MOVE_DURATION,
             Repeat,
             BotCenter,
         ),
@@ -401,7 +566,7 @@ pub fn create_rat_king(
         AnimatedSprite::new(
             sprite_atlas,
             "rat_king_melee_attack",
-            0.6,
+            animator::MELEE_ATTACK_DURATION,
             Once,
             BotCenter,
         ),
@@ -411,7 +576,7 @@ pub fn create_rat_king(
         AnimatedSprite::new(
             sprite_atlas,
             "rat_king_roll",
-            0.3,
+            animator::ROLL_DURATION,
             Repeat,
             BotCenter,
         ),
@@ -421,7 +586,7 @@ pub fn create_rat_king(
         AnimatedSprite::new(
             sprite_atlas,
             "rat_king_death",
-            1.2,
+            animator::DEATH_DURATION,
             Once,
             BotCenter,
         ),
@@ -431,11 +596,11 @@ pub fn create_rat_king(
     entity.behaviour = Some(Behaviour::RatKing);
     entity.apply_gravity = true;
     entity.collider = Some(collider);
-    entity.view_distance = view_distance;
-    entity.move_speed = move_speed;
+    entity.view_distance = VIEW_DISTANCE;
+    entity.move_speed = MOVE_SPEED;
     entity.dashing = Some(dashing);
-    entity.max_health = max_health;
-    entity.current_health = max_health;
+    entity.max_health = MAX_HEALTH;
+    entity.current_health = MAX_HEALTH;
     entity.knockback_resist = 1.0;
     entity.weapons = weapons;
     entity.animator = Some(animator);
@@ -448,15 +613,23 @@ pub fn create_rat_nest(
     position: Vec2<f32>,
     sprite_atlas: &SpriteAtlas,
 ) -> Entity {
-    let max_health = 20000.0;
+    use rat_nest::*;
+
     let collider =
         Rect::from_bot_center(Vec2::zeros(), Vec2::new(60.0, 30.0));
-    let spawner = Spawner::new(5.0, 9999, 3, Behaviour::Rat, 50.0, 0.0);
+    let spawner = Spawner::new(
+        spawner::SPAWN_PERIOD,
+        9999,
+        spawner::N_ALIVE_MAX,
+        Behaviour::Rat,
+        spawner::SPAWN_RANGE_X,
+        0.0,
+    );
 
     let mut animator = Animator::new(AnimatedSprite::new(
         sprite_atlas,
         "rat_nest_idle",
-        1.0,
+        animator::IDLE_DURATION,
         Repeat,
         TopCenter,
     ));
@@ -465,7 +638,7 @@ pub fn create_rat_nest(
         AnimatedSprite::new(
             sprite_atlas,
             "rat_nest_idle",
-            1.0,
+            animator::IDLE_DURATION,
             Repeat,
             BotCenter,
         ),
@@ -475,7 +648,7 @@ pub fn create_rat_nest(
         AnimatedSprite::new(
             sprite_atlas,
             "rat_nest_death",
-            0.8,
+            animator::DEATH_DURATION,
             Once,
             BotCenter,
         ),
@@ -485,8 +658,8 @@ pub fn create_rat_nest(
     entity.behaviour = Some(Behaviour::RatNest);
     entity.apply_gravity = true;
     entity.collider = Some(collider);
-    entity.max_health = max_health;
-    entity.current_health = max_health;
+    entity.max_health = MAX_HEALTH;
+    entity.current_health = MAX_HEALTH;
     entity.knockback_resist = 1.0;
     entity.animator = Some(animator);
     entity.spawner = Some(spawner);
@@ -499,17 +672,19 @@ pub fn create_torch(
     position: Vec2<f32>,
     sprite_atlas: &SpriteAtlas,
 ) -> Entity {
+    use torch::*;
+
     let animator = Animator::new(AnimatedSprite::new(
         sprite_atlas,
         "torch_burn",
-        0.5,
+        animator::BURN_DURATION,
         Repeat,
         TopCenter,
     ));
     let light = Light {
-        position,
-        color: Color::new(7.0, 1.5, 0.0, 1.0),
-        attenuation: [1.0, 0.0, 0.0025],
+        position: position.add_y(light::Y_OFFSET),
+        color: Color::from_slice(&light::RGBA),
+        attenuation: light::ATTENUATION,
     };
 
     let mut entity = Entity::new(position);
