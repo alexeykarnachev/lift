@@ -91,8 +91,8 @@ impl World {
             Play => {
                 self.update_play_ui(input);
                 self.update_attacks(dt);
-                self.update_enemies(dt);
                 self.update_player(dt, input);
+                self.update_enemies(dt);
                 self.update_lights(dt);
                 // self.update_free_camera(input);
                 self.update_player_camera(input);
@@ -194,7 +194,7 @@ impl World {
                             if enemy.check_if_can_reach_by_weapon(
                                 player_collider,
                             ) {
-                                self.attacks.push(enemy.force_attack());
+                                enemy.force_attack();
                                 enemy.state = Attacking;
                             } else {
                                 enemy.state = Running;
@@ -223,7 +223,7 @@ impl World {
                         } else if enemy
                             .check_if_can_reach_by_weapon(player_collider)
                         {
-                            self.attacks.push(enemy.force_attack());
+                            enemy.force_attack();
                             enemy.state = Attacking;
                         } else if to_player_orientation {
                             enemy.immediate_step(Vec2::right(), dt)
@@ -243,10 +243,11 @@ impl World {
 
                         if enemy.is_on_floor {
                             enemy.state = Idle;
-                        } else if enemy
-                            .check_if_can_reach_by_weapon(player_collider)
+                        } else if enemy_collider
+                            .collide_with_rect(player_collider)
+                            && enemy.check_if_weapon_ready()
                         {
-                            self.attacks.push(enemy.force_attack());
+                            enemy.force_attack();
                         }
                     }
                     Falling => {
@@ -288,8 +289,7 @@ impl World {
                                 if enemy.check_if_can_reach_by_weapon(
                                     player_collider,
                                 ) {
-                                    self.attacks
-                                        .push(enemy.force_attack());
+                                    enemy.force_attack();
                                     enemy.state = Attacking;
                                 } else {
                                     enemy.state = Running;
@@ -315,7 +315,7 @@ impl World {
                             } else if enemy.check_if_can_reach_by_weapon(
                                 player_collider,
                             ) {
-                                self.attacks.push(enemy.force_attack());
+                                enemy.force_attack();
                                 enemy.state = Attacking;
                             } else {
                                 enemy.immediate_step(
@@ -395,7 +395,7 @@ impl World {
                             if enemy.check_if_can_reach_by_weapon(
                                 player_collider,
                             ) {
-                                self.attacks.push(enemy.force_attack());
+                                enemy.force_attack();
                                 enemy.state = Attacking;
                             } else {
                                 enemy.state = Running;
@@ -419,7 +419,7 @@ impl World {
                         } else if enemy
                             .check_if_can_reach_by_weapon(player_collider)
                         {
-                            self.attacks.push(enemy.force_attack());
+                            enemy.force_attack();
                             enemy.state = Attacking;
                         } else if to_player_orientation {
                             enemy.immediate_step(Vec2::right(), dt)
@@ -437,7 +437,7 @@ impl World {
                             .collide_with_rect(player_collider)
                             && enemy.check_if_weapon_ready()
                         {
-                            self.attacks.push(enemy.force_attack());
+                            enemy.force_attack();
                         }
                     }
                     Attacking => {
@@ -463,6 +463,7 @@ impl World {
                 self.gravity,
                 self.friction,
                 &self.level.colliders,
+                &mut self.attacks,
                 dt,
             );
         }
@@ -502,7 +503,7 @@ impl World {
                     && player.check_if_weapon_ready()
                     && player.check_if_enough_stamina_for_attack()
                 {
-                    self.attacks.push(player.force_attack());
+                    player.force_attack();
                     player.state = Attacking;
                 } else if (is_down_action || is_up_action)
                     && player.is_on_stair
@@ -521,7 +522,7 @@ impl World {
                     && player.check_if_weapon_ready()
                     && player.check_if_enough_stamina_for_attack()
                 {
-                    self.attacks.push(player.force_attack());
+                    player.force_attack();
                     player.state = Attacking;
                 } else {
                     if is_left_action || is_right_action {
@@ -608,6 +609,7 @@ impl World {
             self.gravity,
             self.friction,
             &self.level.colliders,
+            &mut self.attacks,
             dt,
         );
     }
@@ -668,6 +670,7 @@ impl World {
                 self.gravity,
                 self.friction,
                 &self.level.colliders,
+                &mut self.attacks,
                 dt,
             )
         }

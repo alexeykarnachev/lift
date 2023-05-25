@@ -210,22 +210,6 @@ impl Entity {
         self.last_received_damage_time = self.time;
     }
 
-    pub fn try_receive_bullet_damage(&mut self, bullet: &Bullet) -> bool {
-        if self.check_if_dashing() {
-            return false;
-        }
-
-        let bullet_collider = bullet.get_collider();
-        if let Some(self_collider) = self.get_collider() {
-            if self_collider.collide_with_rect(bullet_collider) {
-                self.receive_damage(bullet.damage);
-                return true;
-            }
-        }
-
-        false
-    }
-
     pub fn collide_with_attack(&self, attack: &Attack) -> bool {
         if self.check_if_dashing() {
             return false;
@@ -270,11 +254,11 @@ impl Entity {
     }
 
     pub fn force_start_healing(&mut self) {
-        self.healing.as_mut().unwrap().force_start();
+        self.healing.as_mut().unwrap().timer.force_start();
     }
 
     pub fn force_stop_healing(&mut self) {
-        self.healing.as_mut().unwrap().force_stop();
+        self.healing.as_mut().unwrap().timer.force_stop();
     }
 
     pub fn force_start_dashing(&mut self) {
@@ -285,24 +269,15 @@ impl Entity {
         }
     }
 
-    pub fn force_attack(&mut self) -> Attack {
+    pub fn force_attack(&mut self) {
         use Orientation::*;
 
         let weapon = &mut self.weapons[self.weapon_idx];
-        weapon.last_attack_time = self.time;
         let collider = weapon.get_collider(self.orientation);
-
+        weapon.timer.force_start();
         if let Some(stamina) = self.stamina.as_mut() {
             stamina.sub(weapon.stamina_cost);
         }
-
-        Attack::new(
-            self.position,
-            collider,
-            weapon.damage,
-            weapon.attack_duration,
-            self.check_if_player(),
-        )
     }
 
     pub fn check_if_player(&self) -> bool {
@@ -317,11 +292,7 @@ impl Entity {
     }
 
     pub fn check_if_attacking(&self) -> bool {
-        self.weapons[self.weapon_idx].is_attacking(self.time)
-    }
-
-    pub fn check_if_cooling_down(&self) -> bool {
-        self.weapons[self.weapon_idx].is_cooling_down(self.time)
+        self.weapons[self.weapon_idx].timer.check_if_started()
     }
 
     pub fn check_if_dashing(&self) -> bool {
@@ -334,7 +305,7 @@ impl Entity {
 
     pub fn check_if_healing(&self) -> bool {
         if let Some(healing) = self.healing {
-            healing.is_started
+            healing.timer.check_if_started()
         } else {
             false
         }
@@ -369,7 +340,7 @@ impl Entity {
     }
 
     pub fn check_if_weapon_ready(&self) -> bool {
-        !self.check_if_attacking() && !self.check_if_cooling_down()
+        self.weapons[self.weapon_idx].timer.check_if_ready()
     }
 
     pub fn check_if_dashing_ready(&self) -> bool {
@@ -382,7 +353,7 @@ impl Entity {
 
     pub fn check_if_healing_ready(&self) -> bool {
         if let Some(healing) = self.healing {
-            self.healing.as_ref().unwrap().check_if_can_start()
+            self.healing.as_ref().unwrap().timer.check_if_ready()
         } else {
             false
         }
@@ -477,6 +448,20 @@ impl Entity {
         }
     }
 
+    fn update_weapons(&mut self, dt: f32, attacks: &mut Vec<Attack>) {
+        let is_player = self.check_if_player();
+        for weapon in self.weapons.iter_mut() {
+            if let Some(attack) = weapon.update(
+                dt,
+                self.position,
+                self.orientation,
+                is_player,
+            ) {
+                attacks.push(attack);
+            }
+        }
+    }
+
     fn update_dashing(&mut self, dt: f32) {
         use Orientation::*;
 
@@ -534,14 +519,19 @@ impl Entity {
         gravity: f32,
         friction: f32,
         colliders: &Vec<Collider>,
+        attacks: &mut Vec<Attack>,
         dt: f32,
     ) {
         self.time += dt;
         self.update_kinematic(gravity, friction, colliders, dt);
-        self.update_dashing(dt);
-        self.update_healing(dt);
-        self.update_stamina(dt);
         self.update_animator(dt);
+
+        if self.state != State::Dead {
+            self.update_weapons(dt, attacks);
+            self.update_dashing(dt);
+            self.update_healing(dt);
+            self.update_stamina(dt);
+        }
     }
 
     pub fn play_animation(&mut self, name: &'static str) {
@@ -621,15 +611,24 @@ impl AbilityTimer {
         self.state_time = 0.0;
     }
 
-    pub fn update(&mut self, dt: f32) {
+    pub fn force_stop(&mut self) {
+        if self.state == AbilityState::Action {
+            self.state = AbilityState::Recovery;
+            self.state_time = 0.0;
+        }
+    }
+
+    pub fn update(&mut self, dt: f32) -> bool {
         use AbilityState::*;
 
+        let mut is_action_started = false;
         self.state_time += dt;
         match self.state {
             Anticipation => {
                 if self.state_time >= self.anticipation_time {
                     self.state_time = 0.0;
                     self.state = AbilityState::Action;
+                    is_action_started = true;
                 }
             }
             Action => {
@@ -652,6 +651,8 @@ impl AbilityTimer {
             }
             Ready => {}
         }
+
+        is_action_started
     }
 }
 
@@ -717,91 +718,45 @@ impl Stamina {
 #[derive(Clone, Copy)]
 pub struct Healing {
     speed: f32,
-    duration: f32,
-    cooldown: f32,
-    time_since_start: f32,
-    is_started: bool,
+    timer: AbilityTimer,
 }
 
 impl Healing {
-    pub fn new(speed: f32, duration: f32, cooldown: f32) -> Self {
-        Self {
-            speed,
-            duration,
-            cooldown,
-            time_since_start: cooldown + duration,
-            is_started: false,
-        }
-    }
-
-    pub fn check_if_can_start(&self) -> bool {
-        !self.is_started
-            && (self.time_since_start >= (self.cooldown + self.duration))
-    }
-
-    pub fn force_start(&mut self) {
-        self.is_started = true;
-        self.time_since_start = 0.0;
-    }
-
-    pub fn force_stop(&mut self) {
-        self.is_started = false;
-        self.time_since_start = self.duration;
+    pub fn new(speed: f32, timer: AbilityTimer) -> Self {
+        Self { speed, timer }
     }
 
     pub fn update(&mut self, dt: f32) -> f32 {
-        self.time_since_start += dt;
+        self.timer.update(dt);
+        if self.timer.state == AbilityState::Action {
+            return self.speed * dt;
+        }
 
-        let value = if !self.is_started {
-            0.0
-        } else {
-            if self.time_since_start >= self.duration {
-                self.is_started = false;
-            }
-
-            self.speed * dt
-        };
-
-        value
+        0.0
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct Weapon {
     collider: Rect,
-    pub last_attack_time: f32,
-    pub attack_duration: f32,
-    pub attack_cooldown: f32,
     pub damage: f32,
     pub stamina_cost: f32,
+    pub timer: AbilityTimer,
 }
 
 impl Weapon {
     pub fn new(
         collider: Rect,
-        attack_duration: f32,
-        attack_cooldown: f32,
         damage: f32,
         stamina_cost: f32,
+        timer: AbilityTimer,
     ) -> Self {
         Self {
             collider,
-            last_attack_time: -(attack_duration + attack_cooldown),
-            attack_duration,
-            attack_cooldown,
             damage,
             stamina_cost,
+            timer,
         }
-    }
-
-    pub fn is_attacking(&self, time: f32) -> bool {
-        (time - self.last_attack_time) < self.attack_duration
-    }
-
-    pub fn is_cooling_down(&self, time: f32) -> bool {
-        !self.is_attacking(time)
-            && (time - self.last_attack_time)
-                < self.attack_duration + self.attack_cooldown
     }
 
     pub fn get_collider(&self, orientation: Orientation) -> Rect {
@@ -815,36 +770,29 @@ impl Weapon {
             Right => self.collider,
         }
     }
-}
 
-#[derive(Clone, Copy)]
-pub struct Bullet {
-    pub position: Vec2<f32>,
-    collider: Rect,
-    pub velocity: Vec2<f32>,
-    pub damage: f32,
-    pub is_player_friendly: bool,
-}
-
-impl Bullet {
-    pub fn new(
+    pub fn update(
+        &mut self,
+        dt: f32,
         position: Vec2<f32>,
-        collider: Rect,
-        velocity: Vec2<f32>,
-        damage: f32,
-        is_player_friendly: bool,
-    ) -> Self {
-        Self {
-            position,
-            collider,
-            velocity,
-            damage,
-            is_player_friendly,
-        }
-    }
+        orientation: Orientation,
+        is_player: bool,
+    ) -> Option<Attack> {
+        let is_action_started = self.timer.update(dt);
 
-    pub fn get_collider(&self) -> Rect {
-        self.collider.with_center(self.position)
+        if self.timer.state == AbilityState::Action && is_action_started {
+            let attack = Attack::new(
+                position,
+                self.get_collider(orientation),
+                self.damage,
+                self.timer.anticipation_time,
+                is_player,
+            );
+
+            return Some(attack);
+        }
+
+        None
     }
 }
 

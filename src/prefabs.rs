@@ -18,8 +18,8 @@ mod player {
     }
 
     pub mod weapon {
-        pub const ATTACK_DURATION: f32 = 0.1;
-        pub const ATTACK_COOLDOWN: f32 = 0.3;
+        pub const ANTICIPATION_TIME: f32 = 0.1;
+        pub const ACTION_TIME: f32 = 0.3;
         pub const DAMAGE: f32 = 5000.0;
         pub const STAMINA_COST: f32 = 10000.0;
     }
@@ -54,13 +54,13 @@ mod rat {
     pub const JUMP_SPEED_RANGE: (f32, f32) = (280.0, 320.0);
 
     pub mod floor_weapon {
-        pub const ATTACK_DURATION: f32 = 0.5;
-        pub const ATTACK_COOLDOWN: f32 = 0.3;
+        pub const ANTICIPATION_TIME: f32 = 0.3;
+        pub const ACTION_TIME: f32 = 0.3;
         pub const DAMAGE: f32 = 200.0;
     }
 
     pub mod jump_weapon {
-        pub const ATTACK_DURATION: f32 = 0.1;
+        pub const COOLDOWN_TIME: f32 = 2.0;
         pub const DAMAGE: f32 = 200.0;
     }
 
@@ -69,7 +69,7 @@ mod rat {
         pub const JUMP_DURATION: f32 = 0.5;
         pub const MOVE_DURATION: f32 = 0.5;
         pub const DEATH_DURATION: f32 = 0.5;
-        pub const MELEE_ATTACK_DURATION: f32 = 0.8;
+        pub const MELEE_ATTACK_DURATION: f32 = 0.6;
     }
 }
 
@@ -78,12 +78,12 @@ mod bat {
     pub const VIEW_DISTANCE: f32 = 300.0;
     pub const MOVE_SPEED_RANGE: (f32, f32) = (60.0, 80.0);
     pub const HEALING_SPEED_RANGE: (f32, f32) = (80.0, 100.0);
-    pub const HEALING_DURATION_RANGE: (f32, f32) = (4.0, 5.0);
-    pub const HEALING_COOLDOWN_RANGE: (f32, f32) = (4.0, 5.0);
+    pub const HEALING_DURATION_TIME_RANGE: (f32, f32) = (4.0, 5.0);
+    pub const HEALING_COOLDOWN_TIME_RANGE: (f32, f32) = (4.0, 5.0);
 
     pub mod weapon {
-        pub const ATTACK_DURATION: f32 = 0.2;
-        pub const ATTACK_COOLDOWN: f32 = 0.1;
+        pub const ANTICIPATION_TIME: f32 = 0.2;
+        pub const ACTION_TIME: f32 = 0.1;
         pub const DAMAGE: f32 = 500.0;
     }
 
@@ -108,13 +108,13 @@ mod rat_king {
     }
 
     pub mod floor_weapon {
-        pub const ATTACK_DURATION: f32 = 0.4;
-        pub const ATTACK_COOLDOWN: f32 = 0.2;
+        pub const ANTICIPATION_TIME: f32 = 0.2;
+        pub const ACTION_TIME: f32 = 0.4;
         pub const DAMAGE: f32 = 200.0;
     }
 
     pub mod roll_weapon {
-        pub const ATTACK_COOLDOWN: f32 = 3.0;
+        pub const COOLDOWN_TIME: f32 = 3.0;
         pub const DAMAGE: f32 = 2000.0;
     }
 
@@ -198,10 +198,14 @@ pub fn create_player(
 
     let weapons = vec![Weapon::new(
         weapon_collider,
-        weapon::ATTACK_DURATION,
-        weapon::ATTACK_COOLDOWN,
         weapon::DAMAGE,
         weapon::STAMINA_COST,
+        AbilityTimer::new(
+            weapon::ANTICIPATION_TIME,
+            weapon::ACTION_TIME,
+            0.0,
+            0.0,
+        ),
     )];
     let dashing = Dashing::new(
         dashing::SPEED,
@@ -308,17 +312,23 @@ pub fn create_rat(
         Rect::from_bot_center(Vec2::zeros(), Vec2::new(20.0, 12.0));
     let floor_weapon = Weapon::new(
         Rect::from_center(collider.get_center(), Vec2::new(50.0, 12.0)),
-        floor_weapon::ATTACK_DURATION,
-        floor_weapon::ATTACK_COOLDOWN,
         floor_weapon::DAMAGE,
         0.0,
+        AbilityTimer::new(
+            floor_weapon::ANTICIPATION_TIME,
+            floor_weapon::ACTION_TIME,
+            0.0,
+            0.0,
+        ),
     );
     let jump_weapon = Weapon::new(
-        Rect::from_center(collider.get_center(), Vec2::new(128.0, 12.0)),
-        jump_weapon::ATTACK_DURATION,
-        jump_period,
+        Rect::from_left_center(
+            collider.get_center(),
+            Vec2::new(50.0, 12.0),
+        ),
         jump_weapon::DAMAGE,
         0.0,
+        AbilityTimer::new(0.0, 0.0, 0.0, jump_weapon::COOLDOWN_TIME),
     );
 
     let weapons = vec![floor_weapon, jump_weapon];
@@ -407,10 +417,14 @@ pub fn create_bat(
     let move_speed = frand(MOVE_SPEED_RANGE.0, MOVE_SPEED_RANGE.1);
     let healing_speed =
         frand(HEALING_SPEED_RANGE.0, HEALING_SPEED_RANGE.1);
-    let healing_duration =
-        frand(HEALING_DURATION_RANGE.0, HEALING_DURATION_RANGE.1);
-    let healing_cooldown =
-        frand(HEALING_COOLDOWN_RANGE.0, HEALING_COOLDOWN_RANGE.1);
+    let healing_action_time = frand(
+        HEALING_DURATION_TIME_RANGE.0,
+        HEALING_DURATION_TIME_RANGE.1,
+    );
+    let healing_cooldown_time = frand(
+        HEALING_COOLDOWN_TIME_RANGE.0,
+        HEALING_COOLDOWN_TIME_RANGE.1,
+    );
 
     let collider =
         Rect::from_top_center(Vec2::zeros(), Vec2::new(16.0, 16.0));
@@ -419,13 +433,24 @@ pub fn create_bat(
 
     let weapons = vec![Weapon::new(
         weapon_collider,
-        weapon::ATTACK_DURATION,
-        weapon::ATTACK_COOLDOWN,
         weapon::DAMAGE,
         0.0,
+        AbilityTimer::new(
+            weapon::ANTICIPATION_TIME,
+            weapon::ACTION_TIME,
+            0.0,
+            0.0,
+        ),
     )];
-    let healing =
-        Healing::new(healing_speed, healing_duration, healing_cooldown);
+    let healing = Healing::new(
+        healing_speed,
+        AbilityTimer::new(
+            0.0,
+            healing_action_time,
+            0.0,
+            healing_cooldown_time,
+        ),
+    );
 
     let mut animator = Animator::new(AnimatedSprite::new(
         sprite_atlas,
@@ -511,17 +536,20 @@ pub fn create_rat_king(
         Rect::from_bot_center(Vec2::zeros(), Vec2::new(50.0, 40.0));
     let floor_weapon = Weapon::new(
         Rect::from_center(collider.get_center(), Vec2::new(80.0, 20.0)),
-        floor_weapon::ATTACK_DURATION,
-        floor_weapon::ATTACK_COOLDOWN,
         floor_weapon::DAMAGE,
         0.0,
+        AbilityTimer::new(
+            floor_weapon::ANTICIPATION_TIME,
+            floor_weapon::ACTION_TIME,
+            0.0,
+            0.0,
+        ),
     );
     let roll_weapon = Weapon::new(
-        Rect::from_center(collider.get_center(), Vec2::new(128.0, 12.0)),
-        0.0,
-        roll_weapon::ATTACK_COOLDOWN,
+        Rect::from_center(collider.get_center(), Vec2::new(60.0, 12.0)),
         roll_weapon::DAMAGE,
         0.0,
+        AbilityTimer::new(0.0, 0.0, 0.0, roll_weapon::COOLDOWN_TIME),
     );
     let weapons = vec![floor_weapon, roll_weapon];
 
