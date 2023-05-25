@@ -505,24 +505,24 @@ pub fn draw_bullet(bullet: &Bullet, draw_queue: &mut Vec<DrawPrimitive>) {
 }
 
 pub fn draw_collider(collider: Rect, draw_queue: &mut Vec<DrawPrimitive>) {
-    // draw_queue.push(DrawPrimitive::from_rect(
-    //     collider,
-    //     SpaceType::WorldSpace,
-    //     0.0,
-    //     0,
-    //     Color::new(1.0, 0.0, 0.0, 0.5),
-    // ));
+    draw_queue.push(DrawPrimitive::from_rect(
+        collider,
+        SpaceType::WorldSpace,
+        0.0,
+        0,
+        Color::new(1.0, 0.0, 0.0, 0.5),
+    ));
 }
 
 pub fn draw_attack(attack: &Attack, draw_queue: &mut Vec<DrawPrimitive>) {
-    // let rect = attack.get_collider();
-    // draw_queue.push(DrawPrimitive::from_rect(
-    //     rect,
-    //     SpaceType::WorldSpace,
-    //     0.0,
-    //     0,
-    //     Color::yellow(0.5),
-    // ));
+    let rect = attack.get_collider();
+    draw_queue.push(DrawPrimitive::from_rect(
+        rect,
+        SpaceType::WorldSpace,
+        0.0,
+        0,
+        Color::yellow(0.5),
+    ));
 }
 
 pub fn draw_level(level: &Level, draw_queue: &mut Vec<DrawPrimitive>) {

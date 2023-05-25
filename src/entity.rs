@@ -279,11 +279,10 @@ impl Entity {
 
     pub fn force_start_dashing(&mut self) {
         let dashing = self.dashing.as_mut().unwrap();
+        dashing.timer.force_start();
         if let Some(stamina) = self.stamina.as_mut() {
             stamina.sub(dashing.stamina_cost);
         }
-
-        dashing.force_start();
     }
 
     pub fn force_attack(&mut self) -> Attack {
@@ -327,7 +326,7 @@ impl Entity {
 
     pub fn check_if_dashing(&self) -> bool {
         if let Some(dashing) = self.dashing {
-            dashing.is_started
+            dashing.timer.check_if_started()
         } else {
             false
         }
@@ -375,7 +374,7 @@ impl Entity {
 
     pub fn check_if_dashing_ready(&self) -> bool {
         if let Some(dashing) = self.dashing {
-            self.dashing.as_ref().unwrap().check_if_can_start()
+            self.dashing.as_ref().unwrap().timer.check_if_ready()
         } else {
             false
         }
@@ -554,57 +553,135 @@ impl Entity {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum AbilityState {
+    Ready,
+    Anticipation,
+    Action,
+    Recovery,
+    Cooldown,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct AbilityTimer {
+    state: AbilityState,
+    state_time: f32,
+    anticipation_time: f32,
+    action_time: f32,
+    recovery_time: f32,
+    cooldown_time: f32,
+}
+
+impl AbilityTimer {
+    pub fn new(
+        anticipation_time: f32,
+        action_time: f32,
+        recovery_time: f32,
+        cooldown_time: f32,
+    ) -> Self {
+        Self {
+            state: AbilityState::Ready,
+            state_time: 0.0,
+            anticipation_time,
+            action_time,
+            recovery_time,
+            cooldown_time,
+        }
+    }
+
+    pub fn check_if_ready(&self) -> bool {
+        self.state == AbilityState::Ready
+    }
+
+    pub fn check_if_anticipation(&self) -> bool {
+        self.state == AbilityState::Anticipation
+    }
+
+    pub fn check_if_action(&self) -> bool {
+        self.state == AbilityState::Action
+    }
+
+    pub fn check_if_recovery(&self) -> bool {
+        self.state == AbilityState::Recovery
+    }
+
+    pub fn check_if_cooldown(&self) -> bool {
+        self.state == AbilityState::Cooldown
+    }
+
+    pub fn check_if_started(&self) -> bool {
+        use AbilityState::*;
+        self.state == Anticipation
+            || self.state == Action
+            || self.state == Recovery
+    }
+
+    pub fn force_start(&mut self) {
+        self.state = AbilityState::Anticipation;
+        self.state_time = 0.0;
+    }
+
+    pub fn update(&mut self, dt: f32) {
+        use AbilityState::*;
+
+        self.state_time += dt;
+        match self.state {
+            Anticipation => {
+                if self.state_time >= self.anticipation_time {
+                    self.state_time = 0.0;
+                    self.state = AbilityState::Action;
+                }
+            }
+            Action => {
+                if self.state_time >= self.action_time {
+                    self.state_time = 0.0;
+                    self.state = AbilityState::Recovery;
+                }
+            }
+            Recovery => {
+                if self.state_time >= self.recovery_time {
+                    self.state_time = 0.0;
+                    self.state = AbilityState::Cooldown;
+                }
+            }
+            Cooldown => {
+                if self.state_time >= self.cooldown_time {
+                    self.state_time = 0.0;
+                    self.state = AbilityState::Ready;
+                }
+            }
+            Ready => {}
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct Dashing {
-    speed: f32,
-    duration: f32,
-    cooldown: f32,
-    time_since_start: f32,
-    is_started: bool,
+    pub speed: f32,
     pub stamina_cost: f32,
+    pub timer: AbilityTimer,
 }
 
 impl Dashing {
     pub fn new(
         speed: f32,
-        duration: f32,
-        cooldown: f32,
         stamina_cost: f32,
+        timer: AbilityTimer,
     ) -> Self {
         Self {
             speed,
-            duration,
-            cooldown,
-            time_since_start: cooldown + duration,
-            is_started: false,
             stamina_cost,
+            timer,
         }
     }
 
-    pub fn check_if_can_start(&self) -> bool {
-        !self.is_started
-            && (self.time_since_start >= (self.cooldown + self.duration))
-    }
-
-    pub fn force_start(&mut self) {
-        self.is_started = true;
-        self.time_since_start = 0.0;
-    }
-
     pub fn update(&mut self, dt: f32) -> f32 {
-        self.time_since_start += dt;
+        self.timer.update(dt);
+        if self.timer.state == AbilityState::Action {
+            return self.speed * dt;
+        }
 
-        let value = if !self.is_started {
-            0.0
-        } else {
-            if self.time_since_start >= self.duration {
-                self.is_started = false;
-            }
-
-            self.speed * dt
-        };
-
-        value
+        0.0
     }
 }
 

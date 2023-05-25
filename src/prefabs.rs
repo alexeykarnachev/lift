@@ -26,9 +26,9 @@ mod player {
 
     pub mod dashing {
         pub const SPEED: f32 = 200.0;
-        pub const DURATION: f32 = 0.5;
-        pub const COOLDOWN: f32 = 0.3;
         pub const STAMINA_COST: f32 = 15000.0;
+        pub const ACTION_TIME: f32 = 0.5;
+        pub const COOLDOWN_TIME: f32 = 0.3;
     }
 
     pub mod light {
@@ -102,8 +102,9 @@ mod rat_king {
 
     pub mod dashing {
         pub const SPEED: f32 = 300.0;
-        pub const DURATION: f32 = 0.5;
-        pub const COOLDOWN: f32 = 5.0;
+        pub const ANTICIPATION_TIME: f32 = 0.5;
+        pub const ACTION_TIME: f32 = 0.5;
+        pub const COOLDOWN_TIME: f32 = 5.0;
     }
 
     pub mod floor_weapon {
@@ -204,9 +205,13 @@ pub fn create_player(
     )];
     let dashing = Dashing::new(
         dashing::SPEED,
-        dashing::DURATION,
-        dashing::COOLDOWN,
         dashing::STAMINA_COST,
+        AbilityTimer::new(
+            0.0,
+            dashing::ACTION_TIME,
+            0.0,
+            dashing::COOLDOWN_TIME,
+        ),
     );
 
     let light = Light {
@@ -302,10 +307,7 @@ pub fn create_rat(
     let collider =
         Rect::from_bot_center(Vec2::zeros(), Vec2::new(20.0, 12.0));
     let floor_weapon = Weapon::new(
-        Rect::from_right_center(
-            collider.get_right_center(),
-            Vec2::new(8.0, 12.0),
-        ),
+        Rect::from_center(collider.get_center(), Vec2::new(50.0, 12.0)),
         floor_weapon::ATTACK_DURATION,
         floor_weapon::ATTACK_COOLDOWN,
         floor_weapon::DAMAGE,
@@ -412,10 +414,8 @@ pub fn create_bat(
 
     let collider =
         Rect::from_top_center(Vec2::zeros(), Vec2::new(16.0, 16.0));
-    let weapon_collider = Rect::from_right_center(
-        collider.get_right_center(),
-        Vec2::new(4.0, 16.0),
-    );
+    let weapon_collider =
+        Rect::from_center(collider.get_center(), Vec2::new(20.0, 16.0));
 
     let weapons = vec![Weapon::new(
         weapon_collider,
@@ -498,18 +498,19 @@ pub fn create_rat_king(
 
     let dashing = Dashing::new(
         dashing::SPEED,
-        dashing::DURATION,
-        dashing::COOLDOWN,
         0.0,
+        AbilityTimer::new(
+            dashing::ANTICIPATION_TIME,
+            dashing::ACTION_TIME,
+            0.0,
+            dashing::COOLDOWN_TIME,
+        ),
     );
 
     let collider =
         Rect::from_bot_center(Vec2::zeros(), Vec2::new(50.0, 40.0));
     let floor_weapon = Weapon::new(
-        Rect::from_right_center(
-            collider.get_center(),
-            Vec2::new(30.0, 20.0),
-        ),
+        Rect::from_center(collider.get_center(), Vec2::new(80.0, 20.0)),
         floor_weapon::ATTACK_DURATION,
         floor_weapon::ATTACK_COOLDOWN,
         floor_weapon::DAMAGE,
