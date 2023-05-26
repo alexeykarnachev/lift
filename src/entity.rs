@@ -59,10 +59,6 @@ pub struct Entity {
 
     pub move_speed: f32,
 
-    pub jump_speed: f32,
-    pub jump_period: f32,
-    pub last_jump_time: f32,
-
     pub velocity: Vec2<f32>,
 
     pub max_health: f32,
@@ -72,6 +68,7 @@ pub struct Entity {
 
     pub knockback_resist: f32,
 
+    pub jumping: Option<Jumping>,
     pub dashing: Option<Dashing>,
     pub healing: Option<Healing>,
     pub weapons: Vec<Weapon>,
@@ -103,15 +100,13 @@ impl Entity {
             collider: None,
             view_distance: 0.0,
             move_speed: 0.0,
-            jump_speed: 0.0,
-            jump_period: 0.0,
-            last_jump_time: -f32::INFINITY,
             velocity: Vec2::zeros(),
             max_health: 0.0,
             current_health: 0.0,
             stamina: None,
             knockback_resist: 0.0,
             last_received_damage_time: -f32::INFINITY,
+            jumping: None,
             dashing: None,
             healing: None,
             weapons: vec![],
@@ -159,10 +154,6 @@ impl Entity {
 
     pub fn get_time_since_last_received_damage(&self) -> f32 {
         self.time - self.last_received_damage_time
-    }
-
-    pub fn get_time_since_last_jump(&self) -> f32 {
-        self.time - self.last_jump_time
     }
 
     pub fn get_light(&self) -> Option<Light> {
@@ -238,27 +229,20 @@ impl Entity {
         self.position += step;
     }
 
-    pub fn jump_to(&mut self, target: Vec2<f32>, jump_speed: Option<f32>) {
-        let jump_speed = if let Some(jump_speed) = jump_speed {
-            jump_speed
-        } else {
-            self.jump_speed
-        };
-        self.velocity += (target - self.position).with_len(jump_speed);
-        self.last_jump_time = self.time;
-    }
-
-    pub fn jump_at_angle(&mut self, angle: f32, jump_speed: Option<f32>) {
-        let target = self.position + Vec2::new(angle.cos(), angle.sin());
-        self.jump_to(target, jump_speed);
-    }
-
     pub fn force_start_healing(&mut self) {
         self.healing.as_mut().unwrap().timer.force_start();
     }
 
     pub fn force_stop_healing(&mut self) {
         self.healing.as_mut().unwrap().timer.force_stop();
+    }
+
+    pub fn force_start_jumping(&mut self) {
+        let jumping = self.jumping.as_mut().unwrap();
+        jumping.timer.force_start();
+        if let Some(stamina) = self.stamina.as_mut() {
+            stamina.sub(jumping.stamina_cost);
+        }
     }
 
     pub fn force_start_dashing(&mut self) {
@@ -295,6 +279,14 @@ impl Entity {
         self.weapons[self.weapon_idx].timer.check_if_started()
     }
 
+    pub fn check_if_jumping(&self) -> bool {
+        if let Some(jumping) = self.jumping {
+            jumping.timer.check_if_started()
+        } else {
+            false
+        }
+    }
+
     pub fn check_if_dashing(&self) -> bool {
         if let Some(dashing) = self.dashing {
             dashing.timer.check_if_started()
@@ -322,6 +314,18 @@ impl Entity {
         true
     }
 
+    pub fn check_if_enough_stamina_for_jumping(&self) -> bool {
+        if let (Some(jumping), Some(stamina)) =
+            (self.dashing, self.stamina)
+        {
+            if stamina.current < jumping.stamina_cost {
+                return false;
+            }
+        }
+
+        true
+    }
+
     pub fn check_if_enough_stamina_for_dashing(&self) -> bool {
         if let (Some(dashing), Some(stamina)) =
             (self.dashing, self.stamina)
@@ -334,9 +338,12 @@ impl Entity {
         true
     }
 
-    pub fn check_if_jump_ready(&self) -> bool {
-        self.is_on_floor
-            && self.get_time_since_last_jump() >= self.jump_period
+    pub fn check_if_jumping_ready(&self) -> bool {
+        if let Some(jumping) = self.jumping {
+            return jumping.timer.check_if_ready() && self.is_on_floor;
+        }
+
+        false
     }
 
     pub fn check_if_weapon_ready(&self) -> bool {
@@ -462,15 +469,19 @@ impl Entity {
         }
     }
 
+    fn update_jumping(&mut self, dt: f32) {
+        use Orientation::*;
+
+        if let Some(jumping) = self.jumping.as_mut() {
+            self.velocity += jumping.update(dt, self.orientation);
+        }
+    }
+
     fn update_dashing(&mut self, dt: f32) {
         use Orientation::*;
 
         if let Some(dashing) = self.dashing.as_mut() {
-            let step = dashing.update(dt);
-            self.position.x += match self.orientation {
-                Left => -step,
-                Right => step,
-            }
+            self.position.x += dashing.update(dt, self.orientation);
         }
     }
 
@@ -523,15 +534,17 @@ impl Entity {
         dt: f32,
     ) {
         self.time += dt;
-        self.update_kinematic(gravity, friction, colliders, dt);
-        self.update_animator(dt);
 
         if self.state != State::Dead {
             self.update_weapons(dt, attacks);
+            self.update_jumping(dt);
             self.update_dashing(dt);
             self.update_healing(dt);
             self.update_stamina(dt);
         }
+
+        self.update_kinematic(gravity, friction, colliders, dt);
+        self.update_animator(dt);
     }
 
     pub fn play_animation(&mut self, name: &'static str) {
@@ -657,6 +670,50 @@ impl AbilityTimer {
 }
 
 #[derive(Clone, Copy, Debug)]
+pub struct Jumping {
+    pub speed: f32,
+    pub stamina_cost: f32,
+    pub angle: f32,
+    pub timer: AbilityTimer,
+}
+
+impl Jumping {
+    pub fn new(
+        speed: f32,
+        stamina_cost: f32,
+        angle: f32,
+        timer: AbilityTimer,
+    ) -> Self {
+        Self {
+            speed,
+            stamina_cost,
+            angle,
+            timer,
+        }
+    }
+
+    pub fn update(
+        &mut self,
+        dt: f32,
+        orientation: Orientation,
+    ) -> Vec2<f32> {
+        use Orientation::*;
+
+        let is_action_started = self.timer.update(dt);
+        if is_action_started {
+            let step = Vec2::new(self.angle.cos(), self.angle.sin())
+                .scale(self.speed);
+            return match orientation {
+                Left => step.mul_x(-1.0),
+                Right => step,
+            };
+        }
+
+        Vec2::zeros()
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
 pub struct Dashing {
     pub speed: f32,
     pub stamina_cost: f32,
@@ -676,10 +733,16 @@ impl Dashing {
         }
     }
 
-    pub fn update(&mut self, dt: f32) -> f32 {
+    pub fn update(&mut self, dt: f32, orientation: Orientation) -> f32 {
+        use Orientation::*;
+
         self.timer.update(dt);
         if self.timer.state == AbilityState::Action {
-            return self.speed * dt;
+            let step = self.speed * dt;
+            return match orientation {
+                Left => -step,
+                Right => step,
+            };
         }
 
         0.0
@@ -740,6 +803,7 @@ impl Healing {
 pub struct Weapon {
     collider: Rect,
     pub damage: f32,
+    pub knockback: f32,
     pub stamina_cost: f32,
     pub timer: AbilityTimer,
 }
@@ -748,12 +812,14 @@ impl Weapon {
     pub fn new(
         collider: Rect,
         damage: f32,
+        knockback: f32,
         stamina_cost: f32,
         timer: AbilityTimer,
     ) -> Self {
         Self {
             collider,
             damage,
+            knockback,
             stamina_cost,
             timer,
         }
@@ -780,11 +846,12 @@ impl Weapon {
     ) -> Option<Attack> {
         let is_action_started = self.timer.update(dt);
 
-        if self.timer.state == AbilityState::Action && is_action_started {
+        if is_action_started {
             let attack = Attack::new(
                 position,
                 self.get_collider(orientation),
                 self.damage,
+                self.knockback,
                 self.timer.anticipation_time,
                 is_player,
             );
@@ -801,6 +868,7 @@ pub struct Attack {
     pub position: Vec2<f32>,
     collider: Rect,
     pub damage: f32,
+    pub knockback: f32,
     pub delay: f32,
     pub is_player_friendly: bool,
 }
@@ -810,6 +878,7 @@ impl Attack {
         position: Vec2<f32>,
         collider: Rect,
         damage: f32,
+        knockback: f32,
         delay: f32,
         is_player_friendly: bool,
     ) -> Self {
@@ -817,6 +886,7 @@ impl Attack {
             position,
             collider,
             damage,
+            knockback,
             delay,
             is_player_friendly,
         }

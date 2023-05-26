@@ -43,6 +43,22 @@ impl<T: Copy + Add<Output = T>> Vec2<T> {
     }
 }
 
+impl<T: Copy + Mul<Output = T>> Vec2<T> {
+    pub fn mul_y(self, y: T) -> Self {
+        Self {
+            x: self.x,
+            y: self.y * y,
+        }
+    }
+
+    pub fn mul_x(self, x: T) -> Self {
+        Self {
+            x: self.x * x,
+            y: self.y,
+        }
+    }
+}
+
 impl<T: From<f32>> Vec2<T> {
     pub fn zeros() -> Self {
         Self {

@@ -61,7 +61,8 @@ impl World {
             get_last_modified(game_over_ui.file_path);
 
         Self {
-            state: WorldState::MainMenu,
+            // state: WorldState::MainMenu,
+            state: WorldState::Play,
             time: 0.0,
             gravity: 400.0,
             friction: 0.02,
@@ -210,7 +211,7 @@ impl World {
                             enemy.state = Falling;
                         } else if !can_see_player {
                             enemy.state = Idle;
-                        } else if enemy.check_if_jump_ready()
+                        } else if enemy.check_if_jumping_ready()
                             && dist_to_player.x >= 20.0
                             && dist_to_player.x <= 100.0
                         {
@@ -218,7 +219,7 @@ impl World {
                             if !to_player_orientation {
                                 angle = PI - angle;
                             };
-                            enemy.jump_at_angle(angle, None);
+                            enemy.force_start_jumping();
                             enemy.state = Jumping;
                         } else if enemy
                             .check_if_can_reach_by_weapon(player_collider)
@@ -241,7 +242,8 @@ impl World {
                         enemy.play_animation("jump");
                         enemy.set_weapon(1);
 
-                        if enemy.is_on_floor {
+                        let is_jumping = enemy.check_if_jumping();
+                        if !is_jumping {
                             enemy.state = Idle;
                         } else if enemy_collider
                             .collide_with_rect(player_collider)
@@ -646,8 +648,11 @@ impl World {
                     if enemy.position.x - player.position.x < 0.0 {
                         angle = PI - angle;
                     }
-                    let knockback = 1.0 - enemy.knockback_resist;
-                    enemy.jump_at_angle(angle, Some(120.0 * knockback));
+                    let knockback = (attack.knockback
+                        - enemy.knockback_resist)
+                        .max(0.0);
+                    enemy.velocity =
+                        Vec2::from_angle(angle).scale(knockback);
 
                     if enemy.check_if_dead() {
                         player.score += 100;

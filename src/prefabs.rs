@@ -2,6 +2,7 @@ use crate::entity::*;
 use crate::graphics::*;
 use crate::ui::*;
 use crate::utils::frand;
+use std::f32::consts::PI;
 
 use crate::vec::*;
 use AnimationMode::*;
@@ -11,6 +12,7 @@ use Origin::*;
 mod player {
     pub const MAX_HEALTH: f32 = 20000.0;
     pub const MOVE_SPEED: f32 = 100.0;
+    pub const KNOCKBACK_RESIST: f32 = 9999.0;
 
     pub mod stamina {
         pub const MAX: f32 = 80000.0;
@@ -21,6 +23,7 @@ mod player {
         pub const ANTICIPATION_TIME: f32 = 0.1;
         pub const ACTION_TIME: f32 = 0.3;
         pub const DAMAGE: f32 = 5000.0;
+        pub const KNOCKBACK: f32 = 120.0;
         pub const STAMINA_COST: f32 = 10000.0;
     }
 
@@ -50,8 +53,12 @@ mod rat {
     pub const MAX_HEALTH: f32 = 1000.0;
     pub const VIEW_DISTANCE: f32 = 300.0;
     pub const MOVE_SPEED_RANGE: (f32, f32) = (30.0, 40.0);
-    pub const JUMP_PERIOD_RANGE: (f32, f32) = (1.8, 2.2);
-    pub const JUMP_SPEED_RANGE: (f32, f32) = (280.0, 320.0);
+    pub const KNOCKBACK_RESIST: f32 = 20.0;
+
+    pub mod jumping {
+        pub const COOLDOWN_TIME: f32 = 3.0;
+        pub const SPEED_RANGE: (f32, f32) = (280.0, 320.0);
+    }
 
     pub mod floor_weapon {
         pub const ANTICIPATION_TIME: f32 = 0.3;
@@ -80,6 +87,7 @@ mod bat {
     pub const HEALING_SPEED_RANGE: (f32, f32) = (80.0, 100.0);
     pub const HEALING_DURATION_TIME_RANGE: (f32, f32) = (4.0, 5.0);
     pub const HEALING_COOLDOWN_TIME_RANGE: (f32, f32) = (4.0, 5.0);
+    pub const KNOCKBACK_RESIST: f32 = 0.0;
 
     pub mod weapon {
         pub const ANTICIPATION_TIME: f32 = 0.2;
@@ -99,6 +107,7 @@ mod rat_king {
     pub const MAX_HEALTH: f32 = 10000.0;
     pub const VIEW_DISTANCE: f32 = 300.0;
     pub const MOVE_SPEED: f32 = 50.0;
+    pub const KNOCKBACK_RESIST: f32 = 9999.0;
 
     pub mod dashing {
         pub const SPEED: f32 = 300.0;
@@ -199,6 +208,7 @@ pub fn create_player(
     let weapons = vec![Weapon::new(
         weapon_collider,
         weapon::DAMAGE,
+        weapon::KNOCKBACK,
         weapon::STAMINA_COST,
         AbilityTimer::new(
             weapon::ANTICIPATION_TIME,
@@ -283,6 +293,7 @@ pub fn create_player(
 
     let mut entity = Entity::new(position);
     entity.behaviour = Some(Behaviour::Player);
+    entity.knockback_resist = KNOCKBACK_RESIST;
     entity.apply_gravity = true;
     entity.collider = Some(collider);
     entity.move_speed = player::MOVE_SPEED;
@@ -304,15 +315,21 @@ pub fn create_rat(
 ) -> Entity {
     use rat::*;
 
-    let jump_period = frand(JUMP_PERIOD_RANGE.0, JUMP_PERIOD_RANGE.1);
-    let jump_speed = frand(JUMP_SPEED_RANGE.0, JUMP_SPEED_RANGE.1);
     let move_speed = frand(MOVE_SPEED_RANGE.0, MOVE_SPEED_RANGE.1);
+    let jump_speed = frand(jumping::SPEED_RANGE.0, jumping::SPEED_RANGE.1);
+    let jumping = Jumping::new(
+        jump_speed,
+        0.0,
+        PI * 0.1,
+        AbilityTimer::new(0.0, 0.5, 0.0, jumping::COOLDOWN_TIME),
+    );
 
     let collider =
         Rect::from_bot_center(Vec2::zeros(), Vec2::new(20.0, 12.0));
     let floor_weapon = Weapon::new(
         Rect::from_center(collider.get_center(), Vec2::new(50.0, 12.0)),
         floor_weapon::DAMAGE,
+        0.0,
         0.0,
         AbilityTimer::new(
             floor_weapon::ANTICIPATION_TIME,
@@ -327,6 +344,7 @@ pub fn create_rat(
             Vec2::new(50.0, 12.0),
         ),
         jump_weapon::DAMAGE,
+        0.0,
         0.0,
         AbilityTimer::new(0.0, 0.0, 0.0, jump_weapon::COOLDOWN_TIME),
     );
@@ -397,10 +415,10 @@ pub fn create_rat(
     entity.collider = Some(collider);
     entity.view_distance = VIEW_DISTANCE;
     entity.move_speed = move_speed;
-    entity.jump_speed = jump_speed;
-    entity.jump_period = jump_period;
+    entity.jumping = Some(jumping);
     entity.max_health = MAX_HEALTH;
     entity.current_health = MAX_HEALTH;
+    entity.knockback_resist = KNOCKBACK_RESIST;
     entity.weapons = weapons;
     entity.animator = Some(animator);
     entity.effect = ApplyLightEffect as u32;
@@ -434,6 +452,7 @@ pub fn create_bat(
     let weapons = vec![Weapon::new(
         weapon_collider,
         weapon::DAMAGE,
+        0.0,
         0.0,
         AbilityTimer::new(
             weapon::ANTICIPATION_TIME,
@@ -507,6 +526,7 @@ pub fn create_bat(
     entity.move_speed = move_speed;
     entity.max_health = MAX_HEALTH;
     entity.current_health = MAX_HEALTH;
+    entity.knockback_resist = KNOCKBACK_RESIST;
     entity.healing = Some(healing);
     entity.weapons = weapons;
     entity.animator = Some(animator);
@@ -538,6 +558,7 @@ pub fn create_rat_king(
         Rect::from_center(collider.get_center(), Vec2::new(80.0, 20.0)),
         floor_weapon::DAMAGE,
         0.0,
+        0.0,
         AbilityTimer::new(
             floor_weapon::ANTICIPATION_TIME,
             floor_weapon::ACTION_TIME,
@@ -548,6 +569,7 @@ pub fn create_rat_king(
     let roll_weapon = Weapon::new(
         Rect::from_center(collider.get_center(), Vec2::new(60.0, 12.0)),
         roll_weapon::DAMAGE,
+        0.0,
         0.0,
         AbilityTimer::new(0.0, 0.0, 0.0, roll_weapon::COOLDOWN_TIME),
     );
@@ -630,7 +652,7 @@ pub fn create_rat_king(
     entity.dashing = Some(dashing);
     entity.max_health = MAX_HEALTH;
     entity.current_health = MAX_HEALTH;
-    entity.knockback_resist = 1.0;
+    entity.knockback_resist = KNOCKBACK_RESIST;
     entity.weapons = weapons;
     entity.animator = Some(animator);
     entity.effect = ApplyLightEffect as u32;
@@ -689,7 +711,7 @@ pub fn create_rat_nest(
     entity.collider = Some(collider);
     entity.max_health = MAX_HEALTH;
     entity.current_health = MAX_HEALTH;
-    entity.knockback_resist = 1.0;
+    entity.knockback_resist = 9999.0;
     entity.animator = Some(animator);
     entity.spawner = Some(spawner);
     entity.effect = ApplyLightEffect as u32;
