@@ -9,6 +9,7 @@ use crate::prefabs::create_rat;
 use crate::utils::frand;
 use crate::vec::*;
 use std::collections::HashMap;
+use std::f32::consts::PI;
 use std::fs;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -196,9 +197,17 @@ impl Entity {
         self.weapon_idx = weapon_idx;
     }
 
-    pub fn receive_damage(&mut self, value: f32) {
-        self.current_health -= value;
+    pub fn receive_attack(&mut self, attack: &Attack) {
+        self.current_health -= attack.damage;
         self.last_received_damage_time = self.time;
+
+        let mut angle = PI * 0.15;
+        if self.position.x - attack.position.x < 0.0 {
+            angle = PI - angle;
+        }
+        let knockback =
+            (attack.knockback - self.knockback_resist).max(0.0);
+        self.velocity = Vec2::from_angle(angle).scale(knockback);
     }
 
     pub fn collide_with_attack(&self, attack: &Attack) -> bool {

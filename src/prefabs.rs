@@ -12,7 +12,7 @@ use Origin::*;
 mod player {
     pub const MAX_HEALTH: f32 = 20000.0;
     pub const MOVE_SPEED: f32 = 100.0;
-    pub const KNOCKBACK_RESIST: f32 = 9999.0;
+    pub const KNOCKBACK_RESIST: f32 = 100.0;
 
     pub mod stamina {
         pub const MAX: f32 = 80000.0;
@@ -125,6 +125,7 @@ mod rat_king {
     pub mod roll_weapon {
         pub const COOLDOWN_TIME: f32 = 3.0;
         pub const DAMAGE: f32 = 2000.0;
+        pub const KNOCKBACK: f32 = 400.0;
     }
 
     pub mod animator {
@@ -569,7 +570,7 @@ pub fn create_rat_king(
     let roll_weapon = Weapon::new(
         Rect::from_center(collider.get_center(), Vec2::new(60.0, 12.0)),
         roll_weapon::DAMAGE,
-        0.0,
+        roll_weapon::KNOCKBACK,
         0.0,
         AbilityTimer::new(0.0, 0.0, 0.0, roll_weapon::COOLDOWN_TIME),
     );
