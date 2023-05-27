@@ -202,16 +202,21 @@ impl Entity {
     pub fn receive_attack(&mut self, attack: &Attack) {
         self.current_health -= attack.damage;
         self.last_received_damage_time = self.time;
+        let attack_vec = self.get_collider().unwrap().get_center()
+            - attack.get_collider().get_center();
 
         let mut angle = PI * 0.15;
-        if self.position.x - attack.position.x < 0.0 {
+        if attack_vec.x < 0.0 {
             angle = PI - angle;
         }
         let knockback =
             (attack.knockback - self.knockback_resist).max(0.0);
         self.velocity = Vec2::from_angle(angle).scale(knockback);
 
-        self.particles_emitter.init_blood_splatter(self.collider.unwrap().get_center());
+        let splatter_position = self.collider.unwrap().get_center();
+        let splatter_velocity = attack_vec.norm().scale(100.0);
+        self.particles_emitter
+            .init_blood_splatter(splatter_position, splatter_velocity);
     }
 
     pub fn collide_with_attack(&self, attack: &Attack) -> bool {
@@ -1187,6 +1192,7 @@ struct Particle {
     pub position: Vec2<f32>,
     pub size: f32,
     pub velocity: Vec2<f32>,
+    pub acceleration: Vec2<f32>,
     pub fade_rate: f32,
     pub color: Color,
 }
@@ -1198,6 +1204,7 @@ impl Particle {
         position: Vec2<f32>,
         size: f32,
         velocity: Vec2<f32>,
+        acceleration: Vec2<f32>,
         fade_rate: f32,
         color: Color,
     ) {
@@ -1205,6 +1212,7 @@ impl Particle {
         self.position = position;
         self.size = size;
         self.velocity = velocity;
+        self.acceleration = acceleration;
         self.fade_rate = fade_rate;
         self.color = color;
     }
@@ -1215,6 +1223,7 @@ impl Particle {
             position: Vec2::zeros(),
             size: 0.0,
             velocity: Vec2::zeros(),
+            acceleration: Vec2::zeros(),
             fade_rate: 0.0,
             color: Color::red(0.0),
         }
@@ -1227,6 +1236,7 @@ impl Particle {
     pub fn update(&mut self, dt: f32) {
         if self.check_if_alive() {
             self.ttl -= dt;
+            self.velocity += self.acceleration.scale(dt);
             self.position += self.velocity.scale(dt);
             self.color.a = (self.color.a - self.fade_rate * dt).max(0.0);
         }
@@ -1266,7 +1276,8 @@ pub struct ParticlesEmitter {
     particle_position_range: (f32, f32),
     particle_color: Color,
     particle_fade_rate: f32,
-    particle_speed: f32,
+    particle_velocity: Vec2<f32>,
+    particle_acceleration: Vec2<f32>,
     particle_size: f32,
     particle_ttl: f32,
 
@@ -1288,7 +1299,8 @@ impl ParticlesEmitter {
             particle_position_range: (0.0, 0.0),
             particle_color: Color::red(0.0),
             particle_fade_rate: 0.0,
-            particle_speed: 0.0,
+            particle_velocity: Vec2::zeros(),
+            particle_acceleration: Vec2::zeros(),
             particle_size: 1.0,
             particle_ttl: 0.0,
             particles,
@@ -1306,23 +1318,29 @@ impl ParticlesEmitter {
         self.particle_position_range = (4.0, 16.0);
         self.particle_color = Color::red(1.0);
         self.particle_fade_rate = 2.0;
-        self.particle_speed = 50.0;
+        self.particle_velocity = Vec2::new(0.0, 50.0);
+        self.particle_acceleration = Vec2::new(0.0, 0.0);
         self.particle_size = 2.0;
         self.particle_ttl = 0.2;
     }
 
-    pub fn init_blood_splatter(&mut self, position: Vec2<f32>) {
+    pub fn init_blood_splatter(
+        &mut self,
+        position: Vec2<f32>,
+        velocity: Vec2<f32>,
+    ) {
         self.ttl = 1.0;
         self.position = position;
         self.emit_period = 0.0;
         self.n_to_emit = 8;
         self.n_emit_per_step_range = (8, 8);
-        self.particle_position_range = (16.0, 16.0);
+        self.particle_position_range = (6.0, 6.0);
         self.particle_color = Color::red(1.0);
         self.particle_fade_rate = 1.0;
-        self.particle_speed = 100.0;
+        self.particle_velocity = velocity;
+        self.particle_acceleration = Vec2::new(0.0, -250.0);
         self.particle_size = 2.0;
-        self.particle_ttl = 0.2;
+        self.particle_ttl = 0.5;
     }
 
     pub fn torch(position: Vec2<f32>) -> Self {
@@ -1332,9 +1350,12 @@ impl ParticlesEmitter {
         emitter
     }
 
-    pub fn blood_splatter(position: Vec2<f32>) -> Self {
+    pub fn blood_splatter(
+        position: Vec2<f32>,
+        direction: Vec2<f32>,
+    ) -> Self {
         let mut emitter = Self::new_dead();
-        emitter.init_blood_splatter(position);
+        emitter.init_blood_splatter(position, direction);
 
         emitter
     }
@@ -1380,8 +1401,6 @@ impl ParticlesEmitter {
         }
 
         for _ in 0..n_emit {
-            let velocity = Vec2::new(0.0, 1.0).scale(self.particle_speed);
-
             let idx = if self.n_particles == 0 {
                 0
             } else {
@@ -1403,7 +1422,8 @@ impl ParticlesEmitter {
                 self.particle_ttl,
                 particle_position,
                 self.particle_size,
-                velocity,
+                self.particle_velocity,
+                self.particle_acceleration,
                 self.particle_fade_rate,
                 self.particle_color,
             );

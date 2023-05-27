@@ -1,5 +1,6 @@
 use crate::utils::frand;
 use num_traits::Float;
+use std::f32::consts::PI;
 use std::ops::{
     Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign,
 };
@@ -118,6 +119,12 @@ impl<T: Float> Vec2<T> {
 impl Vec2<f32> {
     pub fn frand(range: (f32, f32)) -> Vec2<f32> {
         Vec2::new(frand(-range.0, range.0), frand(-range.1, range.1))
+    }
+
+    pub fn rnd_on_circle(radius: f32) -> Vec2<f32> {
+        let theta = frand(0.0, 2.0 * PI);
+
+        Vec2::from_angle(theta).scale(radius)
     }
 }
 

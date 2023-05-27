@@ -742,7 +742,8 @@ pub fn create_torch(
     let mut entity = Entity::new(position);
     entity.light = Some(light);
     entity.animator = Some(animator);
-    entity.particles_emitter = ParticlesEmitter::torch(Vec2::new(0.0, 4.0));
+    entity.particles_emitter =
+        ParticlesEmitter::torch(Vec2::new(0.0, 4.0));
 
     entity
 }
