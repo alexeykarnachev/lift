@@ -440,10 +440,8 @@ pub fn draw_entity(entity: &Entity, draw_queue: &mut Vec<DrawPrimitive>) {
         draw_queue.push(primitive);
     };
 
-    if let Some(emitter) = entity.get_particles_emitter() {
-        let primitives = emitter.get_draw_primitives(entity.position);
-        draw_queue.extend_from_slice(&primitives);
-    }
+    let primitives = entity.particles_emitter.get_draw_primitives(entity.position);
+    draw_queue.extend_from_slice(&primitives);
 
     if entity.check_if_dead() {
         return;

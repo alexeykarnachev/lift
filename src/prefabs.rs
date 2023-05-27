@@ -163,10 +163,6 @@ mod torch {
         pub const RGBA: [f32; 4] = [7.0, 1.5, 0.5, 1.0];
         pub const ATTENUATION: [f32; 3] = [1.0, 0.0, 0.0025];
     }
-
-    pub mod particles_emitter {
-        pub const Y_OFFSET: f32 = 4.0;
-    }
 }
 
 pub fn create_default_sprite_atlas() -> SpriteAtlas {
@@ -742,23 +738,11 @@ pub fn create_torch(
         color: Color::from_slice(&light::RGBA),
         attenuation: light::ATTENUATION,
     };
-    let particles_emitter = ParticlesEmitter::new(
-        f32::INFINITY,
-        Vec2::new(0.0, particles_emitter::Y_OFFSET),
-        0.25,
-        (1, 3),
-        (4.0, 16.0),
-        Color::red(1.0),
-        2.0,
-        50.0,
-        2.0,
-        0.2,
-    );
 
     let mut entity = Entity::new(position);
     entity.light = Some(light);
     entity.animator = Some(animator);
-    entity.particles_emitter = Some(particles_emitter);
+    entity.particles_emitter = ParticlesEmitter::torch(Vec2::new(0.0, 4.0));
 
     entity
 }

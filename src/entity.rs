@@ -78,7 +78,7 @@ pub struct Entity {
     pub light: Option<Light>,
     pub animator: Option<Animator>,
     pub spawner: Option<Spawner>,
-    pub particles_emitter: Option<ParticlesEmitter>,
+    pub particles_emitter: ParticlesEmitter,
     pub effect: u32,
 
     pub score: u32,
@@ -116,7 +116,7 @@ impl Entity {
             light: None,
             animator: None,
             spawner: None,
-            particles_emitter: None,
+            particles_emitter: ParticlesEmitter::new_dead(),
             effect: 0,
             score: 0,
             spawner_id: None,
@@ -168,14 +168,6 @@ impl Entity {
         None
     }
 
-    pub fn get_particles_emitter(&self) -> Option<&ParticlesEmitter> {
-        if let Some(emitter) = self.particles_emitter.as_ref() {
-            return Some(emitter);
-        }
-
-        None
-    }
-
     pub fn get_current_animation_cycle(&self) -> f32 {
         self.animator.as_ref().unwrap().get_current_cycle()
     }
@@ -218,6 +210,8 @@ impl Entity {
         let knockback =
             (attack.knockback - self.knockback_resist).max(0.0);
         self.velocity = Vec2::from_angle(angle).scale(knockback);
+
+        self.particles_emitter.init_blood_splatter(self.collider.unwrap().get_center());
     }
 
     pub fn collide_with_attack(&self, attack: &Attack) -> bool {
@@ -545,9 +539,7 @@ impl Entity {
     }
 
     pub fn update_particles_emitter(&mut self, dt: f32) {
-        if let Some(emitter) = self.particles_emitter.as_mut() {
-            emitter.update(dt, self.position);
-        }
+        self.particles_emitter.update(dt, self.position);
     }
 
     pub fn update(
@@ -1268,6 +1260,7 @@ pub struct ParticlesEmitter {
     position: Vec2<f32>,
 
     emit_period: f32,
+    n_to_emit: i32,
     n_emit_per_step_range: (usize, usize),
 
     particle_position_range: (f32, f32),
@@ -1283,57 +1276,107 @@ pub struct ParticlesEmitter {
 }
 
 impl ParticlesEmitter {
-    pub fn new(
-        ttl: f32,
-        position: Vec2<f32>,
-        emit_period: f32,
-        n_emit_per_step_range: (usize, usize),
-        particle_position_range: (f32, f32),
-        particle_color: Color,
-        particle_fade_rate: f32,
-        particle_speed: f32,
-        particle_size: f32,
-        particle_ttl: f32,
-    ) -> Self {
+    pub fn new_dead() -> Self {
         let particles = [Particle::new_dead(); MAX_N_PARTICLES];
         Self {
             time: 0.0,
-            ttl,
-            position,
-            emit_period,
-            n_emit_per_step_range,
-            particle_position_range,
-            particle_color,
-            particle_fade_rate,
-            particle_speed,
-            particle_size,
-            particle_ttl,
+            ttl: 0.0,
+            position: Vec2::zeros(),
+            emit_period: 1.0,
+            n_to_emit: 0,
+            n_emit_per_step_range: (0, 0),
+            particle_position_range: (0.0, 0.0),
+            particle_color: Color::red(0.0),
+            particle_fade_rate: 0.0,
+            particle_speed: 0.0,
+            particle_size: 1.0,
+            particle_ttl: 0.0,
             particles,
             first_particle_idx: 0,
             n_particles: 0,
         }
     }
 
+    pub fn init_torch(&mut self, position: Vec2<f32>) {
+        self.ttl = f32::INFINITY;
+        self.position = position;
+        self.emit_period = 0.25;
+        self.n_to_emit = -1;
+        self.n_emit_per_step_range = (1, 3);
+        self.particle_position_range = (4.0, 16.0);
+        self.particle_color = Color::red(1.0);
+        self.particle_fade_rate = 2.0;
+        self.particle_speed = 50.0;
+        self.particle_size = 2.0;
+        self.particle_ttl = 0.2;
+    }
+
+    pub fn init_blood_splatter(&mut self, position: Vec2<f32>) {
+        self.ttl = 1.0;
+        self.position = position;
+        self.emit_period = 0.0;
+        self.n_to_emit = 8;
+        self.n_emit_per_step_range = (8, 8);
+        self.particle_position_range = (16.0, 16.0);
+        self.particle_color = Color::red(1.0);
+        self.particle_fade_rate = 1.0;
+        self.particle_speed = 100.0;
+        self.particle_size = 2.0;
+        self.particle_ttl = 0.2;
+    }
+
+    pub fn torch(position: Vec2<f32>) -> Self {
+        let mut emitter = Self::new_dead();
+        emitter.init_torch(position);
+
+        emitter
+    }
+
+    pub fn blood_splatter(position: Vec2<f32>) -> Self {
+        let mut emitter = Self::new_dead();
+        emitter.init_blood_splatter(position);
+
+        emitter
+    }
+
     pub fn check_if_alive(&self) -> bool {
-        self.ttl > 0.0
+        self.ttl > 0.0 && (self.n_to_emit == -1 || self.n_to_emit > 0)
     }
 
     pub fn update(&mut self, dt: f32, position: Vec2<f32>) {
-        if !self.check_if_alive() {
-            return;
-        }
-
         self.ttl -= dt;
         self.time += dt;
-        let n_steps = (self.time / self.emit_period) as usize;
-        self.time -= n_steps as f32 * self.emit_period;
 
-        let mut n_emit = 0;
-        for _ in 0..n_steps {
-            n_emit += urand(
-                self.n_emit_per_step_range.0,
-                self.n_emit_per_step_range.1,
-            );
+        let n_emit = if !self.check_if_alive() {
+            0
+        } else if self.emit_period < f32::EPSILON {
+            if self.n_to_emit != -1 {
+                self.n_to_emit
+            } else {
+                panic!("Can't emit particles when the emit_period = 0 and n_to_emit == -1")
+            }
+        } else {
+            let n_steps = (self.time / self.emit_period) as usize;
+            self.time -= n_steps as f32 * self.emit_period;
+            let mut n_emit = 0;
+
+            for _ in 0..n_steps {
+                n_emit += urand(
+                    self.n_emit_per_step_range.0,
+                    self.n_emit_per_step_range.1,
+                ) as i32;
+
+                if self.n_to_emit != -1 && n_emit > self.n_to_emit {
+                    n_emit = self.n_to_emit;
+                    break;
+                }
+            }
+
+            n_emit
+        };
+
+        if self.n_to_emit != -1 {
+            self.n_to_emit -= n_emit;
         }
 
         for _ in 0..n_emit {
@@ -1377,9 +1420,6 @@ impl ParticlesEmitter {
         position: Vec2<f32>,
     ) -> Vec<DrawPrimitive> {
         let mut primitives = Vec::with_capacity(self.n_particles);
-        if !self.check_if_alive() {
-            return primitives;
-        }
 
         for i in 0..self.n_particles {
             let idx = (self.first_particle_idx + i) % MAX_N_PARTICLES;
