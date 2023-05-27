@@ -195,6 +195,10 @@ impl Color {
         Self::new(c, c, c, a)
     }
 
+    pub fn black(a: f32) -> Self {
+        Self::new(0.0, 0.0, 0.0, a)
+    }
+
     pub fn red(a: f32) -> Self {
         Self::new(1.0, 0.0, 0.0, a)
     }
@@ -528,8 +532,8 @@ pub fn draw_text(text: &Text, draw_queue: &mut Vec<DrawPrimitive>) {
 }
 
 pub fn draw_ui(ui: &UI, draw_queue: &mut Vec<DrawPrimitive>) {
-    ui.texts.iter().for_each(|t| draw_text(t, draw_queue));
     ui.rects.iter().for_each(|r| draw_queue.push(*r));
+    ui.texts.iter().for_each(|t| draw_text(t, draw_queue));
 }
 
 #[derive(Copy, Clone, Debug, Sequence)]

@@ -34,6 +34,7 @@ pub struct Element {
     // Rect
     width: Option<f32>,
     height: Option<f32>,
+    aspect: Option<f32>,
     filling: Option<f32>,
 
     #[serde(skip)]
@@ -111,6 +112,7 @@ impl UI {
             input.window_size.x as f32,
             input.window_size.y as f32,
         );
+        let window_aspect = window_size.x / window_size.y;
 
         self.texts.clear();
         self.rects.clear();
@@ -119,7 +121,16 @@ impl UI {
             let origin = Origin::from_str(&element.position.origin);
             let mut position =
                 Vec2::new(element.position.x, element.position.y);
-            position = (position * window_size + window_size).scale(0.5);
+            if position.x <= 1.0 {
+                position.x =
+                    (position.x * window_size.x + window_size.x) * 0.5;
+            }
+            if position.y <= 1.0 {
+                position.y =
+                    (position.y * window_size.y + window_size.y) * 0.5;
+            } else {
+                position.y = window_size.y - position.y;
+            }
 
             let collider;
             match element.type_.as_str() {
@@ -139,13 +150,34 @@ impl UI {
                     self.texts.push(text);
                 }
                 "rect" => {
-                    let mut width = element.width.unwrap();
-                    let height = element.height.unwrap();
+                    let mut width;
+                    let mut height;
+                    if element.aspect.is_none() {
+                        width = element.width.unwrap();
+                        height = element.height.unwrap();
+                    } else if element.height.is_none() {
+                        width = element.width.unwrap();
+                        height = window_aspect * width
+                            / element.aspect.unwrap();
+                    } else if element.width.is_none() {
+                        height = element.height.unwrap();
+                        width = height * element.aspect.unwrap()
+                            / window_aspect;
+                    } else {
+                        panic!("Element's width, height and aspect can't be all set at the same time. One a pair of these three parameters could be set");
+                    }
+
                     if let Some(filling) = element.filling {
                         width *= filling;
                     }
+                    if width <= 1.0 {
+                        width *= window_size.x;
+                    }
+                    if height <= 1.0 {
+                        height *= window_size.y;
+                    }
 
-                    let size = Vec2::new(width, height) * window_size;
+                    let size = Vec2::new(width, height);
                     let rect = Rect::from_origin(origin, position, size);
                     let primitive = DrawPrimitive::from_rect(
                         rect,
@@ -183,23 +215,106 @@ impl UI {
     }
 }
 
+const WINDOW_X: f32 = 10.0;
+const WINDOW_Y: f32 = 10.0;
+const WINDOW_WIDTH: f32 = 500.0;
+const WINDOW_HEIGHT: f32 = 500.0;
+const WINDOW_BORDER_SIZE: f32 = 10.0;
+
+const SKILL_WIDTH: f32 = 50.0;
+const SKILL_HEIGHT: f32 = 50.0;
+const SKILL_PAD_SIZE: f32 = 25.0;
+
 pub fn create_skill_tree_ui() -> UI {
-    let background = Element {
-        id: "background".to_string(),
+    let mut cursor = Vec2::new(WINDOW_X, WINDOW_Y);
+
+    let window = Element {
+        id: "window".to_string(),
         type_: "rect".to_string(),
         is_interactive: false,
         position: Position {
-            origin: "Center".to_string(),
-            x: 0.0,
-            y: 0.0,
+            origin: "TopLeft".to_string(),
+            x: cursor.x,
+            y: cursor.y,
         },
-        width: Some(0.5),
-        height: Some(0.5),
+        width: Some(WINDOW_WIDTH),
+        height: Some(WINDOW_HEIGHT),
+        color: Color::gray(0.1, 1.0),
+        ..Default::default()
+    };
+    cursor += Vec2::new(WINDOW_BORDER_SIZE, WINDOW_BORDER_SIZE);
+
+    // Attack line
+    let mut attack_line_cursor = cursor;
+    let attack_line = vec![
+        create_skill_rect("attack_0", &mut attack_line_cursor),
+        create_skill_rect("attack_1", &mut attack_line_cursor),
+        create_skill_rect("attack_2", &mut attack_line_cursor),
+    ];
+    cursor.y += SKILL_HEIGHT + SKILL_PAD_SIZE;
+
+    // Durability line
+    let mut durability_line_cursor = cursor;
+    let durability_line = vec![
+        create_skill_rect("durability_0", &mut durability_line_cursor),
+        create_skill_rect("durability_1", &mut durability_line_cursor),
+        create_skill_rect("durability_2", &mut durability_line_cursor),
+    ];
+    cursor.y += SKILL_HEIGHT + SKILL_PAD_SIZE;
+
+    // Agility line
+    let mut agility_line_cursor = cursor;
+    let agility_line = vec![
+        create_skill_rect("agility_0", &mut agility_line_cursor),
+        create_skill_rect("agility_1", &mut agility_line_cursor),
+        create_skill_rect("agility_2", &mut agility_line_cursor),
+    ];
+    cursor.y += SKILL_HEIGHT + SKILL_PAD_SIZE;
+
+    // Footer
+    let skill_points_text = Element {
+        id: "skill_points_text".to_string(),
+        type_: "text".to_string(),
+        is_interactive: false,
+        position: Position {
+            origin: "BotLeft".to_string(),
+            x: 20.0,
+            y: 500.0,
+        },
+        string: Some("Points: 228".to_string()),
+        font_size: Some(28),
+
         color: Color::gray(0.5, 1.0),
         ..Default::default()
     };
 
-    let elements = vec![background];
+    // let elements = vec![window, attack_0, attack_1, skill_points_text];
+    let mut elements = vec![window];
+    elements.extend_from_slice(&attack_line);
+    elements.extend_from_slice(&durability_line);
+    elements.extend_from_slice(&agility_line);
+    elements.push(skill_points_text);
 
     UI::new(elements)
+}
+
+fn create_skill_rect(name: &str, cursor: &mut Vec2<f32>) -> Element {
+    let element = Element {
+        id: name.to_string(),
+        type_: "rect".to_string(),
+        is_interactive: true,
+        position: Position {
+            origin: "TopLeft".to_string(),
+            x: cursor.x,
+            y: cursor.y,
+        },
+        width: Some(SKILL_WIDTH),
+        height: Some(SKILL_HEIGHT),
+        color: Color::gray(0.3, 1.0),
+        ..Default::default()
+    };
+
+    cursor.x += SKILL_WIDTH + SKILL_PAD_SIZE;
+
+    element
 }
