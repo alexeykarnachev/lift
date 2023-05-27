@@ -22,7 +22,7 @@ mod player {
     pub mod weapon {
         pub const ANTICIPATION_TIME: f32 = 0.1;
         pub const ACTION_TIME: f32 = 0.3;
-        pub const DAMAGE: f32 = 5000.0;
+        pub const DAMAGE: f32 = 500.0;
         pub const KNOCKBACK: f32 = 120.0;
         pub const STAMINA_COST: f32 = 10000.0;
     }

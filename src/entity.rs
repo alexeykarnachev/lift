@@ -116,7 +116,7 @@ impl Entity {
             light: None,
             animator: None,
             spawner: None,
-            particles_emitter: ParticlesEmitter::new_dead(),
+            particles_emitter: ParticlesEmitter::empty(),
             effect: 0,
             score: 0,
             spawner_id: None,
@@ -202,11 +202,9 @@ impl Entity {
     pub fn receive_attack(&mut self, attack: &Attack) {
         self.current_health -= attack.damage;
         self.last_received_damage_time = self.time;
-        let attack_vec = self.get_collider().unwrap().get_center()
-            - attack.get_collider().get_center();
 
         let mut angle = PI * 0.15;
-        if attack_vec.x < 0.0 {
+        if self.position.x - attack.position.x < 0.0 {
             angle = PI - angle;
         }
         let knockback =
@@ -214,7 +212,7 @@ impl Entity {
         self.velocity = Vec2::from_angle(angle).scale(knockback);
 
         let splatter_position = self.collider.unwrap().get_center();
-        let splatter_velocity = attack_vec.norm().scale(100.0);
+        let splatter_velocity = Vec2::from_angle(angle).scale(100.0);
         self.particles_emitter
             .init_blood_splatter(splatter_position, splatter_velocity);
     }
@@ -249,10 +247,13 @@ impl Entity {
 
     pub fn force_start_healing(&mut self) {
         self.healing.as_mut().unwrap().timer.force_start();
+        self.particles_emitter
+            .init_healing(self.collider.unwrap().get_center());
     }
 
     pub fn force_stop_healing(&mut self) {
         self.healing.as_mut().unwrap().timer.force_stop();
+        self.particles_emitter.init_empty();
     }
 
     pub fn force_start_jumping(&mut self) {
@@ -1217,7 +1218,7 @@ impl Particle {
         self.color = color;
     }
 
-    pub fn new_dead() -> Self {
+    pub fn empty() -> Self {
         Self {
             ttl: 0.0,
             position: Vec2::zeros(),
@@ -1287,8 +1288,8 @@ pub struct ParticlesEmitter {
 }
 
 impl ParticlesEmitter {
-    pub fn new_dead() -> Self {
-        let particles = [Particle::new_dead(); MAX_N_PARTICLES];
+    pub fn empty() -> Self {
+        let particles = [Particle::empty(); MAX_N_PARTICLES];
         Self {
             time: 0.0,
             ttl: 0.0,
@@ -1309,13 +1310,17 @@ impl ParticlesEmitter {
         }
     }
 
+    pub fn init_empty(&mut self) {
+        *self = Self::empty();
+    }
+
     pub fn init_torch(&mut self, position: Vec2<f32>) {
         self.ttl = f32::INFINITY;
         self.position = position;
         self.emit_period = 0.25;
         self.n_to_emit = -1;
         self.n_emit_per_step_range = (1, 3);
-        self.particle_position_range = (4.0, 16.0);
+        self.particle_position_range = (4.0, 8.0);
         self.particle_color = Color::red(1.0);
         self.particle_fade_rate = 2.0;
         self.particle_velocity = Vec2::new(0.0, 50.0);
@@ -1343,8 +1348,13 @@ impl ParticlesEmitter {
         self.particle_ttl = 0.5;
     }
 
+    pub fn init_healing(&mut self, position: Vec2<f32>) {
+        self.init_torch(position);
+        self.particle_color = Color::green(1.0);
+    }
+
     pub fn torch(position: Vec2<f32>) -> Self {
-        let mut emitter = Self::new_dead();
+        let mut emitter = Self::empty();
         emitter.init_torch(position);
 
         emitter
@@ -1354,7 +1364,7 @@ impl ParticlesEmitter {
         position: Vec2<f32>,
         direction: Vec2<f32>,
     ) -> Self {
-        let mut emitter = Self::new_dead();
+        let mut emitter = Self::empty();
         emitter.init_blood_splatter(position, direction);
 
         emitter
