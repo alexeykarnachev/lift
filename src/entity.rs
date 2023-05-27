@@ -6,7 +6,7 @@
 use crate::graphics::*;
 use crate::level::Collider;
 use crate::prefabs::create_rat;
-use crate::utils::frand;
+use crate::utils::*;
 use crate::vec::*;
 use std::collections::HashMap;
 use std::f32::consts::PI;
@@ -78,6 +78,7 @@ pub struct Entity {
     pub light: Option<Light>,
     pub animator: Option<Animator>,
     pub spawner: Option<Spawner>,
+    pub particles_emitter: Option<ParticlesEmitter>,
     pub effect: u32,
 
     pub score: u32,
@@ -115,6 +116,7 @@ impl Entity {
             light: None,
             animator: None,
             spawner: None,
+            particles_emitter: None,
             effect: 0,
             score: 0,
             spawner_id: None,
@@ -162,6 +164,14 @@ impl Entity {
             light.position += self.position;
             return Some(light);
         };
+
+        None
+    }
+
+    pub fn get_particles_emitter(&self) -> Option<&ParticlesEmitter> {
+        if let Some(emitter) = self.particles_emitter.as_ref() {
+            return Some(emitter);
+        }
 
         None
     }
@@ -534,6 +544,12 @@ impl Entity {
         None
     }
 
+    pub fn update_particles_emitter(&mut self, dt: f32) {
+        if let Some(emitter) = self.particles_emitter.as_mut() {
+            emitter.update(dt, self.position);
+        }
+    }
+
     pub fn update(
         &mut self,
         gravity: f32,
@@ -554,6 +570,7 @@ impl Entity {
 
         self.update_kinematic(gravity, friction, colliders, dt);
         self.update_animator(dt);
+        self.update_particles_emitter(dt);
     }
 
     pub fn play_animation(&mut self, name: &'static str) {
@@ -1169,5 +1186,211 @@ impl Text {
         for primitive in self.draw_primitives.iter_mut() {
             primitive.color = Some(color);
         }
+    }
+}
+
+#[derive(Copy, Clone)]
+struct Particle {
+    pub ttl: f32,
+    pub position: Vec2<f32>,
+    pub size: f32,
+    pub velocity: Vec2<f32>,
+    pub fade_rate: f32,
+    pub color: Color,
+}
+
+impl Particle {
+    pub fn init(
+        &mut self,
+        ttl: f32,
+        position: Vec2<f32>,
+        size: f32,
+        velocity: Vec2<f32>,
+        fade_rate: f32,
+        color: Color,
+    ) {
+        self.ttl = ttl;
+        self.position = position;
+        self.size = size;
+        self.velocity = velocity;
+        self.fade_rate = fade_rate;
+        self.color = color;
+    }
+
+    pub fn new_dead() -> Self {
+        Self {
+            ttl: 0.0,
+            position: Vec2::zeros(),
+            size: 0.0,
+            velocity: Vec2::zeros(),
+            fade_rate: 0.0,
+            color: Color::red(0.0),
+        }
+    }
+
+    pub fn check_if_alive(&self) -> bool {
+        self.ttl > 0.0
+    }
+
+    pub fn update(&mut self, dt: f32) {
+        if self.check_if_alive() {
+            self.ttl -= dt;
+            self.position += self.velocity.scale(dt);
+            self.color.a = (self.color.a - self.fade_rate * dt).max(0.0);
+        }
+    }
+
+    pub fn get_draw_primitive(
+        &self,
+        position: Vec2<f32>,
+    ) -> DrawPrimitive {
+        let rect = Rect::from_center(
+            self.position + position,
+            Vec2::new(self.size, self.size),
+        );
+
+        DrawPrimitive::from_rect(
+            rect,
+            SpaceType::WorldSpace,
+            0.0,
+            0,
+            self.color,
+        )
+    }
+}
+
+const MAX_N_PARTICLES: usize = 10;
+
+#[derive(Clone)]
+pub struct ParticlesEmitter {
+    time: f32,
+    ttl: f32,
+    position: Vec2<f32>,
+
+    emit_period: f32,
+    n_emit_per_step_range: (usize, usize),
+
+    particle_position_range: (f32, f32),
+    particle_color: Color,
+    particle_fade_rate: f32,
+    particle_speed: f32,
+    particle_size: f32,
+    particle_ttl: f32,
+
+    particles: [Particle; MAX_N_PARTICLES],
+    first_particle_idx: usize,
+    n_particles: usize,
+}
+
+impl ParticlesEmitter {
+    pub fn new(
+        ttl: f32,
+        position: Vec2<f32>,
+        emit_period: f32,
+        n_emit_per_step_range: (usize, usize),
+        particle_position_range: (f32, f32),
+        particle_color: Color,
+        particle_fade_rate: f32,
+        particle_speed: f32,
+        particle_size: f32,
+        particle_ttl: f32,
+    ) -> Self {
+        let particles = [Particle::new_dead(); MAX_N_PARTICLES];
+        Self {
+            time: 0.0,
+            ttl,
+            position,
+            emit_period,
+            n_emit_per_step_range,
+            particle_position_range,
+            particle_color,
+            particle_fade_rate,
+            particle_speed,
+            particle_size,
+            particle_ttl,
+            particles,
+            first_particle_idx: 0,
+            n_particles: 0,
+        }
+    }
+
+    pub fn check_if_alive(&self) -> bool {
+        self.ttl > 0.0
+    }
+
+    pub fn update(&mut self, dt: f32, position: Vec2<f32>) {
+        if !self.check_if_alive() {
+            return;
+        }
+
+        self.ttl -= dt;
+        self.time += dt;
+        let n_steps = (self.time / self.emit_period) as usize;
+        self.time -= n_steps as f32 * self.emit_period;
+
+        let mut n_emit = 0;
+        for _ in 0..n_steps {
+            n_emit += urand(
+                self.n_emit_per_step_range.0,
+                self.n_emit_per_step_range.1,
+            );
+        }
+
+        for _ in 0..n_emit {
+            let velocity = Vec2::new(0.0, 1.0).scale(self.particle_speed);
+
+            let idx = if self.n_particles == 0 {
+                0
+            } else {
+                (self.first_particle_idx + self.n_particles)
+                    % MAX_N_PARTICLES
+            };
+
+            self.n_particles = self.n_particles + 1;
+
+            if self.n_particles > MAX_N_PARTICLES {
+                self.n_particles = MAX_N_PARTICLES;
+                self.first_particle_idx =
+                    (self.first_particle_idx + 1) % MAX_N_PARTICLES;
+            }
+
+            let particle_position =
+                Vec2::frand(self.particle_position_range);
+            self.particles[idx].init(
+                self.particle_ttl,
+                particle_position,
+                self.particle_size,
+                velocity,
+                self.particle_fade_rate,
+                self.particle_color,
+            );
+        }
+
+        for i in 0..self.n_particles {
+            let idx = (self.first_particle_idx + i) % MAX_N_PARTICLES;
+            self.particles[idx].update(dt);
+        }
+    }
+
+    pub fn get_draw_primitives(
+        &self,
+        position: Vec2<f32>,
+    ) -> Vec<DrawPrimitive> {
+        let mut primitives = Vec::with_capacity(self.n_particles);
+        if !self.check_if_alive() {
+            return primitives;
+        }
+
+        for i in 0..self.n_particles {
+            let idx = (self.first_particle_idx + i) % MAX_N_PARTICLES;
+            let particle = self.particles[idx];
+            if particle.check_if_alive() {
+                let primitive =
+                    particle.get_draw_primitive(self.position + position);
+                primitives.push(primitive);
+            }
+        }
+
+        primitives
     }
 }

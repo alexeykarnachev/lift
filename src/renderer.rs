@@ -76,7 +76,7 @@ impl Renderer {
 
     pub fn render(&mut self, world: &World) {
         self.load_resources(world);
-        self.fill_render_queue(world);
+        self.fill_primitives(world);
         self.fill_lights(world);
 
         self.hdr_resolve_renderer.bind_framebuffer(&self.gl);
@@ -133,15 +133,14 @@ impl Renderer {
         }
     }
 
-    pub fn fill_render_queue(&mut self, world: &World) {
+    pub fn fill_primitives(&mut self, world: &World) {
         self.primitives.clear();
 
         draw_level(&world.level, &mut self.primitives);
-        world
-            .level
-            .lights
-            .iter()
-            .for_each(|light| draw_entity(light, &mut self.primitives));
+
+        for light in world.level.lights.iter() {
+            draw_entity(light, &mut self.primitives);
+        }
 
         world.level.enemies.iter().for_each(|enemy| {
             draw_entity(enemy, &mut self.primitives);
@@ -191,7 +190,7 @@ impl Renderer {
         }
 
         for entity in world.level.lights.iter() {
-            let light = entity.light.unwrap();
+            let light = entity.get_light().unwrap();
             self.lights.push(light);
         }
     }

@@ -1,3 +1,4 @@
+use crate::utils::frand;
 use num_traits::Float;
 use std::ops::{
     Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign,
@@ -111,6 +112,12 @@ impl<T: Float> Vec2<T> {
     pub fn abs_inplace(&mut self) {
         self.x = self.x.abs();
         self.y = self.y.abs();
+    }
+}
+
+impl Vec2<f32> {
+    pub fn frand(range: (f32, f32)) -> Vec2<f32> {
+        Vec2::new(frand(-range.0, range.0), frand(-range.1, range.1))
     }
 }
 

@@ -165,10 +165,10 @@ impl AnimatedSprite {
 
 #[derive(Copy, Clone, Debug)]
 pub struct Color {
-    r: f32,
-    g: f32,
-    b: f32,
-    a: f32,
+    pub r: f32,
+    pub g: f32,
+    pub b: f32,
+    pub a: f32,
 }
 
 impl Default for Color {
@@ -439,6 +439,11 @@ pub fn draw_entity(entity: &Entity, draw_queue: &mut Vec<DrawPrimitive>) {
         );
         draw_queue.push(primitive);
     };
+
+    if let Some(emitter) = entity.get_particles_emitter() {
+        let primitives = emitter.get_draw_primitives(entity.position);
+        draw_queue.extend_from_slice(&primitives);
+    }
 
     if entity.check_if_dead() {
         return;
