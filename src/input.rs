@@ -11,12 +11,16 @@ pub enum Keyaction {
     Down,
     Attack,
     Dash,
+    SkillTree,
     _N,
 }
 
 const N_KEYACTIONS: usize = Keyaction::_N as usize;
 
-pub fn keycode_to_keyaction(code: Keycode) -> Option<Keyaction> {
+pub fn keycode_to_keyaction(
+    code: Keycode,
+    repeat: bool,
+) -> Option<Keyaction> {
     match code {
         Keycode::Left | Keycode::A => Some(Keyaction::Left),
         Keycode::Right | Keycode::D => Some(Keyaction::Right),
@@ -24,6 +28,7 @@ pub fn keycode_to_keyaction(code: Keycode) -> Option<Keyaction> {
         Keycode::Down | Keycode::S => Some(Keyaction::Down),
         Keycode::Space => Some(Keyaction::Attack),
         Keycode::LCtrl => Some(Keyaction::Dash),
+        Keycode::T if !repeat => Some(Keyaction::SkillTree),
         _ => None,
     }
 }
@@ -149,9 +154,11 @@ impl Input {
             }
             Event::KeyDown {
                 keycode: Some(code),
+                repeat,
                 ..
             } => {
-                if let Some(action) = keycode_to_keyaction(*code) {
+                if let Some(action) = keycode_to_keyaction(*code, *repeat)
+                {
                     self.key_is_down[action as usize] = true;
                 }
             }
@@ -159,7 +166,7 @@ impl Input {
                 keycode: Some(code),
                 ..
             } => {
-                if let Some(action) = keycode_to_keyaction(*code) {
+                if let Some(action) = keycode_to_keyaction(*code, false) {
                     self.key_is_down[action as usize] = false;
                 }
             }
@@ -181,8 +188,14 @@ impl Input {
     }
 
     pub fn is_action(&self, action: Keyaction) -> bool {
-        let idx = action as usize;
+        self.key_is_down[action as usize]
+    }
 
-        self.key_is_down[idx]
+    pub fn take_action(&mut self, action: Keyaction) -> bool {
+        let idx = action as usize;
+        let is_action = self.key_is_down[idx];
+        self.key_is_down[idx] = false;
+
+        is_action
     }
 }

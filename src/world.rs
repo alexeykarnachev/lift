@@ -20,6 +20,7 @@ pub enum WorldState {
     MainMenu,
     Play,
     GameOver,
+    SkillTree,
     Restart,
     Quit,
 }
@@ -39,7 +40,7 @@ pub struct World {
     pub main_menu_ui: UI,
     pub play_ui: UI,
     pub game_over_ui: UI,
-    pub game_over_ui_last_modified: u64,
+    pub skill_tree_ui: UI,
 
     pub sprite_atlas: SpriteAtlas,
     pub glyph_atlas: GlyphAtlas,
@@ -56,9 +57,8 @@ impl World {
 
         let main_menu_ui = create_default_main_menu_ui();
         let play_ui = create_default_play_ui();
-        let mut game_over_ui = create_default_game_over_ui();
-        let game_over_ui_last_modified =
-            get_last_modified(game_over_ui.file_path);
+        let game_over_ui = create_default_game_over_ui();
+        let skill_tree_ui = create_skill_tree_ui();
 
         Self {
             // state: WorldState::MainMenu,
@@ -72,15 +72,13 @@ impl World {
             main_menu_ui,
             play_ui,
             game_over_ui,
-            game_over_ui_last_modified,
+            skill_tree_ui,
             sprite_atlas,
             glyph_atlas,
         }
     }
 
-    pub fn update(&mut self, dt: f32, input: &Input) {
-        self.hot_reload();
-
+    pub fn update(&mut self, dt: f32, input: &mut Input) {
         self.camera.aspect =
             input.window_size.x as f32 / input.window_size.y as f32;
 
@@ -90,17 +88,28 @@ impl World {
                 self.update_main_menu_ui(input);
             }
             Play => {
-                self.update_play_ui(input);
-                self.update_attacks(dt);
-                self.update_player(dt, input);
-                self.update_enemies(dt);
-                self.update_lights(dt);
-                // self.update_free_camera(input);
-                self.update_player_camera(input);
-                self.time += dt;
+                if input.take_action(Keyaction::SkillTree) {
+                    self.state = SkillTree;
+                } else {
+                    self.update_play_ui(input);
+                    self.update_attacks(dt);
+                    self.update_player(dt, input);
+                    self.update_enemies(dt);
+                    self.update_lights(dt);
+                    // self.update_free_camera(input);
+                    self.update_player_camera(input);
+                    self.time += dt;
+                }
             }
             GameOver => {
                 self.update_game_over_ui(input);
+            }
+            SkillTree => {
+                if input.take_action(Keyaction::SkillTree) {
+                    self.state = Play;
+                } else {
+                    self.update_skill_tree_ui(input);
+                }
             }
             Restart => {
                 *self = Self::new();
@@ -111,15 +120,6 @@ impl World {
 
         if self.level.player.check_if_dead() && self.state == Play {
             self.state = GameOver;
-        }
-    }
-
-    fn hot_reload(&mut self) {
-        let game_over_ui_last_modified =
-            get_last_modified(self.game_over_ui.file_path);
-        if game_over_ui_last_modified != self.game_over_ui_last_modified {
-            self.game_over_ui_last_modified = game_over_ui_last_modified;
-            self.game_over_ui = create_default_game_over_ui();
         }
     }
 
@@ -767,6 +767,13 @@ impl World {
                 _ => {}
             }
         }
+    }
+
+    fn update_skill_tree_ui(&mut self, input: &Input) {
+        use UIEvent::*;
+
+        let events = self.skill_tree_ui.update(input, &self.glyph_atlas);
+        for event in events.iter() {}
     }
 }
 

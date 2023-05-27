@@ -181,15 +181,15 @@ pub fn create_default_glyph_atlas() -> GlyphAtlas {
 }
 
 pub fn create_default_main_menu_ui() -> UI {
-    UI::new("./assets/ui/main_menu.json")
+    UI::from_file("./assets/ui/main_menu.json")
 }
 
 pub fn create_default_game_over_ui() -> UI {
-    UI::new("./assets/ui/game_over.json")
+    UI::from_file("./assets/ui/game_over.json")
 }
 
 pub fn create_default_play_ui() -> UI {
-    UI::new("./assets/ui/play.json")
+    UI::from_file("./assets/ui/play.json")
 }
 
 pub fn create_player(

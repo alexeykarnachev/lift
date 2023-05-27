@@ -39,7 +39,7 @@ fn main() {
         input.update();
 
         let dt = prev_upd_time.elapsed().as_nanos() as f32 / 1.0e9;
-        world.update(dt, &input);
+        world.update(dt, &mut input);
         prev_upd_time = Instant::now();
 
         renderer.render(&world);

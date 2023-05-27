@@ -166,6 +166,9 @@ impl Renderer {
             Play => {
                 draw_ui(&world.play_ui, &mut self.primitives);
             }
+            SkillTree => {
+                draw_ui(&world.skill_tree_ui, &mut self.primitives);
+            }
             GameOver => {
                 draw_ui(&world.game_over_ui, &mut self.primitives);
             }

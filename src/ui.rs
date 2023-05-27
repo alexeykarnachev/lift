@@ -12,14 +12,14 @@ pub enum UIEvent {
     Empty(String),
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone, Default)]
 pub struct Position {
     origin: String,
     x: f32,
     y: f32,
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone, Default)]
 pub struct Element {
     id: String,
     #[serde(rename = "type")]
@@ -41,25 +41,28 @@ pub struct Element {
 }
 
 pub struct UI {
-    pub file_path: &'static str,
     pub texts: Vec<Text>,
     pub rects: Vec<DrawPrimitive>,
     pub elements: Vec<Element>,
 }
 
 impl UI {
-    pub fn new(file_path: &'static str) -> Self {
-        let data = fs::read_to_string(file_path).unwrap();
-        let elements: Vec<Element> = serde_json::from_str(&data).unwrap();
+    pub fn new(elements: Vec<Element>) -> Self {
         let texts = Vec::<Text>::with_capacity(elements.len());
         let rects = Vec::<DrawPrimitive>::with_capacity(elements.len());
 
         Self {
-            file_path,
             elements,
             texts,
             rects,
         }
+    }
+
+    pub fn from_file(file_path: &'static str) -> Self {
+        let data = fs::read_to_string(file_path).unwrap();
+        let elements: Vec<Element> = serde_json::from_str(&data).unwrap();
+
+        Self::new(elements)
     }
 
     pub fn set_element_string(&mut self, element_id: &str, string: &str) {
@@ -178,4 +181,25 @@ impl UI {
 
         events
     }
+}
+
+pub fn create_skill_tree_ui() -> UI {
+    let background = Element {
+        id: "background".to_string(),
+        type_: "rect".to_string(),
+        is_interactive: false,
+        position: Position {
+            origin: "Center".to_string(),
+            x: 0.0,
+            y: 0.0,
+        },
+        width: Some(0.5),
+        height: Some(0.5),
+        color: Color::gray(0.5, 1.0),
+        ..Default::default()
+    };
+
+    let elements = vec![background];
+
+    UI::new(elements)
 }
