@@ -56,7 +56,7 @@ impl World {
         let camera = Camera::new(level.player.get_center().add_y(2.0));
 
         let main_menu_ui = create_default_main_menu_ui();
-        let play_ui = create_default_play_ui();
+        let play_ui = create_play_ui();
         let game_over_ui = create_default_game_over_ui();
         let skill_tree_ui = create_skill_tree_ui();
 
@@ -644,7 +644,7 @@ impl World {
                 for enemy in attacked_enemies.iter_mut() {
                     enemy.receive_attack(attack);
                     if enemy.check_if_dead() {
-                        player.score += 100;
+                        player.add_exp(enemy.exp_drop)
                     }
                 }
             } else if !player.check_if_dead() {
@@ -735,18 +735,36 @@ impl World {
     }
 
     fn update_play_ui(&mut self, input: &Input) {
-        let score = format!("Score: {}", self.level.player.score);
-        let health_ratio = self.level.player.get_health_ratio();
-        let stamina_ratio = self.level.player.get_stamina_ratio();
-        self.play_ui.set_element_string("score", &score);
-        self.play_ui
-            .set_element_color("health", Color::healthbar(health_ratio));
-        self.play_ui.set_element_filling("health", health_ratio);
+        let player = &self.level.player;
+        let stats = player.stats.as_ref().unwrap();
+        let health_ratio = player.get_health_ratio();
+        let stamina_ratio = player.get_stamina_ratio();
+        let exp_ratio = player.get_exp_ratio();
+
         self.play_ui.set_element_color(
-            "stamina",
+            "healthbar",
+            Color::healthbar(health_ratio),
+        );
+        self.play_ui.set_element_filling("healthbar", health_ratio);
+
+        self.play_ui.set_element_color(
+            "staminabar",
             Color::staminabar(stamina_ratio),
         );
-        self.play_ui.set_element_filling("stamina", stamina_ratio);
+        self.play_ui
+            .set_element_filling("staminabar", stamina_ratio);
+
+        self.play_ui
+            .set_element_color("expbar", Color::expbar(exp_ratio));
+        self.play_ui.set_element_filling("expbar", exp_ratio);
+
+        self.play_ui.set_element_color(
+            "level_number_rect",
+            Color::expbar(exp_ratio.max(0.05)),
+        );
+
+        let level = stats.level.to_string();
+        self.play_ui.set_element_string("level_number", &level);
 
         _ = self.play_ui.update(input, &self.glyph_atlas);
     }

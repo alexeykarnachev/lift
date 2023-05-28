@@ -5,6 +5,7 @@
 
 use crate::graphics::*;
 use crate::level::Collider;
+use crate::player_stats::Stats;
 use crate::prefabs::create_rat;
 use crate::utils::*;
 use crate::vec::*;
@@ -81,7 +82,8 @@ pub struct Entity {
     pub particles_emitter: ParticlesEmitter,
     pub effect: u32,
 
-    pub score: u32,
+    pub stats: Option<Stats>,
+    pub exp_drop: usize,
 
     pub spawner_id: Option<usize>,
 }
@@ -118,7 +120,8 @@ impl Entity {
             spawner: None,
             particles_emitter: ParticlesEmitter::empty(),
             effect: 0,
-            score: 0,
+            stats: None,
+            exp_drop: 0,
             spawner_id: None,
         }
     }
@@ -237,7 +240,11 @@ impl Entity {
     }
 
     pub fn get_stamina_ratio(&self) -> f32 {
-        self.stamina.unwrap().get_ratio()
+        self.stamina.as_ref().unwrap().get_ratio()
+    }
+
+    pub fn get_exp_ratio(&self) -> f32 {
+        self.stats.as_ref().unwrap().get_exp_ratio()
     }
 
     pub fn immediate_step(&mut self, direction: Vec2<f32>, dt: f32) {
@@ -577,6 +584,11 @@ impl Entity {
 
     pub fn pause_animation(&mut self) {
         self.animator.as_mut().unwrap().pause();
+    }
+
+    pub fn add_exp(&mut self, value: usize) {
+        let stats = self.stats.as_mut().unwrap();
+        stats.add_exp(value);
     }
 }
 

@@ -1,5 +1,6 @@
 use crate::entity::*;
 use crate::graphics::*;
+use crate::player_stats::Stats;
 use crate::ui::*;
 use crate::utils::frand;
 use std::f32::consts::PI;
@@ -54,6 +55,7 @@ mod rat {
     pub const VIEW_DISTANCE: f32 = 300.0;
     pub const MOVE_SPEED_RANGE: (f32, f32) = (30.0, 40.0);
     pub const KNOCKBACK_RESIST: f32 = 20.0;
+    pub const EXP_DROP: usize = 25;
 
     pub mod jumping {
         pub const COOLDOWN_TIME: f32 = 3.0;
@@ -88,6 +90,7 @@ mod bat {
     pub const HEALING_DURATION_TIME_RANGE: (f32, f32) = (4.0, 5.0);
     pub const HEALING_COOLDOWN_TIME_RANGE: (f32, f32) = (4.0, 5.0);
     pub const KNOCKBACK_RESIST: f32 = 0.0;
+    pub const EXP_DROP: usize = 15;
 
     pub mod weapon {
         pub const ANTICIPATION_TIME: f32 = 0.2;
@@ -108,6 +111,7 @@ mod rat_king {
     pub const VIEW_DISTANCE: f32 = 300.0;
     pub const MOVE_SPEED: f32 = 50.0;
     pub const KNOCKBACK_RESIST: f32 = 9999.0;
+    pub const EXP_DROP: usize = 50;
 
     pub mod dashing {
         pub const SPEED: f32 = 300.0;
@@ -140,6 +144,7 @@ mod rat_king {
 
 mod rat_nest {
     pub const MAX_HEALTH: f32 = 20000.0;
+    pub const EXP_DROP: usize = 35;
 
     pub mod spawner {
         pub const SPAWN_PERIOD: f32 = 5.0;
@@ -186,10 +191,6 @@ pub fn create_default_main_menu_ui() -> UI {
 
 pub fn create_default_game_over_ui() -> UI {
     UI::from_file("./assets/ui/game_over.json")
-}
-
-pub fn create_default_play_ui() -> UI {
-    UI::from_file("./assets/ui/play.json")
 }
 
 pub fn create_player(
@@ -306,6 +307,7 @@ pub fn create_player(
     entity.light = Some(light);
     entity.animator = Some(animator);
     entity.effect = ApplyLightEffect as u32;
+    entity.stats = Some(Stats::new());
 
     entity
 }
@@ -423,6 +425,7 @@ pub fn create_rat(
     entity.weapons = weapons;
     entity.animator = Some(animator);
     entity.effect = ApplyLightEffect as u32;
+    entity.exp_drop = EXP_DROP;
 
     entity
 }
@@ -532,6 +535,7 @@ pub fn create_bat(
     entity.weapons = weapons;
     entity.animator = Some(animator);
     entity.effect = ApplyLightEffect as u32;
+    entity.exp_drop = EXP_DROP;
 
     entity
 }
@@ -657,6 +661,7 @@ pub fn create_rat_king(
     entity.weapons = weapons;
     entity.animator = Some(animator);
     entity.effect = ApplyLightEffect as u32;
+    entity.exp_drop = EXP_DROP;
 
     entity
 }
@@ -716,6 +721,7 @@ pub fn create_rat_nest(
     entity.animator = Some(animator);
     entity.spawner = Some(spawner);
     entity.effect = ApplyLightEffect as u32;
+    entity.exp_drop = EXP_DROP;
 
     entity
 }

@@ -1,9 +1,42 @@
+#![allow(unused_mut)]
+#![allow(dead_code)]
+#![allow(unused_variables)]
+#![allow(unused_imports)]
+
 use crate::entity::*;
 use crate::graphics::*;
 use crate::input::*;
 use crate::vec::*;
 use serde::Deserialize;
 use std::fs;
+
+mod play_ui {
+    pub mod window {
+        // Top left
+        pub const X: f32 = 10.0;
+        pub const Y: f32 = -90.0;
+        pub const WIDTH: f32 = 300.0;
+        pub const HEIGHT: f32 = 80.0;
+        pub const BORDER_SIZE: f32 = 10.0;
+    }
+}
+
+mod skill_tree_ui {
+    pub mod window {
+        // Top left
+        pub const X: f32 = 10.0;
+        pub const Y: f32 = 10.0;
+        pub const WIDTH: f32 = 500.0;
+        pub const HEIGHT: f32 = 500.0;
+        pub const BORDER_SIZE: f32 = 10.0;
+    }
+
+    pub mod skill {
+        pub const WIDTH: f32 = 50.0;
+        pub const HEIGHT: f32 = 50.0;
+        pub const PAD_SIZE: f32 = 25.0;
+    }
+}
 
 pub enum UIEvent {
     Hover(String),
@@ -121,11 +154,24 @@ impl UI {
             let origin = Origin::from_str(&element.position.origin);
             let mut position =
                 Vec2::new(element.position.x, element.position.y);
-            if position.x <= 1.0 {
+
+            if position.x < -1.0 {
+                position.x = window_size.x - position.x;
+            } else if position.x <= 1.0 {
+                if position.x < 0.0 {
+                    position.x += 1.0;
+                }
                 position.x =
                     (position.x * window_size.x + window_size.x) * 0.5;
+            } else {
             }
-            if position.y <= 1.0 {
+
+            if position.y < -1.0 {
+                position.y *= -1.0;
+            } else if position.y <= 1.0 {
+                if position.y < 0.0 {
+                    position.y += 1.0;
+                }
                 position.y =
                     (position.y * window_size.y + window_size.y) * 0.5;
             } else {
@@ -167,11 +213,11 @@ impl UI {
                         panic!("Element's width, height and aspect can't be all set at the same time. One a pair of these three parameters could be set");
                     }
 
-                    if let Some(filling) = element.filling {
-                        width *= filling;
-                    }
                     if width <= 1.0 {
                         width *= window_size.x;
+                    }
+                    if let Some(filling) = element.filling {
+                        width *= filling;
                     }
                     if height <= 1.0 {
                         height *= window_size.y;
@@ -215,18 +261,10 @@ impl UI {
     }
 }
 
-const WINDOW_X: f32 = 10.0;
-const WINDOW_Y: f32 = 10.0;
-const WINDOW_WIDTH: f32 = 500.0;
-const WINDOW_HEIGHT: f32 = 500.0;
-const WINDOW_BORDER_SIZE: f32 = 10.0;
+pub fn create_play_ui() -> UI {
+    use play_ui::*;
 
-const SKILL_WIDTH: f32 = 50.0;
-const SKILL_HEIGHT: f32 = 50.0;
-const SKILL_PAD_SIZE: f32 = 25.0;
-
-pub fn create_skill_tree_ui() -> UI {
-    let mut cursor = Vec2::new(WINDOW_X, WINDOW_Y);
+    let mut cursor = Vec2::new(window::X, window::Y);
 
     let window = Element {
         id: "window".to_string(),
@@ -237,12 +275,136 @@ pub fn create_skill_tree_ui() -> UI {
             x: cursor.x,
             y: cursor.y,
         },
-        width: Some(WINDOW_WIDTH),
-        height: Some(WINDOW_HEIGHT),
+        width: Some(window::WIDTH),
+        height: Some(window::HEIGHT),
+        color: Color::gray(0.1, 0.5),
+        ..Default::default()
+    };
+    cursor += Vec2::new(window::BORDER_SIZE, window::BORDER_SIZE);
+
+    let level_number_rect_size =
+        window::HEIGHT - 2.0 * window::BORDER_SIZE;
+    let level_number_rect = Element {
+        id: "level_number_rect".to_string(),
+        type_: "rect".to_string(),
+        is_interactive: false,
+        position: Position {
+            origin: "TopLeft".to_string(),
+            x: cursor.x,
+            y: cursor.y,
+        },
+        width: Some(level_number_rect_size),
+        height: Some(level_number_rect_size),
+        color: Color::expbar(1.0),
+        ..Default::default()
+    };
+    cursor.x += level_number_rect_size + window::BORDER_SIZE;
+
+    let mut level_number_center = level_number_rect.position.clone();
+    level_number_center.x += 0.5 * level_number_rect_size;
+    level_number_center.y += 0.5 * level_number_rect_size;
+    let level_number = Element {
+        id: "level_number".to_string(),
+        type_: "text".to_string(),
+        is_interactive: false,
+        position: Position {
+            origin: "Center".to_string(),
+            x: level_number_center.x,
+            y: level_number_center.y,
+        },
+        string: Some("0".to_string()),
+        font_size: Some(28),
         color: Color::gray(0.1, 1.0),
         ..Default::default()
     };
-    cursor += Vec2::new(WINDOW_BORDER_SIZE, WINDOW_BORDER_SIZE);
+
+    let healthbar_width =
+        window::WIDTH - level_number_rect_size - 3.0 * window::BORDER_SIZE;
+    let healthbar_height = 15.0;
+    let healthbar = Element {
+        id: "healthbar".to_string(),
+        type_: "rect".to_string(),
+        is_interactive: false,
+        position: Position {
+            origin: "TopLeft".to_string(),
+            x: cursor.x,
+            y: cursor.y,
+        },
+        width: Some(healthbar_width),
+        height: Some(healthbar_height),
+        color: Color::healthbar(1.0),
+        ..Default::default()
+    };
+    cursor.y += healthbar_height + window::BORDER_SIZE;
+
+    let staminabar = Element {
+        id: "staminabar".to_string(),
+        type_: "rect".to_string(),
+        is_interactive: false,
+        position: Position {
+            origin: "TopLeft".to_string(),
+            x: cursor.x,
+            y: cursor.y,
+        },
+        width: Some(healthbar_width),
+        height: Some(healthbar_height),
+        color: Color::staminabar(1.0),
+        ..Default::default()
+    };
+    cursor.y += healthbar_height + window::BORDER_SIZE;
+    cursor.x -= window::BORDER_SIZE;
+
+    let expbar_width = healthbar_width + window::BORDER_SIZE;
+    let expbar_height = level_number_rect_size
+        - 2.0 * window::BORDER_SIZE
+        - 2.0 * healthbar_height;
+    let expbar = Element {
+        id: "expbar".to_string(),
+        type_: "rect".to_string(),
+        is_interactive: false,
+        position: Position {
+            origin: "TopLeft".to_string(),
+            x: cursor.x,
+            y: cursor.y,
+        },
+        width: Some(expbar_width),
+        height: Some(expbar_height),
+        color: Color::expbar(1.0),
+        ..Default::default()
+    };
+
+    let elements = vec![
+        window,
+        level_number_rect,
+        level_number,
+        healthbar,
+        staminabar,
+        expbar,
+    ];
+
+    UI::new(elements)
+}
+
+pub fn create_skill_tree_ui() -> UI {
+    use skill_tree_ui::*;
+
+    let mut cursor = Vec2::new(window::X, window::Y);
+
+    let window = Element {
+        id: "window".to_string(),
+        type_: "rect".to_string(),
+        is_interactive: false,
+        position: Position {
+            origin: "TopLeft".to_string(),
+            x: cursor.x,
+            y: cursor.y,
+        },
+        width: Some(window::WIDTH),
+        height: Some(window::HEIGHT),
+        color: Color::gray(0.1, 1.0),
+        ..Default::default()
+    };
+    cursor += Vec2::new(window::BORDER_SIZE, window::BORDER_SIZE);
 
     // Attack line
     let mut attack_line_cursor = cursor;
@@ -251,7 +413,7 @@ pub fn create_skill_tree_ui() -> UI {
         create_skill_rect("attack_1", &mut attack_line_cursor),
         create_skill_rect("attack_2", &mut attack_line_cursor),
     ];
-    cursor.y += SKILL_HEIGHT + SKILL_PAD_SIZE;
+    cursor.y += skill::HEIGHT + skill::PAD_SIZE;
 
     // Durability line
     let mut durability_line_cursor = cursor;
@@ -260,7 +422,7 @@ pub fn create_skill_tree_ui() -> UI {
         create_skill_rect("durability_1", &mut durability_line_cursor),
         create_skill_rect("durability_2", &mut durability_line_cursor),
     ];
-    cursor.y += SKILL_HEIGHT + SKILL_PAD_SIZE;
+    cursor.y += skill::HEIGHT + skill::PAD_SIZE;
 
     // Agility line
     let mut agility_line_cursor = cursor;
@@ -269,7 +431,7 @@ pub fn create_skill_tree_ui() -> UI {
         create_skill_rect("agility_1", &mut agility_line_cursor),
         create_skill_rect("agility_2", &mut agility_line_cursor),
     ];
-    cursor.y += SKILL_HEIGHT + SKILL_PAD_SIZE;
+    cursor.y += skill::HEIGHT + skill::PAD_SIZE;
 
     // Footer
     let skill_points_text = Element {
@@ -288,7 +450,6 @@ pub fn create_skill_tree_ui() -> UI {
         ..Default::default()
     };
 
-    // let elements = vec![window, attack_0, attack_1, skill_points_text];
     let mut elements = vec![window];
     elements.extend_from_slice(&attack_line);
     elements.extend_from_slice(&durability_line);
@@ -299,6 +460,8 @@ pub fn create_skill_tree_ui() -> UI {
 }
 
 fn create_skill_rect(name: &str, cursor: &mut Vec2<f32>) -> Element {
+    use skill_tree_ui::*;
+
     let element = Element {
         id: name.to_string(),
         type_: "rect".to_string(),
@@ -308,13 +471,13 @@ fn create_skill_rect(name: &str, cursor: &mut Vec2<f32>) -> Element {
             x: cursor.x,
             y: cursor.y,
         },
-        width: Some(SKILL_WIDTH),
-        height: Some(SKILL_HEIGHT),
+        width: Some(skill::WIDTH),
+        height: Some(skill::HEIGHT),
         color: Color::gray(0.3, 1.0),
         ..Default::default()
     };
 
-    cursor.x += SKILL_WIDTH + SKILL_PAD_SIZE;
+    cursor.x += skill::WIDTH + skill::PAD_SIZE;
 
     element
 }

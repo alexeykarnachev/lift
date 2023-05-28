@@ -212,17 +212,24 @@ impl Color {
     }
 
     pub fn healthbar(ratio: f32) -> Self {
-        let alive = Self::new(0.8, 0.0, 0.0, 1.0);
-        let dead = Self::new(0.3, 0.0, 0.0, 1.0);
+        let large = Self::new(0.8, 0.0, 0.0, 1.0);
+        let small = Self::new(0.3, 0.0, 0.0, 1.0);
 
-        alive.lerp(&dead, ratio)
+        large.lerp(&small, ratio)
     }
 
     pub fn staminabar(ratio: f32) -> Self {
-        let alive = Self::new(0.0, 0.8, 0.0, 1.0);
-        let dead = Self::new(0.0, 0.3, 0.0, 1.0);
+        let large = Self::new(0.0, 0.8, 0.0, 1.0);
+        let small = Self::new(0.0, 0.3, 0.0, 1.0);
 
-        alive.lerp(&dead, ratio)
+        large.lerp(&small, ratio)
+    }
+
+    pub fn expbar(ratio: f32) -> Self {
+        let small = Self::new(0.5, 0.5, 0.1, 1.0);
+        let large = Self::new(1.0, 1.0, 0.1, 1.0);
+
+        large.lerp(&small, ratio)
     }
 
     pub fn to_array(&self) -> [f32; 4] {

@@ -11,6 +11,7 @@ mod entity;
 mod graphics;
 mod input;
 mod level;
+mod player_stats;
 mod prefabs;
 mod renderer;
 mod ui;
