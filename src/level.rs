@@ -99,6 +99,7 @@ impl Level {
                                     None,
                                     false,
                                     TextureType::SpriteTexture,
+                                    1.0,
                                 );
                                 draw_primitives.push(primitive);
                             }

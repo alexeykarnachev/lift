@@ -293,8 +293,9 @@ impl DrawPrimitive {
         color: Option<Color>,
         flip: bool,
         tex: TextureType,
+        scale: f32,
     ) -> Self {
-        let size = Vec2::new(sprite.w, sprite.h);
+        let size = Vec2::new(sprite.w, sprite.h).scale(scale);
         let rect = Rect::from_origin(sprite.origin, position, size);
 
         Self {

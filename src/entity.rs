@@ -1078,6 +1078,7 @@ impl Animator {
             None,
             self.flip,
             TextureType::SpriteTexture,
+            1.0,
         )
     }
 
@@ -1130,6 +1131,7 @@ impl Text {
                 Some(color),
                 false,
                 TextureType::GlyphTexture,
+                1.0,
             )
             .translate(primitive_position);
             draw_primitives.push(primitive);

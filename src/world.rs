@@ -58,7 +58,10 @@ impl World {
         let main_menu_ui = create_default_main_menu_ui();
         let play_ui = create_play_ui();
         let game_over_ui = create_default_game_over_ui();
-        let skill_tree_ui = create_skill_tree_ui();
+        let skill_tree_ui = create_skill_tree_ui(
+            &sprite_atlas,
+            level.player.stats.as_ref().unwrap(),
+        );
 
         Self {
             // state: WorldState::MainMenu,
@@ -78,7 +81,7 @@ impl World {
         }
     }
 
-    pub fn update(&mut self, dt: f32, input: &mut Input) {
+    pub fn update(&mut self, mut dt: f32, input: &mut Input) {
         self.camera.aspect =
             input.window_size.x as f32 / input.window_size.y as f32;
 
@@ -719,7 +722,11 @@ impl World {
     fn update_main_menu_ui(&mut self, input: &Input) {
         use UIEvent::*;
 
-        let events = self.main_menu_ui.update(input, &self.glyph_atlas);
+        let events = self.main_menu_ui.update(
+            input,
+            &self.glyph_atlas,
+            &self.sprite_atlas,
+        );
         for event in events.iter() {
             match event {
                 LMBPress(id) => match id.as_str() {
@@ -766,13 +773,21 @@ impl World {
         let level = stats.level.to_string();
         self.play_ui.set_element_string("level_number", &level);
 
-        _ = self.play_ui.update(input, &self.glyph_atlas);
+        _ = self.play_ui.update(
+            input,
+            &self.glyph_atlas,
+            &self.sprite_atlas,
+        );
     }
 
     fn update_game_over_ui(&mut self, input: &Input) {
         use UIEvent::*;
 
-        let events = self.game_over_ui.update(input, &self.glyph_atlas);
+        let events = self.game_over_ui.update(
+            input,
+            &self.glyph_atlas,
+            &self.sprite_atlas,
+        );
         for event in events.iter() {
             match event {
                 LMBPress(id) => match id.as_str() {
@@ -790,7 +805,11 @@ impl World {
     fn update_skill_tree_ui(&mut self, input: &Input) {
         use UIEvent::*;
 
-        let events = self.skill_tree_ui.update(input, &self.glyph_atlas);
+        let events = self.skill_tree_ui.update(
+            input,
+            &self.glyph_atlas,
+            &self.sprite_atlas,
+        );
         for event in events.iter() {}
     }
 }

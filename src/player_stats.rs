@@ -15,8 +15,8 @@ impl Skill {
 
 #[derive(Clone, Debug)]
 pub struct SkillsChain {
-    skills: Vec<Skill>,
-    n_learned: usize,
+    pub skills: Vec<Skill>,
+    pub n_learned: usize,
 }
 
 impl SkillsChain {

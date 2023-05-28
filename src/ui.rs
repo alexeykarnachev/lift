@@ -6,6 +6,8 @@
 use crate::entity::*;
 use crate::graphics::*;
 use crate::input::*;
+use crate::player_stats::SkillsChain;
+use crate::player_stats::Stats;
 use crate::vec::*;
 use serde::Deserialize;
 use std::fs;
@@ -69,6 +71,11 @@ pub struct Element {
     height: Option<f32>,
     aspect: Option<f32>,
     filling: Option<f32>,
+
+    // Sprite
+    sprite_name: Option<String>,
+    sprite_idx: Option<usize>,
+    sprite_scale: Option<f32>,
 
     #[serde(skip)]
     color: Color,
@@ -136,6 +143,7 @@ impl UI {
         &mut self,
         input: &Input,
         glyph_atlas: &GlyphAtlas,
+        sprite_atlas: &SpriteAtlas,
     ) -> Vec<UIEvent> {
         let cursor_pos = Vec2::new(
             input.cursor_pos.x as f32,
@@ -233,6 +241,28 @@ impl UI {
                         element.color,
                     );
                     collider = rect;
+                    self.rects.push(primitive);
+                }
+                "sprite" => {
+                    let name = element.sprite_name.as_ref().unwrap();
+                    let idx = element.sprite_idx.unwrap();
+                    let scale = element.sprite_scale.unwrap();
+                    let mut sprite =
+                        sprite_atlas.sprites.get(name).unwrap()[idx];
+                    sprite.origin = origin;
+
+                    let primitive = DrawPrimitive::from_sprite(
+                        SpaceType::ScreenSpace,
+                        0.0,
+                        0,
+                        position,
+                        sprite,
+                        None,
+                        false,
+                        TextureType::SpriteTexture,
+                        scale,
+                    );
+                    collider = primitive.rect;
                     self.rects.push(primitive);
                 }
                 _ => {
@@ -385,7 +415,10 @@ pub fn create_play_ui() -> UI {
     UI::new(elements)
 }
 
-pub fn create_skill_tree_ui() -> UI {
+pub fn create_skill_tree_ui(
+    sprite_atlas: &SpriteAtlas,
+    stats: &Stats,
+) -> UI {
     use skill_tree_ui::*;
 
     let mut cursor = Vec2::new(window::X, window::Y);
@@ -408,29 +441,21 @@ pub fn create_skill_tree_ui() -> UI {
 
     // Attack line
     let mut attack_line_cursor = cursor;
-    let attack_line = vec![
-        create_skill_rect("attack_0", &mut attack_line_cursor),
-        create_skill_rect("attack_1", &mut attack_line_cursor),
-        create_skill_rect("attack_2", &mut attack_line_cursor),
-    ];
+    let attack_line = create_skills_chain(
+        &mut attack_line_cursor,
+        &stats.attack_skills,
+        "attack_skills",
+    );
     cursor.y += skill::HEIGHT + skill::PAD_SIZE;
 
     // Durability line
     let mut durability_line_cursor = cursor;
-    let durability_line = vec![
-        create_skill_rect("durability_0", &mut durability_line_cursor),
-        create_skill_rect("durability_1", &mut durability_line_cursor),
-        create_skill_rect("durability_2", &mut durability_line_cursor),
-    ];
+    let durability_line = vec![];
     cursor.y += skill::HEIGHT + skill::PAD_SIZE;
 
     // Agility line
     let mut agility_line_cursor = cursor;
-    let agility_line = vec![
-        create_skill_rect("agility_0", &mut agility_line_cursor),
-        create_skill_rect("agility_1", &mut agility_line_cursor),
-        create_skill_rect("agility_2", &mut agility_line_cursor),
-    ];
+    let agility_line = vec![];
     cursor.y += skill::HEIGHT + skill::PAD_SIZE;
 
     // Footer
@@ -459,21 +484,57 @@ pub fn create_skill_tree_ui() -> UI {
     UI::new(elements)
 }
 
-fn create_skill_rect(name: &str, cursor: &mut Vec2<f32>) -> Element {
+fn create_skills_chain(
+    cursor: &mut Vec2<f32>,
+    skills_chain: &SkillsChain,
+    sprite_name: &str,
+) -> Vec<Element> {
+    let mut elements = vec![];
+
+    for (idx, skill) in skills_chain.skills.iter().enumerate() {
+        if idx < skills_chain.n_learned {
+            let skill_element =
+                create_skill_rect(sprite_name, idx, cursor);
+            elements.push(skill_element);
+        } else {
+            let unknown_element =
+                create_skill_rect("skills_unknown", 0, cursor);
+            elements.push(unknown_element);
+        }
+
+        if idx < skills_chain.skills.len() - 1 {
+            let arrow_element =
+                create_skill_rect("skills_arrow", 0, cursor);
+            elements.push(arrow_element);
+        }
+    }
+
+    elements
+}
+
+fn create_skill_rect(
+    sprite_name: &str,
+    sprite_idx: usize,
+    cursor: &mut Vec2<f32>,
+) -> Element {
     use skill_tree_ui::*;
 
+    let mut id = sprite_name.to_string();
+    id.push_str("_");
+    id.push_str(&sprite_idx.to_string());
+
     let element = Element {
-        id: name.to_string(),
-        type_: "rect".to_string(),
+        id,
+        type_: "sprite".to_string(),
         is_interactive: true,
         position: Position {
             origin: "TopLeft".to_string(),
             x: cursor.x,
             y: cursor.y,
         },
-        width: Some(skill::WIDTH),
-        height: Some(skill::HEIGHT),
-        color: Color::gray(0.3, 1.0),
+        sprite_name: Some(sprite_name.to_string()),
+        sprite_idx: Some(sprite_idx),
+        sprite_scale: Some(4.0),
         ..Default::default()
     };
 
