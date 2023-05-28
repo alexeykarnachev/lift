@@ -803,14 +803,115 @@ impl World {
     }
 
     fn update_skill_tree_ui(&mut self, input: &Input) {
+        use EffectType::*;
         use UIEvent::*;
+        let alpha01 = AlphaEffect01 as u32;
+        let alpha03 = AlphaEffect03 as u32;
+        let alpha07 = AlphaEffect07 as u32;
 
         let events = self.skill_tree_ui.update(
             input,
             &self.glyph_atlas,
             &self.sprite_atlas,
         );
-        for event in events.iter() {}
+
+        let stats = self.level.player.stats.as_mut().unwrap();
+        let n_points = stats.n_skill_points;
+
+        self.skill_tree_ui.set_element_string(
+            "skill_points_text",
+            &format!("POINTS: {:?}", n_points),
+        );
+
+        let mut learned_skills_name = None;
+        for event in events.iter() {
+            let learned_sprite_effect = 0;
+            let learned_arrow_effect = 0;
+            let mut can_learn_sprite_effect = 0;
+            let mut can_learn_arrow_effect = 0;
+            let cant_learn_sprite_effect = alpha01 | alpha03;
+            let cant_learn_arrow_effect = alpha01 | alpha03;
+            let mut lmb_is_pressed = false;
+
+            let mut sprite_id: Option<String> = None;
+            match event {
+                Hover(id) => {
+                    sprite_id = Some(id.clone());
+                    can_learn_sprite_effect = alpha07;
+                    can_learn_arrow_effect = alpha07;
+                }
+                NotInteracted(id) => {
+                    sprite_id = Some(id.clone());
+                    can_learn_sprite_effect = alpha03;
+                    can_learn_arrow_effect = alpha03;
+                }
+                LMBPress(id) => {
+                    sprite_id = Some(id.clone());
+                    lmb_is_pressed = true;
+                    can_learn_sprite_effect = alpha07;
+                    can_learn_arrow_effect = alpha07;
+                }
+                _ => {}
+            }
+
+            if let Some(sprite_id) = sprite_id {
+                let (name, idx) = sprite_id.rsplit_once("_").unwrap();
+                let idx = usize::from_str_radix(idx, 10).unwrap();
+                let mut skills = stats.get_skills_by_name(name);
+                let n_learned = skills.n_learned;
+                let mut arrow_id = "arrow_".to_string();
+                arrow_id.push_str(&sprite_id);
+
+                let is_learned = idx < n_learned;
+                let can_learn = idx == n_learned && n_points > 0;
+                let cant_learn = idx > n_learned || n_points == 0;
+                let has_arrow = idx > 0;
+
+                if lmb_is_pressed && can_learn {
+                    learned_skills_name = Some(name.to_string());
+                }
+
+                if is_learned {
+                    self.skill_tree_ui.set_element_effect(
+                        &sprite_id,
+                        learned_sprite_effect,
+                    );
+                } else if can_learn {
+                    self.skill_tree_ui.set_element_effect(
+                        &sprite_id,
+                        can_learn_sprite_effect,
+                    );
+                } else if cant_learn {
+                    self.skill_tree_ui.set_element_effect(
+                        &sprite_id,
+                        cant_learn_sprite_effect,
+                    );
+                }
+
+                if has_arrow && is_learned {
+                    self.skill_tree_ui.set_element_effect(
+                        &arrow_id,
+                        learned_arrow_effect,
+                    );
+                } else if has_arrow && can_learn {
+                    self.skill_tree_ui.set_element_effect(
+                        &arrow_id,
+                        can_learn_arrow_effect,
+                    );
+                } else if has_arrow && cant_learn {
+                    self.skill_tree_ui.set_element_effect(
+                        &arrow_id,
+                        cant_learn_arrow_effect,
+                    );
+                }
+            }
+        }
+
+        if let Some(name) = learned_skills_name {
+            let skills = stats.get_skills_by_name(&name);
+            skills.n_learned += 1;
+            stats.n_skill_points -= 1;
+        }
     }
 }
 

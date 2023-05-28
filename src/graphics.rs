@@ -573,6 +573,13 @@ impl From<SpaceType> for u32 {
 pub enum EffectType {
     ApplyLightEffect = 1 << 0,
     StoneWallEffect = 1 << 1,
+    AlphaEffect01 = 1 << 2,
+    AlphaEffect02 = 1 << 3,
+    AlphaEffect03 = 1 << 4,
+    AlphaEffect05 = 1 << 5,
+    AlphaEffect07 = 1 << 6,
+    AlphaEffect08 = 1 << 7,
+    AlphaEffect09 = 1 << 8,
 }
 
 impl From<EffectType> for u32 {

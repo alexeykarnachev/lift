@@ -43,11 +43,12 @@ pub struct Stats {
 
 impl Stats {
     pub fn new() -> Self {
-        let attack_skills = SkillsChain::new(vec![
+        let mut attack_skills = SkillsChain::new(vec![
             Skill::from_str("Attack 1", "This is attack 1"),
             Skill::from_str("Attack 2", "This is attack 2"),
             Skill::from_str("Attack 3", "This is attack 3"),
         ]);
+        attack_skills.n_learned = 1;
 
         let durability_skills = SkillsChain::new(vec![
             Skill::from_str("Durability 1", "This is durability 1"),
@@ -71,7 +72,7 @@ impl Stats {
             level: 1,
             level_up_exp: 100,
             exp: 0,
-            n_skill_points: 1,
+            n_skill_points: 3,
 
             attack_skills,
             durability_skills,
@@ -91,6 +92,16 @@ impl Stats {
             self.level += 1;
             self.n_skill_points += 1;
             self.level_up_exp = (self.level_up_exp as f32 * 1.3) as usize;
+        }
+    }
+
+    pub fn get_skills_by_name(&mut self, name: &str) -> &mut SkillsChain {
+        match name {
+            "attack_skills" => &mut self.attack_skills,
+            "durability_skills" => &mut self.durability_skills,
+            _ => {
+                panic!("Unhandled skills chain name: {:?}", name)
+            }
         }
     }
 }

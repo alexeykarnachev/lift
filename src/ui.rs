@@ -28,23 +28,23 @@ mod skill_tree_ui {
         // Top left
         pub const X: f32 = 10.0;
         pub const Y: f32 = 10.0;
-        pub const WIDTH: f32 = 500.0;
-        pub const HEIGHT: f32 = 500.0;
-        pub const BORDER_SIZE: f32 = 10.0;
+        pub const WIDTH: f32 = 470.0;
+        pub const HEIGHT: f32 = 470.0;
+        pub const BORDER_SIZE: f32 = 20.0;
     }
 
     pub mod skill {
-        pub const WIDTH: f32 = 50.0;
-        pub const HEIGHT: f32 = 50.0;
-        pub const PAD_SIZE: f32 = 25.0;
+        pub const HPAD_SIZE: f32 = 90.0;
+        pub const VPAD_SIZE: f32 = 100.0;
     }
 }
 
+#[derive(Debug)]
 pub enum UIEvent {
     Hover(String),
     LMBPress(String),
     RMBPress(String),
-    Empty(String),
+    NotInteracted(String),
 }
 
 #[derive(Deserialize, Debug, Clone, Default)]
@@ -79,6 +79,8 @@ pub struct Element {
 
     #[serde(skip)]
     color: Color,
+    #[serde(skip)]
+    pub effect: u32,
 }
 
 pub struct UI {
@@ -121,6 +123,17 @@ impl UI {
         for element in self.elements.iter_mut() {
             if element.id == element_id {
                 element.color = color;
+                return;
+            }
+        }
+
+        panic!("No such element: {:?}", element_id);
+    }
+
+    pub fn set_element_effect(&mut self, element_id: &str, effect: u32) {
+        for element in self.elements.iter_mut() {
+            if element.id == element_id {
+                element.effect = effect;
                 return;
             }
         }
@@ -237,7 +250,7 @@ impl UI {
                         rect,
                         SpaceType::ScreenSpace,
                         0.0,
-                        0,
+                        element.effect,
                         element.color,
                     );
                     collider = rect;
@@ -254,7 +267,7 @@ impl UI {
                     let primitive = DrawPrimitive::from_sprite(
                         SpaceType::ScreenSpace,
                         0.0,
-                        0,
+                        element.effect,
                         position,
                         sprite,
                         None,
@@ -279,10 +292,10 @@ impl UI {
                     } else if input.rmb_press_pos.is_some() {
                         events.push(UIEvent::RMBPress(id));
                     } else {
-                        element.color = Color::new(0.9, 0.9, 0.5, 1.0);
+                        events.push(UIEvent::Hover(id));
                     }
                 } else {
-                    element.color = Color::default();
+                    events.push(UIEvent::NotInteracted(id));
                 }
             }
         }
@@ -439,6 +452,24 @@ pub fn create_skill_tree_ui(
     };
     cursor += Vec2::new(window::BORDER_SIZE, window::BORDER_SIZE);
 
+    // Footer
+    let skill_points_text = Element {
+        id: "skill_points_text".to_string(),
+        type_: "text".to_string(),
+        is_interactive: false,
+        position: Position {
+            origin: "TopLeft".to_string(),
+            x: cursor.x,
+            y: cursor.y,
+        },
+        string: Some("Points: 0".to_string()),
+        font_size: Some(28),
+
+        color: Color::gray(0.5, 1.0),
+        ..Default::default()
+    };
+    cursor.y += 0.5 * skill::VPAD_SIZE;
+
     // Attack line
     let mut attack_line_cursor = cursor;
     let attack_line = create_skills_chain(
@@ -446,40 +477,28 @@ pub fn create_skill_tree_ui(
         &stats.attack_skills,
         "attack_skills",
     );
-    cursor.y += skill::HEIGHT + skill::PAD_SIZE;
+    cursor.y += skill::VPAD_SIZE;
 
     // Durability line
     let mut durability_line_cursor = cursor;
-    let durability_line = vec![];
-    cursor.y += skill::HEIGHT + skill::PAD_SIZE;
+    let durability_line = create_skills_chain(
+        &mut durability_line_cursor,
+        &stats.durability_skills,
+        "durability_skills",
+    );
+    cursor.y += skill::VPAD_SIZE;
 
     // Agility line
     let mut agility_line_cursor = cursor;
     let agility_line = vec![];
-    cursor.y += skill::HEIGHT + skill::PAD_SIZE;
+    cursor.y += skill::VPAD_SIZE;
 
-    // Footer
-    let skill_points_text = Element {
-        id: "skill_points_text".to_string(),
-        type_: "text".to_string(),
-        is_interactive: false,
-        position: Position {
-            origin: "BotLeft".to_string(),
-            x: 20.0,
-            y: 500.0,
-        },
-        string: Some("Points: 228".to_string()),
-        font_size: Some(28),
-
-        color: Color::gray(0.5, 1.0),
-        ..Default::default()
-    };
-
-    let mut elements = vec![window];
+    let mut elements = vec![];
+    elements.push(window);
+    elements.push(skill_points_text);
     elements.extend_from_slice(&attack_line);
     elements.extend_from_slice(&durability_line);
     elements.extend_from_slice(&agility_line);
-    elements.push(skill_points_text);
 
     UI::new(elements)
 }
@@ -489,56 +508,57 @@ fn create_skills_chain(
     skills_chain: &SkillsChain,
     sprite_name: &str,
 ) -> Vec<Element> {
+    use skill_tree_ui::*;
+    use EffectType::*;
+
     let mut elements = vec![];
+    let n_learned = skills_chain.n_learned;
 
     for (idx, skill) in skills_chain.skills.iter().enumerate() {
-        if idx < skills_chain.n_learned {
-            let skill_element =
-                create_skill_rect(sprite_name, idx, cursor);
-            elements.push(skill_element);
-        } else {
-            let unknown_element =
-                create_skill_rect("skills_unknown", 0, cursor);
-            elements.push(unknown_element);
+        let mut sprite_id = sprite_name.to_string();
+        sprite_id.push_str("_");
+        sprite_id.push_str(&idx.to_string());
+
+        if idx > 0 {
+            let mut arrow_id = "arrow_".to_string();
+            arrow_id.push_str(&sprite_id.to_string());
+            let element = Element {
+                id: arrow_id,
+                type_: "sprite".to_string(),
+                is_interactive: false,
+                position: Position {
+                    origin: "TopLeft".to_string(),
+                    x: cursor.x,
+                    y: cursor.y,
+                },
+                sprite_name: Some("skills_arrow".to_string()),
+                sprite_idx: Some(0),
+                sprite_scale: Some(4.0),
+                effect: AlphaEffect01 as u32,
+                ..Default::default()
+            };
+            elements.push(element);
+            cursor.x += skill::HPAD_SIZE;
         }
 
-        if idx < skills_chain.skills.len() - 1 {
-            let arrow_element =
-                create_skill_rect("skills_arrow", 0, cursor);
-            elements.push(arrow_element);
-        }
+        let element = Element {
+            id: sprite_id,
+            type_: "sprite".to_string(),
+            is_interactive: true,
+            position: Position {
+                origin: "TopLeft".to_string(),
+                x: cursor.x,
+                y: cursor.y,
+            },
+            sprite_name: Some(sprite_name.to_string()),
+            sprite_idx: Some(idx),
+            sprite_scale: Some(4.0),
+            effect: AlphaEffect01 as u32,
+            ..Default::default()
+        };
+        elements.push(element);
+        cursor.x += skill::HPAD_SIZE;
     }
 
     elements
-}
-
-fn create_skill_rect(
-    sprite_name: &str,
-    sprite_idx: usize,
-    cursor: &mut Vec2<f32>,
-) -> Element {
-    use skill_tree_ui::*;
-
-    let mut id = sprite_name.to_string();
-    id.push_str("_");
-    id.push_str(&sprite_idx.to_string());
-
-    let element = Element {
-        id,
-        type_: "sprite".to_string(),
-        is_interactive: true,
-        position: Position {
-            origin: "TopLeft".to_string(),
-            x: cursor.x,
-            y: cursor.y,
-        },
-        sprite_name: Some(sprite_name.to_string()),
-        sprite_idx: Some(sprite_idx),
-        sprite_scale: Some(4.0),
-        ..Default::default()
-    };
-
-    cursor.x += skill::WIDTH + skill::PAD_SIZE;
-
-    element
 }
