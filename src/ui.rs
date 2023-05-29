@@ -270,7 +270,7 @@ impl UI {
                         element.effect,
                         position,
                         sprite,
-                        None,
+                        Some(element.color),
                         false,
                         TextureType::SpriteTexture,
                         scale,
@@ -452,7 +452,7 @@ pub fn create_skill_tree_ui(
     };
     cursor += Vec2::new(window::BORDER_SIZE, window::BORDER_SIZE);
 
-    // Footer
+    // Header
     let skill_points_text = Element {
         id: "skill_points_text".to_string(),
         type_: "text".to_string(),
@@ -490,8 +490,34 @@ pub fn create_skill_tree_ui(
 
     // Agility line
     let mut agility_line_cursor = cursor;
-    let agility_line = vec![];
+    let agility_line = create_skills_chain(
+        &mut agility_line_cursor,
+        &stats.agility_skills,
+        "agility_skills",
+    );
     cursor.y += skill::VPAD_SIZE;
+
+    // Footer
+    let mut cursor = Vec2::new(window::X, window::Y);
+    cursor += Vec2::new(
+        window::BORDER_SIZE,
+        window::HEIGHT - window::BORDER_SIZE,
+    );
+    let skill_description_text = Element {
+        id: "skill_description_text".to_string(),
+        type_: "text".to_string(),
+        is_interactive: false,
+        position: Position {
+            origin: "BotLeft".to_string(),
+            x: cursor.x,
+            y: cursor.y,
+        },
+        string: Some(" ".to_string()),
+        font_size: Some(16),
+
+        color: Color::gray(0.5, 1.0),
+        ..Default::default()
+    };
 
     let mut elements = vec![];
     elements.push(window);
@@ -499,6 +525,7 @@ pub fn create_skill_tree_ui(
     elements.extend_from_slice(&attack_line);
     elements.extend_from_slice(&durability_line);
     elements.extend_from_slice(&agility_line);
+    elements.push(skill_description_text);
 
     UI::new(elements)
 }
@@ -534,7 +561,7 @@ fn create_skills_chain(
                 sprite_name: Some("skills_arrow".to_string()),
                 sprite_idx: Some(0),
                 sprite_scale: Some(4.0),
-                effect: AlphaEffect01 as u32,
+                color: Color::only_alpha(0.1),
                 ..Default::default()
             };
             elements.push(element);
@@ -553,7 +580,7 @@ fn create_skills_chain(
             sprite_name: Some(sprite_name.to_string()),
             sprite_idx: Some(idx),
             sprite_scale: Some(4.0),
-            effect: AlphaEffect01 as u32,
+            color: Color::only_alpha(0.1),
             ..Default::default()
         };
         elements.push(element);

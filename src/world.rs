@@ -8,8 +8,10 @@ use crate::entity::*;
 use crate::graphics::*;
 use crate::input::*;
 use crate::level::*;
+use crate::player_stats::*;
 use crate::prefabs::*;
 use crate::ui::*;
+use crate::utils::smooth_step;
 use crate::vec::*;
 use std::f32::consts::PI;
 use std::fs;
@@ -610,6 +612,10 @@ impl World {
             }
         }
 
+        if !player.check_if_light_alive() {
+            player.light = Some(Light::player());
+        }
+
         player.update(
             self.gravity,
             self.friction,
@@ -643,7 +649,14 @@ impl World {
                     }
                 }
 
-                attack.damage /= attacked_enemies.len() as f32;
+                // Calculate splash damage
+                let n_enemies = attacked_enemies.len() as f32;
+                let penalty = player.splash_damage_penalty;
+                let max = attack.damage;
+                let min = attack.damage / n_enemies;
+                let damage = penalty * min + (1.0 - penalty) * max;
+                attack.damage = damage;
+
                 for enemy in attacked_enemies.iter_mut() {
                     enemy.receive_attack(attack);
                     if enemy.check_if_dead() {
@@ -805,9 +818,6 @@ impl World {
     fn update_skill_tree_ui(&mut self, input: &Input) {
         use EffectType::*;
         use UIEvent::*;
-        let alpha01 = AlphaEffect01 as u32;
-        let alpha03 = AlphaEffect03 as u32;
-        let alpha07 = AlphaEffect07 as u32;
 
         let events = self.skill_tree_ui.update(
             input,
@@ -822,34 +832,39 @@ impl World {
             "skill_points_text",
             &format!("POINTS: {:?}", n_points),
         );
+        self.skill_tree_ui
+            .set_element_string("skill_description_text", " ");
 
         let mut learned_skills_name = None;
         for event in events.iter() {
-            let learned_sprite_effect = 0;
-            let learned_arrow_effect = 0;
-            let mut can_learn_sprite_effect = 0;
-            let mut can_learn_arrow_effect = 0;
-            let cant_learn_sprite_effect = alpha01 | alpha03;
-            let cant_learn_arrow_effect = alpha01 | alpha03;
+            let learned_sprite_alpha = 1.0;
+            let learned_arrow_alpha = 1.0;
+            let mut can_learn_sprite_alpha = 1.0;
+            let mut can_learn_arrow_alpha = 1.0;
+            let cant_learn_sprite_alpha = 0.03;
+            let cant_learn_arrow_alpha = 0.03;
             let mut lmb_is_pressed = false;
+            let mut show_description = false;
 
             let mut sprite_id: Option<String> = None;
             match event {
                 Hover(id) => {
                     sprite_id = Some(id.clone());
-                    can_learn_sprite_effect = alpha07;
-                    can_learn_arrow_effect = alpha07;
+                    show_description = true;
+                    can_learn_sprite_alpha = 0.7;
+                    can_learn_arrow_alpha = 0.7;
                 }
                 NotInteracted(id) => {
                     sprite_id = Some(id.clone());
-                    can_learn_sprite_effect = alpha03;
-                    can_learn_arrow_effect = alpha03;
+                    can_learn_sprite_alpha = 0.3;
+                    can_learn_arrow_alpha = 0.3;
                 }
                 LMBPress(id) => {
                     sprite_id = Some(id.clone());
                     lmb_is_pressed = true;
-                    can_learn_sprite_effect = alpha07;
-                    can_learn_arrow_effect = alpha07;
+                    show_description = true;
+                    can_learn_sprite_alpha = 0.7;
+                    can_learn_arrow_alpha = 0.7;
                 }
                 _ => {}
             }
@@ -872,45 +887,66 @@ impl World {
                 }
 
                 if is_learned {
-                    self.skill_tree_ui.set_element_effect(
+                    self.skill_tree_ui.set_element_color(
                         &sprite_id,
-                        learned_sprite_effect,
+                        Color::only_alpha(learned_sprite_alpha),
                     );
                 } else if can_learn {
-                    self.skill_tree_ui.set_element_effect(
+                    self.skill_tree_ui.set_element_color(
                         &sprite_id,
-                        can_learn_sprite_effect,
+                        Color::only_alpha(can_learn_sprite_alpha),
                     );
                 } else if cant_learn {
-                    self.skill_tree_ui.set_element_effect(
+                    self.skill_tree_ui.set_element_color(
                         &sprite_id,
-                        cant_learn_sprite_effect,
+                        Color::only_alpha(cant_learn_sprite_alpha),
                     );
                 }
 
                 if has_arrow && is_learned {
-                    self.skill_tree_ui.set_element_effect(
+                    self.skill_tree_ui.set_element_color(
                         &arrow_id,
-                        learned_arrow_effect,
+                        Color::only_alpha(learned_arrow_alpha),
                     );
                 } else if has_arrow && can_learn {
-                    self.skill_tree_ui.set_element_effect(
+                    self.skill_tree_ui.set_element_color(
                         &arrow_id,
-                        can_learn_arrow_effect,
+                        Color::only_alpha(can_learn_arrow_alpha),
                     );
                 } else if has_arrow && cant_learn {
-                    self.skill_tree_ui.set_element_effect(
+                    self.skill_tree_ui.set_element_color(
                         &arrow_id,
-                        cant_learn_arrow_effect,
+                        Color::only_alpha(cant_learn_arrow_alpha),
+                    );
+                }
+
+                if show_description {
+                    self.skill_tree_ui.set_element_string(
+                        "skill_description_text",
+                        &skills.skills[idx].description,
                     );
                 }
             }
         }
 
+        use SkillEffectType::*;
         if let Some(name) = learned_skills_name {
-            let skills = stats.get_skills_by_name(&name);
-            skills.n_learned += 1;
-            stats.n_skill_points -= 1;
+            let effect = stats.force_learn_next(&name);
+            let player = &mut self.level.player;
+            match effect {
+                SetDamageMultiplier(value) => {
+                    player.damage_multiplier = value;
+                }
+                SetSplashDamagePenalty(value) => {
+                    player.splash_damage_penalty = value;
+                }
+                SetStaminaCostMultiplier(value) => {
+                    player.stamina_cost_multiplier = value;
+                }
+                SetReceivedDamageMultiplier(value) => {
+                    player.received_damage_multiplier = value;
+                }
+            }
         }
     }
 }

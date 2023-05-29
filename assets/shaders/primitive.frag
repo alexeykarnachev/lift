@@ -30,7 +30,7 @@ vec4 get_color() {
         uv = floor(uv) + min(fract(uv) / fwidth(uv), 1.0) - 0.5;
         uv /= tex_size;
         color = texture(sprite_atlas_tex, uv);
-        color = vec4(color.rgb + vs_rgba.rgb * vs_rgba.a, color.a);
+        color = vec4(color.rgb + vs_rgba.rgb, vs_rgba.a * color.a);
     } else if (vs_tex_id == GlyphTexture) {
         vec2 tex_size = vec2(textureSize(glyph_atlas_tex, 0));
         vec2 uv = vs_uv;
@@ -100,34 +100,6 @@ void main(void) {
 
     if ((vs_effect & ApplyLightEffect) > 0) {
         color = apply_light(color);
-    }
-
-    if ((vs_effect & AlphaEffect01) > 0) {
-        color.a *= 0.1;
-    }
-
-    if ((vs_effect & AlphaEffect02) > 0) {
-        color.a *= 0.2;
-    }
-
-    if ((vs_effect & AlphaEffect03) > 0) {
-        color.a *= 0.3;
-    }
-
-    if ((vs_effect & AlphaEffect05) > 0) {
-        color.a *= 0.5;
-    }
-
-    if ((vs_effect & AlphaEffect07) > 0) {
-        color.a *= 0.7;
-    }
-
-    if ((vs_effect & AlphaEffect08) > 0) {
-        color.a *= 0.8;
-    }
-
-    if ((vs_effect & AlphaEffect09) > 0) {
-        color.a *= 0.9;
     }
 
     frag_color = color;

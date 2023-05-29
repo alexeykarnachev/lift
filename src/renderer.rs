@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
+use crate::entity::*;
 use crate::graphics::*;
 use crate::vec::Vec2;
 use crate::world::*;
@@ -744,7 +745,7 @@ fn set_uniform_lights(
             gl,
             program,
             &format!("{}.{}", name, "color"),
-            &light.color.to_rgb_array(),
+            &light.get_color().to_rgb_array(),
         );
         set_uniform_3_f32(
             gl,

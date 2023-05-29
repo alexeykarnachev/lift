@@ -11,7 +11,7 @@ use EffectType::*;
 use Origin::*;
 
 mod player {
-    pub const MAX_HEALTH: f32 = 20000.0;
+    pub const MAX_HEALTH: f32 = 2000000.0;
     pub const MOVE_SPEED: f32 = 100.0;
     pub const KNOCKBACK_RESIST: f32 = 100.0;
 
@@ -23,7 +23,7 @@ mod player {
     pub mod weapon {
         pub const ANTICIPATION_TIME: f32 = 0.1;
         pub const ACTION_TIME: f32 = 0.3;
-        pub const DAMAGE: f32 = 500.0;
+        pub const DAMAGE: f32 = 5000.0;
         pub const KNOCKBACK: f32 = 120.0;
         pub const STAMINA_COST: f32 = 10000.0;
     }
@@ -33,12 +33,6 @@ mod player {
         pub const STAMINA_COST: f32 = 15000.0;
         pub const ACTION_TIME: f32 = 0.5;
         pub const COOLDOWN_TIME: f32 = 0.3;
-    }
-
-    pub mod light {
-        pub const Y_OFFSET: f32 = 16.0;
-        pub const RGBA: [f32; 4] = [3.0, 3.0, 3.0, 1.0];
-        pub const ATTENUATION: [f32; 3] = [1.0, 0.04, 0.005];
     }
 
     pub mod animator {
@@ -162,12 +156,6 @@ mod torch {
     pub mod animator {
         pub const BURN_DURATION: f32 = 0.5;
     }
-
-    pub mod light {
-        pub const Y_OFFSET: f32 = 0.0;
-        pub const RGBA: [f32; 4] = [7.0, 1.5, 0.5, 1.0];
-        pub const ATTENUATION: [f32; 3] = [1.0, 0.0, 0.0025];
-    }
 }
 
 pub fn create_default_sprite_atlas() -> SpriteAtlas {
@@ -230,11 +218,7 @@ pub fn create_player(
         ),
     );
 
-    let light = Light {
-        position: collider.get_top_center().add_y(light::Y_OFFSET),
-        color: Color::from_slice(&light::RGBA),
-        attenuation: light::ATTENUATION,
-    };
+    let light = Light::player();
     let mut animator = Animator::new(AnimatedSprite::new(
         sprite_atlas,
         "knight_idle",
@@ -739,11 +723,7 @@ pub fn create_torch(
         Repeat,
         TopCenter,
     ));
-    let light = Light {
-        position: Vec2::new(0.0, light::Y_OFFSET),
-        color: Color::from_slice(&light::RGBA),
-        attenuation: light::ATTENUATION,
-    };
+    let light = Light::torch();
 
     let mut entity = Entity::new(position);
     entity.light = Some(light);

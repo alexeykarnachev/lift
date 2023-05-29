@@ -52,6 +52,11 @@ pub struct Entity {
     pub is_on_ceil: bool,
     pub is_on_stair: bool,
 
+    pub damage_multiplier: f32,
+    pub splash_damage_penalty: f32,
+    pub stamina_cost_multiplier: f32,
+    pub received_damage_multiplier: f32,
+
     pub behaviour: Option<Behaviour>,
     pub position: Vec2<f32>,
     pub orientation: Orientation,
@@ -97,6 +102,10 @@ impl Entity {
             is_on_floor: false,
             is_on_ceil: false,
             is_on_stair: false,
+            damage_multiplier: 1.0,
+            splash_damage_penalty: 1.0,
+            stamina_cost_multiplier: 1.0,
+            received_damage_multiplier: 1.0,
             behaviour: None,
             position,
             orientation: Orientation::Right,
@@ -203,7 +212,8 @@ impl Entity {
     }
 
     pub fn receive_attack(&mut self, attack: &Attack) {
-        self.current_health -= attack.damage;
+        self.current_health -=
+            attack.damage * self.received_damage_multiplier;
         self.last_received_damage_time = self.time;
 
         let mut angle = PI * 0.15;
@@ -267,7 +277,8 @@ impl Entity {
         let jumping = self.jumping.as_mut().unwrap();
         jumping.timer.force_start();
         if let Some(stamina) = self.stamina.as_mut() {
-            stamina.sub(jumping.stamina_cost);
+            stamina
+                .sub(jumping.stamina_cost, self.stamina_cost_multiplier);
         }
     }
 
@@ -275,7 +286,8 @@ impl Entity {
         let dashing = self.dashing.as_mut().unwrap();
         dashing.timer.force_start();
         if let Some(stamina) = self.stamina.as_mut() {
-            stamina.sub(dashing.stamina_cost);
+            stamina
+                .sub(dashing.stamina_cost, self.stamina_cost_multiplier);
         }
     }
 
@@ -286,7 +298,7 @@ impl Entity {
         let collider = weapon.get_collider(self.orientation);
         weapon.timer.force_start();
         if let Some(stamina) = self.stamina.as_mut() {
-            stamina.sub(weapon.stamina_cost);
+            stamina.sub(weapon.stamina_cost, self.stamina_cost_multiplier);
         }
     }
 
@@ -401,6 +413,14 @@ impl Entity {
         self.check_if_weapon_ready() && collider.collide_with_rect(target)
     }
 
+    pub fn check_if_light_alive(&self) -> bool {
+        if let Some(light) = self.light {
+            return light.check_if_alive();
+        }
+
+        false
+    }
+
     fn update_kinematic(
         &mut self,
         gravity: f32,
@@ -489,6 +509,7 @@ impl Entity {
                 self.position,
                 self.orientation,
                 is_player,
+                self.damage_multiplier,
             ) {
                 attacks.push(attack);
             }
@@ -523,6 +544,12 @@ impl Entity {
     fn update_stamina(&mut self, dt: f32) {
         if let Some(stamina) = self.stamina.as_mut() {
             stamina.update(dt);
+        }
+    }
+
+    fn update_light(&mut self, dt: f32) {
+        if let Some(light) = self.light.as_mut() {
+            light.update(dt);
         }
     }
 
@@ -571,6 +598,7 @@ impl Entity {
             self.update_dashing(dt);
             self.update_healing(dt);
             self.update_stamina(dt);
+            self.update_light(dt);
         }
 
         self.update_kinematic(gravity, friction, colliders, dt);
@@ -588,7 +616,12 @@ impl Entity {
 
     pub fn add_exp(&mut self, value: usize) {
         let stats = self.stats.as_mut().unwrap();
-        stats.add_exp(value);
+        let is_level_up = stats.add_exp(value);
+        if is_level_up {
+            let position = self.collider.unwrap().get_top_center();
+            self.particles_emitter.init_level_up(position);
+            self.light = Some(Light::level_up());
+        }
     }
 }
 
@@ -809,7 +842,8 @@ impl Stamina {
         self.current = (self.current + dt * self.regen).min(self.max);
     }
 
-    pub fn sub(&mut self, value: f32) {
+    pub fn sub(&mut self, value: f32, multiplier: f32) {
+        let value = value * multiplier;
         self.current = (self.current - value).max(0.0);
     }
 }
@@ -879,6 +913,7 @@ impl Weapon {
         position: Vec2<f32>,
         orientation: Orientation,
         is_player: bool,
+        damage_multiplier: f32,
     ) -> Option<Attack> {
         let is_action_started = self.timer.update(dt);
 
@@ -886,7 +921,7 @@ impl Weapon {
             let attack = Attack::new(
                 position,
                 self.get_collider(orientation),
-                self.damage,
+                self.damage * damage_multiplier,
                 self.knockback,
                 self.timer.anticipation_time,
                 is_player,
@@ -930,6 +965,93 @@ impl Attack {
 
     pub fn get_collider(&self) -> Rect {
         self.collider.translate(self.position)
+    }
+}
+
+#[derive(Copy, Clone)]
+pub struct Light {
+    time: f32,
+    ttl: f32,
+    min_color: Color,
+    max_color: Color,
+    period: f32,
+    pub position: Vec2<f32>,
+    pub attenuation: [f32; 3],
+}
+
+impl Light {
+    pub fn new(
+        ttl: f32,
+        min_color: Color,
+        max_color: Color,
+        period: f32,
+        position: Vec2<f32>,
+        attenuation: [f32; 3],
+    ) -> Self {
+        Self {
+            time: 0.0,
+            ttl,
+            min_color,
+            max_color,
+            period,
+            position,
+            attenuation,
+        }
+    }
+
+    pub fn constant(
+        color: Color,
+        position: Vec2<f32>,
+        attenuation: [f32; 3],
+    ) -> Self {
+        Self::new(f32::INFINITY, color, color, 0.0, position, attenuation)
+    }
+
+    pub fn player() -> Self {
+        Self::constant(
+            Color::new(3.0, 3.0, 3.0, 1.0),
+            Vec2::new(0.0, 48.0),
+            [1.0, 0.04, 0.005],
+        )
+    }
+
+    pub fn level_up() -> Self {
+        Self::new(
+            0.8,
+            Color::new(3.0, 3.0, 3.0, 1.0),
+            Color::new(20.0, 20.0, 0.0, 1.0),
+            0.8,
+            Vec2::new(0.0, 16.0),
+            [1.0, 0.1, 0.0],
+        )
+    }
+
+    pub fn torch() -> Self {
+        Self::constant(
+            Color::new(7.0, 1.5, 0.5, 1.0),
+            Vec2::zeros(),
+            [1.0, 0.0, 0.0025],
+        )
+    }
+
+    pub fn check_if_alive(&self) -> bool {
+        self.time < self.ttl
+    }
+
+    pub fn update(&mut self, dt: f32) {
+        self.time += dt;
+    }
+
+    pub fn get_color(&self) -> Color {
+        if self.period.abs() < f32::EPSILON {
+            return self.min_color;
+        }
+
+        let freq = 1.0 / self.period;
+        let mut k = (2.0 * PI * self.time * freq).cos();
+        k = 1.0 - 0.5 * (k + 1.0);
+
+        self.max_color.lerp(&self.min_color, k)
     }
 }
 
@@ -1205,7 +1327,7 @@ impl Text {
 struct Particle {
     pub ttl: f32,
     pub position: Vec2<f32>,
-    pub size: f32,
+    pub size: Vec2<f32>,
     pub velocity: Vec2<f32>,
     pub acceleration: Vec2<f32>,
     pub fade_rate: f32,
@@ -1217,7 +1339,7 @@ impl Particle {
         &mut self,
         ttl: f32,
         position: Vec2<f32>,
-        size: f32,
+        size: Vec2<f32>,
         velocity: Vec2<f32>,
         acceleration: Vec2<f32>,
         fade_rate: f32,
@@ -1236,7 +1358,7 @@ impl Particle {
         Self {
             ttl: 0.0,
             position: Vec2::zeros(),
-            size: 0.0,
+            size: Vec2::zeros(),
             velocity: Vec2::zeros(),
             acceleration: Vec2::zeros(),
             fade_rate: 0.0,
@@ -1257,14 +1379,8 @@ impl Particle {
         }
     }
 
-    pub fn get_draw_primitive(
-        &self,
-        position: Vec2<f32>,
-    ) -> DrawPrimitive {
-        let rect = Rect::from_center(
-            self.position + position,
-            Vec2::new(self.size, self.size),
-        );
+    pub fn get_draw_primitive(&self) -> DrawPrimitive {
+        let rect = Rect::from_center(self.position, self.size);
 
         DrawPrimitive::from_rect(
             rect,
@@ -1276,7 +1392,7 @@ impl Particle {
     }
 }
 
-const MAX_N_PARTICLES: usize = 10;
+const MAX_N_PARTICLES: usize = 256;
 
 #[derive(Clone)]
 pub struct ParticlesEmitter {
@@ -1293,7 +1409,7 @@ pub struct ParticlesEmitter {
     particle_fade_rate: f32,
     particle_velocity: Vec2<f32>,
     particle_acceleration: Vec2<f32>,
-    particle_size: f32,
+    particle_size: Vec2<f32>,
     particle_ttl: f32,
 
     particles: [Particle; MAX_N_PARTICLES],
@@ -1316,7 +1432,7 @@ impl ParticlesEmitter {
             particle_fade_rate: 0.0,
             particle_velocity: Vec2::zeros(),
             particle_acceleration: Vec2::zeros(),
-            particle_size: 1.0,
+            particle_size: Vec2::new(1.0, 1.0),
             particle_ttl: 0.0,
             particles,
             first_particle_idx: 0,
@@ -1329,6 +1445,7 @@ impl ParticlesEmitter {
     }
 
     pub fn init_torch(&mut self, position: Vec2<f32>) {
+        self.time = 0.0;
         self.ttl = f32::INFINITY;
         self.position = position;
         self.emit_period = 0.25;
@@ -1339,7 +1456,7 @@ impl ParticlesEmitter {
         self.particle_fade_rate = 2.0;
         self.particle_velocity = Vec2::new(0.0, 50.0);
         self.particle_acceleration = Vec2::new(0.0, 0.0);
-        self.particle_size = 2.0;
+        self.particle_size = Vec2::new(2.0, 2.0);
         self.particle_ttl = 0.2;
     }
 
@@ -1348,6 +1465,7 @@ impl ParticlesEmitter {
         position: Vec2<f32>,
         velocity: Vec2<f32>,
     ) {
+        self.time = 0.0;
         self.ttl = 1.0;
         self.position = position;
         self.emit_period = 0.0;
@@ -1358,13 +1476,29 @@ impl ParticlesEmitter {
         self.particle_fade_rate = 1.0;
         self.particle_velocity = velocity;
         self.particle_acceleration = Vec2::new(0.0, -250.0);
-        self.particle_size = 2.0;
+        self.particle_size = Vec2::new(2.0, 2.0);
         self.particle_ttl = 0.5;
     }
 
     pub fn init_healing(&mut self, position: Vec2<f32>) {
         self.init_torch(position);
         self.particle_color = Color::green(1.0);
+    }
+
+    pub fn init_level_up(&mut self, position: Vec2<f32>) {
+        self.time = 0.0;
+        self.ttl = 0.0;
+        self.position = position;
+        self.emit_period = 0.0;
+        self.n_to_emit = 8;
+        self.n_emit_per_step_range = (8, 8);
+        self.particle_position_range = (12.0, 2.0);
+        self.particle_color = Color::yellow(0.8);
+        self.particle_fade_rate = 1.0;
+        self.particle_velocity = Vec2::new(0.0, 50.0);
+        self.particle_acceleration = Vec2::new(0.0, 150.0);
+        self.particle_size = Vec2::new(4.0, 60.0);
+        self.particle_ttl = 1.0;
     }
 
     pub fn torch(position: Vec2<f32>) -> Self {
@@ -1384,14 +1518,18 @@ impl ParticlesEmitter {
         emitter
     }
 
+    pub fn level_up(position: Vec2<f32>) -> Self {
+        let mut emitter = Self::empty();
+        emitter.init_level_up(position);
+
+        emitter
+    }
+
     pub fn check_if_alive(&self) -> bool {
-        self.ttl > 0.0 && (self.n_to_emit == -1 || self.n_to_emit > 0)
+        self.ttl >= 0.0 && (self.n_to_emit == -1 || self.n_to_emit > 0)
     }
 
     pub fn update(&mut self, dt: f32, position: Vec2<f32>) {
-        self.ttl -= dt;
-        self.time += dt;
-
         let n_emit = if !self.check_if_alive() {
             0
         } else if self.emit_period < f32::EPSILON {
@@ -1432,16 +1570,16 @@ impl ParticlesEmitter {
                     % MAX_N_PARTICLES
             };
 
-            self.n_particles = self.n_particles + 1;
-
+            self.n_particles += 1;
             if self.n_particles > MAX_N_PARTICLES {
                 self.n_particles = MAX_N_PARTICLES;
                 self.first_particle_idx =
                     (self.first_particle_idx + 1) % MAX_N_PARTICLES;
             }
 
-            let particle_position =
-                Vec2::frand(self.particle_position_range);
+            let particle_position = self.position
+                + position
+                + Vec2::frand(self.particle_position_range);
             self.particles[idx].init(
                 self.particle_ttl,
                 particle_position,
@@ -1457,20 +1595,19 @@ impl ParticlesEmitter {
             let idx = (self.first_particle_idx + i) % MAX_N_PARTICLES;
             self.particles[idx].update(dt);
         }
+
+        self.ttl -= dt;
+        self.time += dt;
     }
 
-    pub fn get_draw_primitives(
-        &self,
-        position: Vec2<f32>,
-    ) -> Vec<DrawPrimitive> {
+    pub fn get_draw_primitives(&self) -> Vec<DrawPrimitive> {
         let mut primitives = Vec::with_capacity(self.n_particles);
 
         for i in 0..self.n_particles {
             let idx = (self.first_particle_idx + i) % MAX_N_PARTICLES;
             let particle = self.particles[idx];
             if particle.check_if_alive() {
-                let primitive =
-                    particle.get_draw_primitive(self.position + position);
+                let primitive = particle.get_draw_primitive();
                 primitives.push(primitive);
             }
         }

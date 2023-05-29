@@ -81,13 +81,6 @@ impl SpriteAtlas {
     }
 }
 
-#[derive(Copy, Clone)]
-pub struct Light {
-    pub position: Vec2<f32>,
-    pub color: Color,
-    pub attenuation: [f32; 3],
-}
-
 #[derive(Copy, Clone, PartialEq)]
 pub enum AnimationMode {
     Repeat,
@@ -189,6 +182,10 @@ impl Color {
 
     pub fn from_slice(arr: &[f32; 4]) -> Self {
         Self::new(arr[0], arr[1], arr[2], arr[3])
+    }
+
+    pub fn only_alpha(a: f32) -> Self {
+        Self::new(0.0, 0.0, 0.0, a)
     }
 
     pub fn gray(c: f32, a: f32) -> Self {
@@ -297,6 +294,11 @@ impl DrawPrimitive {
     ) -> Self {
         let size = Vec2::new(sprite.w, sprite.h).scale(scale);
         let rect = Rect::from_origin(sprite.origin, position, size);
+        let color = if color.is_none() {
+            Some(Color::only_alpha(1.0))
+        } else {
+            color
+        };
 
         Self {
             rect,
@@ -452,9 +454,7 @@ pub fn draw_entity(entity: &Entity, draw_queue: &mut Vec<DrawPrimitive>) {
         draw_queue.push(primitive);
     };
 
-    let primitives = entity
-        .particles_emitter
-        .get_draw_primitives(entity.position);
+    let primitives = entity.particles_emitter.get_draw_primitives();
     draw_queue.extend_from_slice(&primitives);
 
     if entity.check_if_dead() {
@@ -573,13 +573,6 @@ impl From<SpaceType> for u32 {
 pub enum EffectType {
     ApplyLightEffect = 1 << 0,
     StoneWallEffect = 1 << 1,
-    AlphaEffect01 = 1 << 2,
-    AlphaEffect02 = 1 << 3,
-    AlphaEffect03 = 1 << 4,
-    AlphaEffect05 = 1 << 5,
-    AlphaEffect07 = 1 << 6,
-    AlphaEffect08 = 1 << 7,
-    AlphaEffect09 = 1 << 8,
 }
 
 impl From<EffectType> for u32 {
