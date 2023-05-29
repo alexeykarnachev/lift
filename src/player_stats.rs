@@ -116,7 +116,7 @@ impl Stats {
 
         Self {
             level: 1,
-            level_up_exp: 10,
+            level_up_exp: 50,
             exp: 0,
             n_skill_points: 3,
 

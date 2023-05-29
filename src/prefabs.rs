@@ -11,7 +11,7 @@ use EffectType::*;
 use Origin::*;
 
 mod player {
-    pub const MAX_HEALTH: f32 = 2000000.0;
+    pub const MAX_HEALTH: f32 = 20000.0;
     pub const MOVE_SPEED: f32 = 100.0;
     pub const KNOCKBACK_RESIST: f32 = 100.0;
 
@@ -23,7 +23,7 @@ mod player {
     pub mod weapon {
         pub const ANTICIPATION_TIME: f32 = 0.1;
         pub const ACTION_TIME: f32 = 0.3;
-        pub const DAMAGE: f32 = 5000.0;
+        pub const DAMAGE: f32 = 800.0;
         pub const KNOCKBACK: f32 = 120.0;
         pub const STAMINA_COST: f32 = 10000.0;
     }
@@ -137,7 +137,7 @@ mod rat_king {
 }
 
 mod rat_nest {
-    pub const MAX_HEALTH: f32 = 20000.0;
+    pub const MAX_HEALTH: f32 = 10000.0;
     pub const EXP_DROP: usize = 35;
 
     pub mod spawner {
