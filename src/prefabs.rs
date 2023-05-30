@@ -169,12 +169,8 @@ pub fn create_default_glyph_atlas() -> GlyphAtlas {
     // Typical font sizes: 3, 7, 9, 12, 16, 21, 28, 37, 50, 67, 89, 119, 159
     GlyphAtlas::new(
         "./assets/fonts/Montserrat-Bold.ttf",
-        &[16, 28, 67, 119],
+        &[16, 28, 37, 67, 119],
     )
-}
-
-pub fn create_default_main_menu_ui() -> UI {
-    UI::from_file("./assets/ui/main_menu.json")
 }
 
 pub fn create_default_game_over_ui() -> UI {

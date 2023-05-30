@@ -55,9 +55,9 @@ impl World {
         let level = Level::new("./assets/levels/0.json", &sprite_atlas);
 
         let attacks: Vec<Attack> = Vec::with_capacity(256);
-        let camera = Camera::new(level.player.get_center().add_y(2.0));
+        let camera = Camera::new(level.player.get_center().add_y(64.0));
 
-        let main_menu_ui = create_default_main_menu_ui();
+        let main_menu_ui = create_main_menu_ui();
         let play_ui = create_play_ui();
         let game_over_ui = create_default_game_over_ui();
         let skill_tree_ui = create_skill_tree_ui(
@@ -66,8 +66,8 @@ impl World {
         );
 
         Self {
-            // state: WorldState::MainMenu,
-            state: WorldState::Play,
+            state: WorldState::MainMenu,
+            // state: WorldState::Play,
             time: 0.0,
             gravity: 400.0,
             friction: 0.02,
@@ -743,12 +743,18 @@ impl World {
         for event in events.iter() {
             match event {
                 LMBPress(id) => match id.as_str() {
-                    "new_game" => self.state = WorldState::Play,
-                    "quit" => {
+                    "new_game_text" => self.state = WorldState::Play,
+                    "quit_text" => {
                         self.state = WorldState::Quit;
                     }
                     _ => {}
                 },
+                Hover(id) => self
+                    .main_menu_ui
+                    .set_element_color(id, Color::new(1.0, 0.3, 0.0, 1.0)),
+                NotInteracted(id) => self
+                    .main_menu_ui
+                    .set_element_color(id, Color::gray(0.5, 1.0)),
                 _ => {}
             }
         }

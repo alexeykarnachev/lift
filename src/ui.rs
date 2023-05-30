@@ -29,7 +29,7 @@ mod skill_tree_ui {
         pub const X: f32 = 10.0;
         pub const Y: f32 = 10.0;
         pub const WIDTH: f32 = 470.0;
-        pub const HEIGHT: f32 = 470.0;
+        pub const HEIGHT: f32 = 500.0;
         pub const BORDER_SIZE: f32 = 20.0;
     }
 
@@ -179,20 +179,13 @@ impl UI {
             if position.x < -1.0 {
                 position.x = window_size.x - position.x;
             } else if position.x <= 1.0 {
-                if position.x < 0.0 {
-                    position.x += 1.0;
-                }
                 position.x =
                     (position.x * window_size.x + window_size.x) * 0.5;
-            } else {
             }
 
             if position.y < -1.0 {
                 position.y *= -1.0;
             } else if position.y <= 1.0 {
-                if position.y < 0.0 {
-                    position.y += 1.0;
-                }
                 position.y =
                     (position.y * window_size.y + window_size.y) * 0.5;
             } else {
@@ -302,6 +295,75 @@ impl UI {
 
         events
     }
+}
+
+pub fn create_main_menu_ui() -> UI {
+    let window = Element {
+        id: "window".to_string(),
+        type_: "rect".to_string(),
+        is_interactive: false,
+        position: Position {
+            origin: "TopLeft".to_string(),
+            x: -1.0,
+            y: 1.0,
+        },
+        width: Some(1.0),
+        height: Some(1.0),
+        color: Color::gray(0.0, 0.85),
+        ..Default::default()
+    };
+
+    let mut cursor = Vec2::new(30.0, -30.0);
+    let quit_text = Element {
+        id: "quit_text".to_string(),
+        type_: "text".to_string(),
+        is_interactive: true,
+        position: Position {
+            origin: "BotLeft".to_string(),
+            x: cursor.x,
+            y: cursor.y,
+        },
+        string: Some("Quit".to_string()),
+        font_size: Some(37),
+        color: Color::gray(0.5, 1.0),
+        ..Default::default()
+    };
+    cursor.y -= 50.0;
+
+    let options_text = Element {
+        id: "options_text".to_string(),
+        type_: "text".to_string(),
+        is_interactive: true,
+        position: Position {
+            origin: "BotLeft".to_string(),
+            x: cursor.x,
+            y: cursor.y,
+        },
+        string: Some("Options".to_string()),
+        font_size: Some(37),
+        color: Color::gray(0.5, 1.0),
+        ..Default::default()
+    };
+    cursor.y -= 50.0;
+
+    let new_game_text = Element {
+        id: "new_game_text".to_string(),
+        type_: "text".to_string(),
+        is_interactive: true,
+        position: Position {
+            origin: "BotLeft".to_string(),
+            x: cursor.x,
+            y: cursor.y,
+        },
+        string: Some("New Game".to_string()),
+        font_size: Some(37),
+        color: Color::gray(0.5, 1.0),
+        ..Default::default()
+    };
+
+    let elements = vec![window, new_game_text, options_text, quit_text];
+
+    UI::new(elements)
 }
 
 pub fn create_play_ui() -> UI {
