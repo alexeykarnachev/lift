@@ -62,17 +62,17 @@ impl Stats {
             Skill::from_str(
                 "Attack 1",
                 "This is attack 1",
-                SetDamageMultiplier(1.5),
+                SetDamageMultiplier(1.3),
             ),
             Skill::from_str(
                 "Attack 2",
                 "This is attack 2",
-                SetDamageMultiplier(2.0),
+                SetDamageMultiplier(1.6),
             ),
             Skill::from_str(
                 "Attack 3",
                 "This is attack 3",
-                SetDamageMultiplier(3.0),
+                SetSplashDamagePenalty(0.5),
             ),
         ]);
 
@@ -80,17 +80,17 @@ impl Stats {
             Skill::from_str(
                 "Durability 1",
                 "This is durability 1",
-                SetReceivedDamageMultiplier(0.1),
+                SetReceivedDamageMultiplier(0.8),
             ),
             Skill::from_str(
                 "Durability 2",
                 "This is durability 2",
-                SetReceivedDamageMultiplier(0.5),
+                SetReceivedDamageMultiplier(0.6),
             ),
             Skill::from_str(
                 "Durability 3",
                 "This is durability 3",
-                SetReceivedDamageMultiplier(0.99),
+                SetReceivedDamageMultiplier(0.4),
             ),
         ]);
 
@@ -112,7 +112,23 @@ impl Stats {
             ),
         ]);
 
-        let light_skills = SkillsChain::new(vec![]);
+        let light_skills = SkillsChain::new(vec![
+            Skill::from_str(
+                "Light 1",
+                "This is light 1",
+                SetStaminaCostMultiplier(0.8),
+            ),
+            Skill::from_str(
+                "Light 2",
+                "This is light 2",
+                SetStaminaCostMultiplier(0.6),
+            ),
+            Skill::from_str(
+                "Light 3",
+                "This is light 3",
+                SetStaminaCostMultiplier(0.4),
+            ),
+        ]);
 
         Self {
             level: 1,
@@ -158,6 +174,7 @@ impl Stats {
             "attack_skills" => &mut self.attack_skills,
             "durability_skills" => &mut self.durability_skills,
             "agility_skills" => &mut self.agility_skills,
+            "light_skills" => &mut self.light_skills,
             _ => {
                 panic!("Unhandled skills chain name: {:?}", name)
             }

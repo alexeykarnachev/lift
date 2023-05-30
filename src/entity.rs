@@ -1108,7 +1108,12 @@ impl Spawner {
             let position = Vec2::new(x, y);
 
             let entity = match self.behaviour {
-                Behaviour::Rat => create_rat(position, sprite_atlas),
+                Behaviour::Rat => {
+                    let mut rat = create_rat(position, sprite_atlas);
+                    rat.exp_drop = 0;
+
+                    rat
+                }
                 _ => {
                     panic!(
                         "Spawner for {:?} is not implemented",

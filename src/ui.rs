@@ -497,6 +497,15 @@ pub fn create_skill_tree_ui(
     );
     cursor.y += skill::VPAD_SIZE;
 
+    // Light line
+    let mut light_line_cursor = cursor;
+    let light_line = create_skills_chain(
+        &mut light_line_cursor,
+        &stats.light_skills,
+        "light_skills",
+    );
+    cursor.y += skill::VPAD_SIZE;
+
     // Footer
     let mut cursor = Vec2::new(window::X, window::Y);
     cursor += Vec2::new(
@@ -525,6 +534,7 @@ pub fn create_skill_tree_ui(
     elements.extend_from_slice(&attack_line);
     elements.extend_from_slice(&durability_line);
     elements.extend_from_slice(&agility_line);
+    elements.extend_from_slice(&light_line);
     elements.push(skill_description_text);
 
     UI::new(elements)
