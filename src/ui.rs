@@ -7,12 +7,12 @@ use crate::entity::*;
 use crate::graphics::*;
 use crate::input::*;
 use crate::player_stats::SkillsChain;
+use crate::player_stats::SkillsChainType;
 use crate::player_stats::Stats;
 use crate::vec::*;
-use serde::Deserialize;
 use std::fs;
 
-mod play_ui {
+mod game_ui {
     pub mod window {
         // Top left
         pub const X: f32 = 10.0;
@@ -39,28 +39,61 @@ mod skill_tree_ui {
     }
 }
 
-#[derive(Debug)]
-pub enum UIEvent {
-    Hover(String),
-    LMBPress(String),
-    RMBPress(String),
-    NotInteracted(String),
+#[derive(Debug, PartialEq, Default, Clone, Copy)]
+pub enum UIElementID {
+    #[default]
+    Unknown,
+
+    MainMenuBackground,
+    MainMenuQuit,
+    MainMenuOptions,
+    MainMenuNewGame,
+
+    GameIndicatorsBackground,
+    GameLevelNumberBackground,
+    GameLevelNumber,
+    GameHealthbar,
+    GameStaminabar,
+    GameExpbar,
+
+    SkillsTreeBackground,
+    SkillsTreePointsNumber,
+    SkillsTreeSkillDescription,
+    SkillsTreeSkill(SkillsChainType, usize),
+    SkillsTreeArrow(SkillsChainType, usize),
 }
 
-#[derive(Deserialize, Debug, Clone, Default)]
-pub struct Position {
-    origin: String,
+#[derive(Debug, PartialEq, Default, Clone)]
+enum UIElementType {
+    #[default]
+    Unknown,
+
+    Rect,
+    Text,
+    Sprite,
+}
+
+#[derive(Debug)]
+pub enum UIEvent {
+    Hover(UIElementID),
+    LMBPress(UIElementID),
+    RMBPress(UIElementID),
+    NotInteracted(UIElementID),
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct UIPosition {
+    origin: Origin,
     x: f32,
     y: f32,
 }
 
-#[derive(Deserialize, Debug, Clone, Default)]
-pub struct Element {
-    id: String,
-    #[serde(rename = "type")]
-    type_: String,
+#[derive(Debug, Clone, Default)]
+pub struct UIElement {
+    id: UIElementID,
+    type_: UIElementType,
     is_interactive: bool,
-    position: Position,
+    position: UIPosition,
 
     // Text
     string: Option<String>,
@@ -77,20 +110,18 @@ pub struct Element {
     sprite_idx: Option<usize>,
     sprite_scale: Option<f32>,
 
-    #[serde(skip)]
     color: Color,
-    #[serde(skip)]
     pub effect: u32,
 }
 
 pub struct UI {
     pub texts: Vec<Text>,
     pub rects: Vec<DrawPrimitive>,
-    pub elements: Vec<Element>,
+    pub elements: Vec<UIElement>,
 }
 
 impl UI {
-    pub fn new(elements: Vec<Element>) -> Self {
+    pub fn new(elements: Vec<UIElement>) -> Self {
         let texts = Vec::<Text>::with_capacity(elements.len());
         let rects = Vec::<DrawPrimitive>::with_capacity(elements.len());
 
@@ -101,14 +132,11 @@ impl UI {
         }
     }
 
-    pub fn from_file(file_path: &'static str) -> Self {
-        let data = fs::read_to_string(file_path).unwrap();
-        let elements: Vec<Element> = serde_json::from_str(&data).unwrap();
-
-        Self::new(elements)
-    }
-
-    pub fn set_element_string(&mut self, element_id: &str, string: &str) {
+    pub fn set_element_string(
+        &mut self,
+        element_id: UIElementID,
+        string: &str,
+    ) {
         for element in self.elements.iter_mut() {
             if element.id == element_id {
                 element.string = Some(string.to_string());
@@ -119,7 +147,11 @@ impl UI {
         panic!("No such element: {:?}", element_id);
     }
 
-    pub fn set_element_color(&mut self, element_id: &str, color: Color) {
+    pub fn set_element_color(
+        &mut self,
+        element_id: UIElementID,
+        color: Color,
+    ) {
         for element in self.elements.iter_mut() {
             if element.id == element_id {
                 element.color = color;
@@ -130,7 +162,11 @@ impl UI {
         panic!("No such element: {:?}", element_id);
     }
 
-    pub fn set_element_effect(&mut self, element_id: &str, effect: u32) {
+    pub fn set_element_effect(
+        &mut self,
+        element_id: UIElementID,
+        effect: u32,
+    ) {
         for element in self.elements.iter_mut() {
             if element.id == element_id {
                 element.effect = effect;
@@ -141,7 +177,11 @@ impl UI {
         panic!("No such element: {:?}", element_id);
     }
 
-    pub fn set_element_filling(&mut self, element_id: &str, filling: f32) {
+    pub fn set_element_filling(
+        &mut self,
+        element_id: UIElementID,
+        filling: f32,
+    ) {
         for element in self.elements.iter_mut() {
             if element.id == element_id {
                 element.filling = Some(filling);
@@ -172,7 +212,7 @@ impl UI {
         self.rects.clear();
         let mut events = Vec::with_capacity(self.elements.len());
         for element in self.elements.iter_mut() {
-            let origin = Origin::from_str(&element.position.origin);
+            let origin = element.position.origin;
             let mut position =
                 Vec2::new(element.position.x, element.position.y);
 
@@ -193,8 +233,8 @@ impl UI {
             }
 
             let collider;
-            match element.type_.as_str() {
-                "text" => {
+            match element.type_ {
+                UIElementType::Text => {
                     let string = element.string.clone().unwrap();
                     let font_size = element.font_size.unwrap();
                     let text = Text::new(
@@ -209,7 +249,7 @@ impl UI {
                     collider = text.get_bound_rect();
                     self.texts.push(text);
                 }
-                "rect" => {
+                UIElementType::Rect => {
                     let mut width;
                     let mut height;
                     if element.aspect.is_none() {
@@ -249,7 +289,7 @@ impl UI {
                     collider = rect;
                     self.rects.push(primitive);
                 }
-                "sprite" => {
+                UIElementType::Sprite => {
                     let name = element.sprite_name.as_ref().unwrap();
                     let idx = element.sprite_idx.unwrap();
                     let scale = element.sprite_scale.unwrap();
@@ -272,7 +312,7 @@ impl UI {
                     self.rects.push(primitive);
                 }
                 _ => {
-                    panic!("Unknown UI element type: {:?}", element.type_)
+                    panic!("Unknown UI element type")
                 }
             }
 
@@ -298,12 +338,14 @@ impl UI {
 }
 
 pub fn create_main_menu_ui() -> UI {
-    let window = Element {
-        id: "window".to_string(),
-        type_: "rect".to_string(),
+    use UIElementID::*;
+
+    let background = UIElement {
+        id: MainMenuBackground,
+        type_: UIElementType::Rect,
         is_interactive: false,
-        position: Position {
-            origin: "TopLeft".to_string(),
+        position: UIPosition {
+            origin: Origin::TopLeft,
             x: -1.0,
             y: 1.0,
         },
@@ -314,12 +356,12 @@ pub fn create_main_menu_ui() -> UI {
     };
 
     let mut cursor = Vec2::new(30.0, -30.0);
-    let quit_text = Element {
-        id: "quit_text".to_string(),
-        type_: "text".to_string(),
+    let quit = UIElement {
+        id: MainMenuQuit,
+        type_: UIElementType::Text,
         is_interactive: true,
-        position: Position {
-            origin: "BotLeft".to_string(),
+        position: UIPosition {
+            origin: Origin::BotLeft,
             x: cursor.x,
             y: cursor.y,
         },
@@ -330,12 +372,12 @@ pub fn create_main_menu_ui() -> UI {
     };
     cursor.y -= 50.0;
 
-    let options_text = Element {
-        id: "options_text".to_string(),
-        type_: "text".to_string(),
+    let options = UIElement {
+        id: MainMenuOptions,
+        type_: UIElementType::Text,
         is_interactive: true,
-        position: Position {
-            origin: "BotLeft".to_string(),
+        position: UIPosition {
+            origin: Origin::BotLeft,
             x: cursor.x,
             y: cursor.y,
         },
@@ -346,12 +388,12 @@ pub fn create_main_menu_ui() -> UI {
     };
     cursor.y -= 50.0;
 
-    let new_game_text = Element {
-        id: "new_game_text".to_string(),
-        type_: "text".to_string(),
+    let new_game = UIElement {
+        id: MainMenuNewGame,
+        type_: UIElementType::Text,
         is_interactive: true,
-        position: Position {
-            origin: "BotLeft".to_string(),
+        position: UIPosition {
+            origin: Origin::BotLeft,
             x: cursor.x,
             y: cursor.y,
         },
@@ -361,22 +403,23 @@ pub fn create_main_menu_ui() -> UI {
         ..Default::default()
     };
 
-    let elements = vec![window, new_game_text, options_text, quit_text];
+    let elements = vec![background, new_game, options, quit];
 
     UI::new(elements)
 }
 
-pub fn create_play_ui() -> UI {
-    use play_ui::*;
+pub fn create_game_ui() -> UI {
+    use game_ui::*;
+    use UIElementID::*;
 
     let mut cursor = Vec2::new(window::X, window::Y);
 
-    let window = Element {
-        id: "window".to_string(),
-        type_: "rect".to_string(),
+    let indicators_background = UIElement {
+        id: GameIndicatorsBackground,
+        type_: UIElementType::Rect,
         is_interactive: false,
-        position: Position {
-            origin: "TopLeft".to_string(),
+        position: UIPosition {
+            origin: Origin::TopLeft,
             x: cursor.x,
             y: cursor.y,
         },
@@ -387,33 +430,33 @@ pub fn create_play_ui() -> UI {
     };
     cursor += Vec2::new(window::BORDER_SIZE, window::BORDER_SIZE);
 
-    let level_number_rect_size =
+    let level_number_background_size =
         window::HEIGHT - 2.0 * window::BORDER_SIZE;
-    let level_number_rect = Element {
-        id: "level_number_rect".to_string(),
-        type_: "rect".to_string(),
+    let level_number_background = UIElement {
+        id: GameLevelNumberBackground,
+        type_: UIElementType::Rect,
         is_interactive: false,
-        position: Position {
-            origin: "TopLeft".to_string(),
+        position: UIPosition {
+            origin: Origin::TopLeft,
             x: cursor.x,
             y: cursor.y,
         },
-        width: Some(level_number_rect_size),
-        height: Some(level_number_rect_size),
+        width: Some(level_number_background_size),
+        height: Some(level_number_background_size),
         color: Color::expbar(1.0),
         ..Default::default()
     };
-    cursor.x += level_number_rect_size + window::BORDER_SIZE;
+    cursor.x += level_number_background_size + window::BORDER_SIZE;
 
-    let mut level_number_center = level_number_rect.position.clone();
-    level_number_center.x += 0.5 * level_number_rect_size;
-    level_number_center.y += 0.5 * level_number_rect_size;
-    let level_number = Element {
-        id: "level_number".to_string(),
-        type_: "text".to_string(),
+    let mut level_number_center = level_number_background.position.clone();
+    level_number_center.x += 0.5 * level_number_background_size;
+    level_number_center.y += 0.5 * level_number_background_size;
+    let level_number = UIElement {
+        id: GameLevelNumber,
+        type_: UIElementType::Text,
         is_interactive: false,
-        position: Position {
-            origin: "Center".to_string(),
+        position: UIPosition {
+            origin: Origin::Center,
             x: level_number_center.x,
             y: level_number_center.y,
         },
@@ -423,15 +466,16 @@ pub fn create_play_ui() -> UI {
         ..Default::default()
     };
 
-    let healthbar_width =
-        window::WIDTH - level_number_rect_size - 3.0 * window::BORDER_SIZE;
+    let healthbar_width = window::WIDTH
+        - level_number_background_size
+        - 3.0 * window::BORDER_SIZE;
     let healthbar_height = 15.0;
-    let healthbar = Element {
-        id: "healthbar".to_string(),
-        type_: "rect".to_string(),
+    let healthbar = UIElement {
+        id: GameHealthbar,
+        type_: UIElementType::Rect,
         is_interactive: false,
-        position: Position {
-            origin: "TopLeft".to_string(),
+        position: UIPosition {
+            origin: Origin::TopLeft,
             x: cursor.x,
             y: cursor.y,
         },
@@ -442,12 +486,12 @@ pub fn create_play_ui() -> UI {
     };
     cursor.y += healthbar_height + window::BORDER_SIZE;
 
-    let staminabar = Element {
-        id: "staminabar".to_string(),
-        type_: "rect".to_string(),
+    let staminabar = UIElement {
+        id: GameStaminabar,
+        type_: UIElementType::Rect,
         is_interactive: false,
-        position: Position {
-            origin: "TopLeft".to_string(),
+        position: UIPosition {
+            origin: Origin::TopLeft,
             x: cursor.x,
             y: cursor.y,
         },
@@ -460,15 +504,15 @@ pub fn create_play_ui() -> UI {
     cursor.x -= window::BORDER_SIZE;
 
     let expbar_width = healthbar_width + window::BORDER_SIZE;
-    let expbar_height = level_number_rect_size
+    let expbar_height = level_number_background_size
         - 2.0 * window::BORDER_SIZE
         - 2.0 * healthbar_height;
-    let expbar = Element {
-        id: "expbar".to_string(),
-        type_: "rect".to_string(),
+    let expbar = UIElement {
+        id: GameExpbar,
+        type_: UIElementType::Rect,
         is_interactive: false,
-        position: Position {
-            origin: "TopLeft".to_string(),
+        position: UIPosition {
+            origin: Origin::TopLeft,
             x: cursor.x,
             y: cursor.y,
         },
@@ -479,8 +523,8 @@ pub fn create_play_ui() -> UI {
     };
 
     let elements = vec![
-        window,
-        level_number_rect,
+        indicators_background,
+        level_number_background,
         level_number,
         healthbar,
         staminabar,
@@ -495,15 +539,16 @@ pub fn create_skill_tree_ui(
     stats: &Stats,
 ) -> UI {
     use skill_tree_ui::*;
+    use UIElementID::*;
 
     let mut cursor = Vec2::new(window::X, window::Y);
 
-    let window = Element {
-        id: "window".to_string(),
-        type_: "rect".to_string(),
+    let background = UIElement {
+        id: SkillsTreeBackground,
+        type_: UIElementType::Rect,
         is_interactive: false,
-        position: Position {
-            origin: "TopLeft".to_string(),
+        position: UIPosition {
+            origin: Origin::TopLeft,
             x: cursor.x,
             y: cursor.y,
         },
@@ -515,12 +560,12 @@ pub fn create_skill_tree_ui(
     cursor += Vec2::new(window::BORDER_SIZE, window::BORDER_SIZE);
 
     // Header
-    let skill_points_text = Element {
-        id: "skill_points_text".to_string(),
-        type_: "text".to_string(),
+    let points_number = UIElement {
+        id: SkillsTreePointsNumber,
+        type_: UIElementType::Text,
         is_interactive: false,
-        position: Position {
-            origin: "TopLeft".to_string(),
+        position: UIPosition {
+            origin: Origin::TopLeft,
             x: cursor.x,
             y: cursor.y,
         },
@@ -534,11 +579,8 @@ pub fn create_skill_tree_ui(
 
     // Attack line
     let mut attack_line_cursor = cursor;
-    let attack_line = create_skills_chain(
-        &mut attack_line_cursor,
-        &stats.attack_skills,
-        "attack_skills",
-    );
+    let attack_line =
+        create_skills_chain(&mut attack_line_cursor, &stats.attack_skills);
     cursor.y += skill::VPAD_SIZE;
 
     // Durability line
@@ -546,7 +588,6 @@ pub fn create_skill_tree_ui(
     let durability_line = create_skills_chain(
         &mut durability_line_cursor,
         &stats.durability_skills,
-        "durability_skills",
     );
     cursor.y += skill::VPAD_SIZE;
 
@@ -555,17 +596,13 @@ pub fn create_skill_tree_ui(
     let agility_line = create_skills_chain(
         &mut agility_line_cursor,
         &stats.agility_skills,
-        "agility_skills",
     );
     cursor.y += skill::VPAD_SIZE;
 
     // Light line
     let mut light_line_cursor = cursor;
-    let light_line = create_skills_chain(
-        &mut light_line_cursor,
-        &stats.light_skills,
-        "light_skills",
-    );
+    let light_line =
+        create_skills_chain(&mut light_line_cursor, &stats.light_skills);
     cursor.y += skill::VPAD_SIZE;
 
     // Footer
@@ -574,12 +611,12 @@ pub fn create_skill_tree_ui(
         window::BORDER_SIZE,
         window::HEIGHT - window::BORDER_SIZE,
     );
-    let skill_description_text = Element {
-        id: "skill_description_text".to_string(),
-        type_: "text".to_string(),
+    let skill_description = UIElement {
+        id: SkillsTreeSkillDescription,
+        type_: UIElementType::Text,
         is_interactive: false,
-        position: Position {
-            origin: "BotLeft".to_string(),
+        position: UIPosition {
+            origin: Origin::BotLeft,
             x: cursor.x,
             y: cursor.y,
         },
@@ -591,13 +628,13 @@ pub fn create_skill_tree_ui(
     };
 
     let mut elements = vec![];
-    elements.push(window);
-    elements.push(skill_points_text);
+    elements.push(background);
+    elements.push(points_number);
     elements.extend_from_slice(&attack_line);
     elements.extend_from_slice(&durability_line);
     elements.extend_from_slice(&agility_line);
     elements.extend_from_slice(&light_line);
-    elements.push(skill_description_text);
+    elements.push(skill_description);
 
     UI::new(elements)
 }
@@ -605,28 +642,34 @@ pub fn create_skill_tree_ui(
 fn create_skills_chain(
     cursor: &mut Vec2<f32>,
     skills_chain: &SkillsChain,
-    sprite_name: &str,
-) -> Vec<Element> {
+) -> Vec<UIElement> {
     use skill_tree_ui::*;
     use EffectType::*;
+    use SkillsChainType::*;
+    use UIElementID::*;
 
     let mut elements = vec![];
     let n_learned = skills_chain.n_learned;
+    let chain_type = skills_chain.type_;
+
+    let sprite_name = match chain_type {
+        Attack => "attack_skills",
+        Durability => "durability_skills",
+        Agility => "agility_skills",
+        Light => "light_skills",
+    };
 
     for (idx, skill) in skills_chain.skills.iter().enumerate() {
-        let mut sprite_id = sprite_name.to_string();
-        sprite_id.push_str("_");
-        sprite_id.push_str(&idx.to_string());
+        let skill_id = SkillsTreeSkill(chain_type, idx);
 
         if idx > 0 {
-            let mut arrow_id = "arrow_".to_string();
-            arrow_id.push_str(&sprite_id.to_string());
-            let element = Element {
+            let arrow_id = SkillsTreeArrow(chain_type, idx);
+            let element = UIElement {
                 id: arrow_id,
-                type_: "sprite".to_string(),
+                type_: UIElementType::Sprite,
                 is_interactive: false,
-                position: Position {
-                    origin: "TopLeft".to_string(),
+                position: UIPosition {
+                    origin: Origin::TopLeft,
                     x: cursor.x,
                     y: cursor.y,
                 },
@@ -640,12 +683,12 @@ fn create_skills_chain(
             cursor.x += skill::HPAD_SIZE;
         }
 
-        let element = Element {
-            id: sprite_id,
-            type_: "sprite".to_string(),
+        let element = UIElement {
+            id: skill_id,
+            type_: UIElementType::Sprite,
             is_interactive: true,
-            position: Position {
-                origin: "TopLeft".to_string(),
+            position: UIPosition {
+                origin: Origin::TopLeft,
                 x: cursor.x,
                 y: cursor.y,
             },

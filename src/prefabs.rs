@@ -1,7 +1,6 @@
 use crate::entity::*;
 use crate::graphics::*;
 use crate::player_stats::Stats;
-use crate::ui::*;
 use crate::utils::frand;
 use std::f32::consts::PI;
 
@@ -11,7 +10,7 @@ use EffectType::*;
 use Origin::*;
 
 mod player {
-    pub const MAX_HEALTH: f32 = 20000.0;
+    pub const MAX_HEALTH: f32 = 2000.0;
     pub const MOVE_SPEED: f32 = 100.0;
     pub const KNOCKBACK_RESIST: f32 = 100.0;
 
@@ -171,10 +170,6 @@ pub fn create_default_glyph_atlas() -> GlyphAtlas {
         "./assets/fonts/Montserrat-Bold.ttf",
         &[16, 28, 37, 67, 119],
     )
-}
-
-pub fn create_default_game_over_ui() -> UI {
-    UI::from_file("./assets/ui/game_over.json")
 }
 
 pub fn create_player(

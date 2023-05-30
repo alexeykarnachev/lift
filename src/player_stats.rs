@@ -27,15 +27,25 @@ impl Skill {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum SkillsChainType {
+    Attack,
+    Durability,
+    Agility,
+    Light,
+}
+
 #[derive(Clone, Debug)]
 pub struct SkillsChain {
+    pub type_: SkillsChainType,
     pub skills: Vec<Skill>,
     pub n_learned: usize,
 }
 
 impl SkillsChain {
-    pub fn new(skills: Vec<Skill>) -> Self {
+    pub fn new(type_: SkillsChainType, skills: Vec<Skill>) -> Self {
         Self {
+            type_,
             skills,
             n_learned: 0,
         }
@@ -58,77 +68,90 @@ pub struct Stats {
 impl Stats {
     pub fn new() -> Self {
         use SkillEffectType::*;
-        let attack_skills = SkillsChain::new(vec![
-            Skill::from_str(
-                "Attack 1",
-                "This is attack 1",
-                SetDamageMultiplier(1.3),
-            ),
-            Skill::from_str(
-                "Attack 2",
-                "This is attack 2",
-                SetDamageMultiplier(1.6),
-            ),
-            Skill::from_str(
-                "Attack 3",
-                "This is attack 3",
-                SetSplashDamagePenalty(0.5),
-            ),
-        ]);
+        use SkillsChainType::*;
+        let attack_skills = SkillsChain::new(
+            Attack,
+            vec![
+                Skill::from_str(
+                    "Attack 1",
+                    "This is attack 1",
+                    SetDamageMultiplier(1.3),
+                ),
+                Skill::from_str(
+                    "Attack 2",
+                    "This is attack 2",
+                    SetDamageMultiplier(1.6),
+                ),
+                Skill::from_str(
+                    "Attack 3",
+                    "This is attack 3",
+                    SetSplashDamagePenalty(0.5),
+                ),
+            ],
+        );
 
-        let durability_skills = SkillsChain::new(vec![
-            Skill::from_str(
-                "Durability 1",
-                "This is durability 1",
-                SetReceivedDamageMultiplier(0.8),
-            ),
-            Skill::from_str(
-                "Durability 2",
-                "This is durability 2",
-                SetReceivedDamageMultiplier(0.6),
-            ),
-            Skill::from_str(
-                "Durability 3",
-                "This is durability 3",
-                SetReceivedDamageMultiplier(0.4),
-            ),
-        ]);
+        let durability_skills = SkillsChain::new(
+            Durability,
+            vec![
+                Skill::from_str(
+                    "Durability 1",
+                    "This is durability 1",
+                    SetReceivedDamageMultiplier(0.8),
+                ),
+                Skill::from_str(
+                    "Durability 2",
+                    "This is durability 2",
+                    SetReceivedDamageMultiplier(0.6),
+                ),
+                Skill::from_str(
+                    "Durability 3",
+                    "This is durability 3",
+                    SetReceivedDamageMultiplier(0.4),
+                ),
+            ],
+        );
 
-        let agility_skills = SkillsChain::new(vec![
-            Skill::from_str(
-                "Agility 1",
-                "This is agility 1",
-                SetStaminaCostMultiplier(0.8),
-            ),
-            Skill::from_str(
-                "Agility 2",
-                "This is agility 2",
-                SetStaminaCostMultiplier(0.6),
-            ),
-            Skill::from_str(
-                "Agility 3",
-                "This is agility 3",
-                SetStaminaCostMultiplier(0.4),
-            ),
-        ]);
+        let agility_skills = SkillsChain::new(
+            Agility,
+            vec![
+                Skill::from_str(
+                    "Agility 1",
+                    "This is agility 1",
+                    SetStaminaCostMultiplier(0.8),
+                ),
+                Skill::from_str(
+                    "Agility 2",
+                    "This is agility 2",
+                    SetStaminaCostMultiplier(0.6),
+                ),
+                Skill::from_str(
+                    "Agility 3",
+                    "This is agility 3",
+                    SetStaminaCostMultiplier(0.4),
+                ),
+            ],
+        );
 
-        let light_skills = SkillsChain::new(vec![
-            Skill::from_str(
-                "Light 1",
-                "This is light 1",
-                SetStaminaCostMultiplier(0.8),
-            ),
-            Skill::from_str(
-                "Light 2",
-                "This is light 2",
-                SetStaminaCostMultiplier(0.6),
-            ),
-            Skill::from_str(
-                "Light 3",
-                "This is light 3",
-                SetStaminaCostMultiplier(0.4),
-            ),
-        ]);
+        let light_skills = SkillsChain::new(
+            Light,
+            vec![
+                Skill::from_str(
+                    "Light 1",
+                    "This is light 1",
+                    SetStaminaCostMultiplier(0.8),
+                ),
+                Skill::from_str(
+                    "Light 2",
+                    "This is light 2",
+                    SetStaminaCostMultiplier(0.6),
+                ),
+                Skill::from_str(
+                    "Light 3",
+                    "This is light 3",
+                    SetStaminaCostMultiplier(0.4),
+                ),
+            ],
+        );
 
         Self {
             level: 1,
@@ -160,8 +183,11 @@ impl Stats {
         false
     }
 
-    pub fn force_learn_next(&mut self, name: &str) -> SkillEffectType {
-        let skills = self.get_skills_by_name(&name);
+    pub fn force_learn_next(
+        &mut self,
+        type_: SkillsChainType,
+    ) -> SkillEffectType {
+        let skills = self.get_skills_chain_by_type(type_);
         let effect = skills.skills[skills.n_learned].effect;
         skills.n_learned += 1;
         self.n_skill_points -= 1;
@@ -169,15 +195,17 @@ impl Stats {
         effect
     }
 
-    pub fn get_skills_by_name(&mut self, name: &str) -> &mut SkillsChain {
-        match name {
-            "attack_skills" => &mut self.attack_skills,
-            "durability_skills" => &mut self.durability_skills,
-            "agility_skills" => &mut self.agility_skills,
-            "light_skills" => &mut self.light_skills,
-            _ => {
-                panic!("Unhandled skills chain name: {:?}", name)
-            }
+    pub fn get_skills_chain_by_type(
+        &mut self,
+        type_: SkillsChainType,
+    ) -> &mut SkillsChain {
+        use SkillsChainType::*;
+
+        match type_ {
+            Attack => &mut self.attack_skills,
+            Durability => &mut self.durability_skills,
+            Agility => &mut self.agility_skills,
+            Light => &mut self.light_skills,
         }
     }
 }

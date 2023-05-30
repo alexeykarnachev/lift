@@ -11,7 +11,7 @@ pub enum Keyaction {
     Down,
     Attack,
     Dash,
-    SkillTree,
+    SkillsTree,
     _N,
 }
 
@@ -28,7 +28,7 @@ pub fn keycode_to_keyaction(
         Keycode::Down | Keycode::S => Some(Keyaction::Down),
         Keycode::Space => Some(Keyaction::Attack),
         Keycode::LCtrl => Some(Keyaction::Dash),
-        Keycode::T if !repeat => Some(Keyaction::SkillTree),
+        Keycode::T if !repeat => Some(Keyaction::SkillsTree),
         _ => None,
     }
 }

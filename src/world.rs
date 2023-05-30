@@ -22,8 +22,7 @@ pub enum WorldState {
     MainMenu,
     Play,
     GameOver,
-    SkillTree,
-    Restart,
+    SkillsTree,
     Quit,
 }
 
@@ -40,8 +39,7 @@ pub struct World {
     pub attacks: Vec<Attack>,
 
     pub main_menu_ui: UI,
-    pub play_ui: UI,
-    pub game_over_ui: UI,
+    pub game_ui: UI,
     pub skill_tree_ui: UI,
 
     pub sprite_atlas: SpriteAtlas,
@@ -58,8 +56,7 @@ impl World {
         let camera = Camera::new(level.player.get_center().add_y(64.0));
 
         let main_menu_ui = create_main_menu_ui();
-        let play_ui = create_play_ui();
-        let game_over_ui = create_default_game_over_ui();
+        let game_ui = create_game_ui();
         let skill_tree_ui = create_skill_tree_ui(
             &sprite_atlas,
             level.player.stats.as_ref().unwrap(),
@@ -75,8 +72,7 @@ impl World {
             camera,
             attacks,
             main_menu_ui,
-            play_ui,
-            game_over_ui,
+            game_ui,
             skill_tree_ui,
             sprite_atlas,
             glyph_atlas,
@@ -93,10 +89,10 @@ impl World {
                 self.update_main_menu_ui(input);
             }
             Play => {
-                if input.take_action(Keyaction::SkillTree) {
-                    self.state = SkillTree;
+                if input.take_action(Keyaction::SkillsTree) {
+                    self.state = SkillsTree;
                 } else {
-                    self.update_play_ui(input);
+                    self.update_game_ui(input);
                     self.update_attacks(dt);
                     self.update_player(dt, input);
                     self.update_enemies(dt);
@@ -107,18 +103,14 @@ impl World {
                 }
             }
             GameOver => {
-                self.update_game_over_ui(input);
+                *self = Self::new();
             }
-            SkillTree => {
-                if input.take_action(Keyaction::SkillTree) {
+            SkillsTree => {
+                if input.take_action(Keyaction::SkillsTree) {
                     self.state = Play;
                 } else {
                     self.update_skill_tree_ui(input);
                 }
-            }
-            Restart => {
-                *self = Self::new();
-                self.state = Play;
             }
             Quit => {}
         }
@@ -733,6 +725,7 @@ impl World {
     }
 
     fn update_main_menu_ui(&mut self, input: &Input) {
+        use UIElementID::*;
         use UIEvent::*;
 
         let events = self.main_menu_ui.update(
@@ -742,87 +735,70 @@ impl World {
         );
         for event in events.iter() {
             match event {
-                LMBPress(id) => match id.as_str() {
-                    "new_game_text" => self.state = WorldState::Play,
-                    "quit_text" => {
+                LMBPress(id) => match id {
+                    MainMenuNewGame => self.state = WorldState::Play,
+                    MainMenuQuit => {
                         self.state = WorldState::Quit;
                     }
                     _ => {}
                 },
-                Hover(id) => self
-                    .main_menu_ui
-                    .set_element_color(id, Color::new(1.0, 0.3, 0.0, 1.0)),
+                Hover(id) => self.main_menu_ui.set_element_color(
+                    *id,
+                    Color::new(1.0, 0.3, 0.0, 1.0),
+                ),
                 NotInteracted(id) => self
                     .main_menu_ui
-                    .set_element_color(id, Color::gray(0.5, 1.0)),
+                    .set_element_color(*id, Color::gray(0.5, 1.0)),
                 _ => {}
             }
         }
     }
 
-    fn update_play_ui(&mut self, input: &Input) {
+    fn update_game_ui(&mut self, input: &Input) {
+        use UIElementID::*;
+
         let player = &self.level.player;
         let stats = player.stats.as_ref().unwrap();
         let health_ratio = player.get_health_ratio();
         let stamina_ratio = player.get_stamina_ratio();
         let exp_ratio = player.get_exp_ratio();
 
-        self.play_ui.set_element_color(
-            "healthbar",
+        self.game_ui.set_element_color(
+            GameHealthbar,
             Color::healthbar(health_ratio),
         );
-        self.play_ui.set_element_filling("healthbar", health_ratio);
+        self.game_ui
+            .set_element_filling(GameHealthbar, health_ratio);
 
-        self.play_ui.set_element_color(
-            "staminabar",
+        self.game_ui.set_element_color(
+            GameStaminabar,
             Color::staminabar(stamina_ratio),
         );
-        self.play_ui
-            .set_element_filling("staminabar", stamina_ratio);
+        self.game_ui
+            .set_element_filling(GameStaminabar, stamina_ratio);
 
-        self.play_ui
-            .set_element_color("expbar", Color::expbar(exp_ratio));
-        self.play_ui.set_element_filling("expbar", exp_ratio);
+        self.game_ui
+            .set_element_color(GameExpbar, Color::expbar(exp_ratio));
+        self.game_ui.set_element_filling(GameExpbar, exp_ratio);
 
-        self.play_ui.set_element_color(
-            "level_number_rect",
+        self.game_ui.set_element_color(
+            GameLevelNumberBackground,
             Color::expbar(exp_ratio.max(0.05)),
         );
 
         let level = stats.level.to_string();
-        self.play_ui.set_element_string("level_number", &level);
+        self.game_ui.set_element_string(GameLevelNumber, &level);
 
-        _ = self.play_ui.update(
+        _ = self.game_ui.update(
             input,
             &self.glyph_atlas,
             &self.sprite_atlas,
         );
-    }
-
-    fn update_game_over_ui(&mut self, input: &Input) {
-        use UIEvent::*;
-
-        let events = self.game_over_ui.update(
-            input,
-            &self.glyph_atlas,
-            &self.sprite_atlas,
-        );
-        for event in events.iter() {
-            match event {
-                LMBPress(id) => match id.as_str() {
-                    "restart" => self.state = WorldState::Restart,
-                    "quit" => {
-                        self.state = WorldState::Quit;
-                    }
-                    _ => {}
-                },
-                _ => {}
-            }
-        }
     }
 
     fn update_skill_tree_ui(&mut self, input: &Input) {
         use EffectType::*;
+        use UIElementID::*;
         use UIEvent::*;
 
         let events = self.skill_tree_ui.update(
@@ -835,13 +811,13 @@ impl World {
         let n_points = stats.n_skill_points;
 
         self.skill_tree_ui.set_element_string(
-            "skill_points_text",
+            SkillsTreePointsNumber,
             &format!("POINTS: {:?}", n_points),
         );
         self.skill_tree_ui
-            .set_element_string("skill_description_text", " ");
+            .set_element_string(SkillsTreeSkillDescription, " ");
 
-        let mut learned_skills_name = None;
+        let mut learned_chain_type = None;
         for event in events.iter() {
             let learned_sprite_alpha = 1.0;
             let learned_arrow_alpha = 1.0;
@@ -852,21 +828,21 @@ impl World {
             let mut lmb_is_pressed = false;
             let mut show_description = false;
 
-            let mut sprite_id: Option<String> = None;
+            let mut skill_id: Option<UIElementID> = None;
             match event {
                 Hover(id) => {
-                    sprite_id = Some(id.clone());
+                    skill_id = Some(*id);
                     show_description = true;
                     can_learn_sprite_alpha = 0.7;
                     can_learn_arrow_alpha = 0.7;
                 }
                 NotInteracted(id) => {
-                    sprite_id = Some(id.clone());
+                    skill_id = Some(*id);
                     can_learn_sprite_alpha = 0.3;
                     can_learn_arrow_alpha = 0.3;
                 }
                 LMBPress(id) => {
-                    sprite_id = Some(id.clone());
+                    skill_id = Some(*id);
                     lmb_is_pressed = true;
                     show_description = true;
                     can_learn_sprite_alpha = 0.7;
@@ -875,13 +851,23 @@ impl World {
                 _ => {}
             }
 
-            if let Some(sprite_id) = sprite_id {
-                let (name, idx) = sprite_id.rsplit_once("_").unwrap();
-                let idx = usize::from_str_radix(idx, 10).unwrap();
-                let mut skills = stats.get_skills_by_name(name);
+            if let Some(skill_id) = skill_id {
+                let chain_type;
+                let idx;
+                match skill_id {
+                    SkillsTreeSkill(_chain_type, _idx) => {
+                        chain_type = _chain_type;
+                        idx = _idx;
+                    }
+                    _ => {
+                        panic!("Skill UI element must have SkillsTreeSkill(chain_type, skill_idx) type")
+                    }
+                }
+
+                let mut skills =
+                    stats.get_skills_chain_by_type(chain_type);
                 let n_learned = skills.n_learned;
-                let mut arrow_id = "arrow_".to_string();
-                arrow_id.push_str(&sprite_id);
+                let arrow_id = SkillsTreeArrow(chain_type, idx);
 
                 let is_learned = idx < n_learned;
                 let can_learn = idx == n_learned && n_points > 0;
@@ -889,46 +875,46 @@ impl World {
                 let has_arrow = idx > 0;
 
                 if lmb_is_pressed && can_learn {
-                    learned_skills_name = Some(name.to_string());
+                    learned_chain_type = Some(chain_type);
                 }
 
                 if is_learned {
                     self.skill_tree_ui.set_element_color(
-                        &sprite_id,
+                        skill_id,
                         Color::only_alpha(learned_sprite_alpha),
                     );
                 } else if can_learn {
                     self.skill_tree_ui.set_element_color(
-                        &sprite_id,
+                        skill_id,
                         Color::only_alpha(can_learn_sprite_alpha),
                     );
                 } else if cant_learn {
                     self.skill_tree_ui.set_element_color(
-                        &sprite_id,
+                        skill_id,
                         Color::only_alpha(cant_learn_sprite_alpha),
                     );
                 }
 
                 if has_arrow && is_learned {
                     self.skill_tree_ui.set_element_color(
-                        &arrow_id,
+                        arrow_id,
                         Color::only_alpha(learned_arrow_alpha),
                     );
                 } else if has_arrow && can_learn {
                     self.skill_tree_ui.set_element_color(
-                        &arrow_id,
+                        arrow_id,
                         Color::only_alpha(can_learn_arrow_alpha),
                     );
                 } else if has_arrow && cant_learn {
                     self.skill_tree_ui.set_element_color(
-                        &arrow_id,
+                        arrow_id,
                         Color::only_alpha(cant_learn_arrow_alpha),
                     );
                 }
 
                 if show_description {
                     self.skill_tree_ui.set_element_string(
-                        "skill_description_text",
+                        SkillsTreeSkillDescription,
                         &skills.skills[idx].description,
                     );
                 }
@@ -936,8 +922,8 @@ impl World {
         }
 
         use SkillEffectType::*;
-        if let Some(name) = learned_skills_name {
-            let effect = stats.force_learn_next(&name);
+        if let Some(chain_type) = learned_chain_type {
+            let effect = stats.force_learn_next(chain_type);
             let player = &mut self.level.player;
             match effect {
                 SetDamageMultiplier(value) => {
