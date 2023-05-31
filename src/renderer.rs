@@ -159,20 +159,7 @@ impl Renderer {
         // });
         // draw_collider(&world.player, &mut self.primitives);
 
-        use WorldState::*;
-        match world.state {
-            MainMenu => {
-                draw_ui(&world.main_menu_ui, &mut self.primitives);
-            }
-            Play => {
-                draw_ui(&world.game_ui, &mut self.primitives);
-            }
-            SkillsTree => {
-                draw_ui(&world.game_ui, &mut self.primitives);
-                draw_ui(&world.skill_tree_ui, &mut self.primitives);
-            }
-            _ => {}
-        }
+        world.gui.draw(&mut self.primitives);
 
         self.primitives
             .sort_by(|a, b| a.z.partial_cmp(&b.z).unwrap());

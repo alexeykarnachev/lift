@@ -9,6 +9,7 @@ use world::*;
 
 mod entity;
 mod graphics;
+mod gui;
 mod input;
 mod level;
 mod player_stats;

@@ -5,7 +5,7 @@ use std::ops::{
     Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign,
 };
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct Vec2<T> {
     pub x: T,
     pub y: T,
@@ -284,13 +284,20 @@ impl Origin {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Default)]
 pub struct Rect {
     pub bot_left: Vec2<f32>,
     pub top_right: Vec2<f32>,
 }
 
 impl Rect {
+    pub fn zeros() -> Self {
+        Self {
+            bot_left: Vec2::zeros(),
+            top_right: Vec2::zeros(),
+        }
+    }
+
     pub fn from_origin(
         origin: Origin,
         position: Vec2<f32>,
@@ -334,6 +341,12 @@ impl Rect {
 
     pub fn from_bot_left(position: Vec2<f32>, size: Vec2<f32>) -> Self {
         let center = position + size.scale(0.5);
+
+        Self::from_center(center, size)
+    }
+
+    pub fn from_bot_right(position: Vec2<f32>, size: Vec2<f32>) -> Self {
+        let center = position + Vec2::new(-size.x * 0.5, size.y * 0.5);
 
         Self::from_center(center, size)
     }
@@ -413,6 +426,13 @@ impl Rect {
         top_left.x -= self.get_size().x;
 
         top_left
+    }
+
+    pub fn get_bot_right(&self) -> Vec2<f32> {
+        let mut bot_right = self.top_right;
+        bot_right.y -= self.get_size().y;
+
+        bot_right
     }
 
     pub fn get_right_center(&self) -> Vec2<f32> {

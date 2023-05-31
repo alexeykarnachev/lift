@@ -1251,7 +1251,7 @@ impl Text {
             primitive_position.y += glyph.metrics.ymin as f32;
             let mut primitive = DrawPrimitive::from_sprite(
                 space,
-                0.0,
+                1.0,
                 0,
                 Vec2::zeros(),
                 sprite,
