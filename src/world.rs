@@ -775,6 +775,15 @@ impl World {
         {
             println!("22222");
         }
+
+        self.gui.set_draw_direction(Right);
+        let sprite = self.sprite_atlas.sprites["light_skills"][0];
+        if self.gui.sprite_button(4.0, sprite) {
+            println!("SPRITE");
+        }
+
+        let sprite = self.sprite_atlas.sprites["attack_skills"][2];
+        self.gui.sprite(6.0, sprite, 1.0);
     }
 }
 

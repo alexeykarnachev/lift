@@ -18,6 +18,17 @@ mod defaults {
     pub const BUTTON_COLD_RGBA: [f32; 4] = [0.3, 0.0, 0.0, 1.0];
     pub const BUTTON_HOT_RGBA: [f32; 4] = [0.6, 0.0, 0.0, 1.0];
     pub const BUTTON_ACTIVE_RGBA: [f32; 4] = [1.0, 0.0, 0.0, 1.0];
+    pub const SPRITE_COLD_ALPHA: f32 = 0.1;
+    pub const SPRITE_HOT_ALPHA: f32 = 0.5;
+    pub const SPRITE_ACTIVE_ALPHA: f32 = 1.0;
+}
+
+#[derive(PartialEq)]
+enum ButtonState {
+    Cold,
+    Hot,
+    Active,
+    Released,
 }
 
 #[derive(Default)]
@@ -49,6 +60,9 @@ pub struct GUI {
     button_cold_color: Color,
     button_hot_color: Color,
     button_active_color: Color,
+    sprite_cold_alpha: f32,
+    sprite_hot_alpha: f32,
+    sprite_active_alpha: f32,
 
     bar_size: Vec2<f32>,
 
@@ -82,6 +96,9 @@ impl GUI {
         self.button_cold_color = Color::from_slice(&BUTTON_COLD_RGBA);
         self.button_hot_color = Color::from_slice(&BUTTON_HOT_RGBA);
         self.button_active_color = Color::from_slice(&BUTTON_ACTIVE_RGBA);
+        self.sprite_cold_alpha = SPRITE_COLD_ALPHA;
+        self.sprite_hot_alpha = SPRITE_HOT_ALPHA;
+        self.sprite_active_alpha = SPRITE_ACTIVE_ALPHA;
         self.bar_size = Vec2::new(BAR_WIDTH, BAR_HEIGHT);
         self.effect = 0;
 
@@ -192,6 +209,8 @@ impl GUI {
         string: String,
         glyph_atlas: &GlyphAtlas,
     ) -> bool {
+        use ButtonState::*;
+
         let rect = self.advance_rect(self.button_size);
         let text = Text::new(
             rect.get_center(),
@@ -203,7 +222,12 @@ impl GUI {
             self.text_color,
         );
 
-        let color = self.get_button_color(rect);
+        let state = self.get_button_state(rect);
+        let color = match state {
+            Cold => self.button_cold_color,
+            Hot => self.button_hot_color,
+            _ => self.button_active_color,
+        };
         let primitive = DrawPrimitive::from_rect(
             rect,
             SpaceType::ScreenSpace,
@@ -216,7 +240,7 @@ impl GUI {
         self.primitives
             .extend_from_slice(&text.get_draw_primitives());
 
-        self.check_if_button_released(rect)
+        state == ButtonState::Released
     }
 
     pub fn text_button(
@@ -224,6 +248,8 @@ impl GUI {
         string: String,
         glyph_atlas: &GlyphAtlas,
     ) -> bool {
+        use ButtonState::*;
+
         let mut text = Text::new(
             Vec2::zeros(),
             glyph_atlas,
@@ -235,7 +261,12 @@ impl GUI {
         );
 
         let rect = self.advance_rect(text.get_bound_rect().get_size());
-        let color = self.get_button_color(rect);
+        let state = self.get_button_state(rect);
+        let color = match state {
+            Cold => self.button_cold_color,
+            Hot => self.button_hot_color,
+            _ => self.button_active_color,
+        };
 
         text.set_color(color);
         text.set_position(rect.bot_left);
@@ -243,26 +274,72 @@ impl GUI {
         self.primitives
             .extend_from_slice(&text.get_draw_primitives());
 
-        self.check_if_button_released(rect)
+        state == ButtonState::Released
     }
 
-    fn get_button_color(&self, rect: Rect) -> Color {
-        let color;
+    pub fn sprite_button(&mut self, scale: f32, sprite: Sprite) -> bool {
+        use ButtonState::*;
+
+        let mut primitive = DrawPrimitive::from_sprite(
+            SpaceType::ScreenSpace,
+            1.0,
+            0,
+            Vec2::zeros(),
+            sprite,
+            None,
+            false,
+            TextureType::SpriteTexture,
+            scale,
+        );
+        let rect = self.advance_rect(primitive.rect.get_size());
+        let state = self.get_button_state(rect);
+        let alpha = match state {
+            Cold => self.sprite_cold_alpha,
+            Hot => self.sprite_hot_alpha,
+            _ => self.sprite_active_alpha,
+        };
+        primitive.rect = rect;
+        primitive.color = Some(Color::only_alpha(alpha));
+
+        self.primitives.push(primitive);
+
+        state == ButtonState::Released
+    }
+
+    pub fn sprite(&mut self, scale: f32, sprite: Sprite, alpha: f32) {
+        let mut primitive = DrawPrimitive::from_sprite(
+            SpaceType::ScreenSpace,
+            1.0,
+            0,
+            Vec2::zeros(),
+            sprite,
+            Some(Color::only_alpha(alpha)),
+            false,
+            TextureType::SpriteTexture,
+            scale,
+        );
+        let rect = self.advance_rect(primitive.rect.get_size());
+        primitive.rect = rect;
+
+        self.primitives.push(primitive);
+    }
+
+    fn get_button_state(&self, rect: Rect) -> ButtonState {
+        use ButtonState::*;
+        let state;
         if rect.collide_with_point(self.mouse_cursor) {
             if self.lmb_is_down {
-                color = self.button_active_color;
+                state = Active;
+            } else if self.lmb_is_just_up {
+                state = Released;
             } else {
-                color = self.button_hot_color;
+                state = Hot
             }
         } else {
-            color = self.button_cold_color
+            state = Cold;
         };
 
-        color
-    }
-
-    fn check_if_button_released(&self, rect: Rect) -> bool {
-        rect.collide_with_point(self.mouse_cursor) && self.lmb_is_just_up
+        state
     }
 
     pub fn rect_with_text(
