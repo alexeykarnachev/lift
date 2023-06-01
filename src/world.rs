@@ -716,6 +716,16 @@ impl World {
         }
     }
 
+    fn update_main_menu_ui(&mut self, input: &mut Input) {
+        // use DrawDirection::*;
+
+        // self.gui.begin(input);
+
+        // self.gui.set_cursor_at_bot_left();
+
+        // self.gui.set_draw_direction(Up);
+    }
+
     fn update_game_gui(&mut self, input: &mut Input) {
         use DrawDirection::*;
 
@@ -751,6 +761,20 @@ impl World {
         self.gui
             .bar(stamina_ratio, Color::staminabar(stamina_ratio));
         self.gui.bar(health_ratio, Color::healthbar(health_ratio));
+
+        if self
+            .gui
+            .text_button("TEST test 1".to_string(), &self.glyph_atlas)
+        {
+            println!("11111");
+        }
+
+        if self
+            .gui
+            .rect_button("TEST test 2".to_string(), &self.glyph_atlas)
+        {
+            println!("22222");
+        }
     }
 }
 

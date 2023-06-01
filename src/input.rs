@@ -37,6 +37,8 @@ struct Accum {
     cursor_pos: Vec2<i32>,
     lmb_press_pos: Option<Vec2<i32>>,
     rmb_press_pos: Option<Vec2<i32>>,
+    lmb_is_just_up: bool,
+    rmb_is_just_up: bool,
     wheel_d: i32,
 }
 
@@ -56,6 +58,8 @@ pub struct Input {
     pub lmb_is_down: bool,
     pub rmb_is_down: bool,
     pub mmb_is_down: bool,
+    pub lmb_is_just_up: bool,
+    pub rmb_is_just_up: bool,
 
     pub wheel_d: i32,
 
@@ -69,6 +73,8 @@ impl Input {
                 cursor_pos: Vec2::new(0, 0),
                 lmb_press_pos: None,
                 rmb_press_pos: None,
+                lmb_is_just_up: false,
+                rmb_is_just_up: false,
                 wheel_d: 0,
             },
             should_quit: false,
@@ -84,6 +90,8 @@ impl Input {
             lmb_is_down: false,
             rmb_is_down: false,
             mmb_is_down: false,
+            lmb_is_just_up: false,
+            rmb_is_just_up: false,
             wheel_d: 0,
             key_is_down: [false; N_KEYACTIONS],
         }
@@ -136,12 +144,14 @@ impl Input {
                 ..
             } => {
                 self.lmb_is_down = false;
+                self.accum.lmb_is_just_up = true;
             }
             Event::MouseButtonUp {
                 mouse_btn: MouseButton::Right,
                 ..
             } => {
                 self.rmb_is_down = false;
+                self.accum.rmb_is_just_up = true;
             }
             Event::MouseButtonUp {
                 mouse_btn: MouseButton::Middle,
@@ -180,10 +190,14 @@ impl Input {
         self.cursor_pos = self.accum.cursor_pos;
         self.lmb_press_pos = self.accum.lmb_press_pos;
         self.rmb_press_pos = self.accum.rmb_press_pos;
+        self.lmb_is_just_up = self.accum.lmb_is_just_up;
+        self.rmb_is_just_up = self.accum.rmb_is_just_up;
         self.wheel_d = self.accum.wheel_d;
 
         self.accum.lmb_press_pos = None;
         self.accum.rmb_press_pos = None;
+        self.accum.lmb_is_just_up = false;
+        self.accum.rmb_is_just_up = false;
         self.accum.wheel_d = 0;
     }
 

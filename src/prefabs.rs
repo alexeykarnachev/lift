@@ -10,7 +10,7 @@ use EffectType::*;
 use Origin::*;
 
 mod player {
-    pub const MAX_HEALTH: f32 = 2000.0;
+    pub const MAX_HEALTH: f32 = 2000.0 * 1000.0;
     pub const MOVE_SPEED: f32 = 100.0;
     pub const KNOCKBACK_RESIST: f32 = 100.0;
 

@@ -1221,7 +1221,7 @@ impl Animator {
 
 #[derive(Clone)]
 pub struct Text {
-    pub position: Vec2<f32>,
+    position: Vec2<f32>,
     draw_primitives: Vec<DrawPrimitive>,
 }
 
@@ -1319,6 +1319,10 @@ impl Text {
             .iter()
             .map(|p| p.translate(self.position))
             .collect()
+    }
+
+    pub fn set_position(&mut self, position: Vec2<f32>) {
+        self.position = position;
     }
 
     pub fn set_color(&mut self, color: Color) {

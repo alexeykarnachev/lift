@@ -6,10 +6,18 @@ use crate::vec::*;
 mod defaults {
     pub const VERTICAL_SPACING: f32 = 10.0;
     pub const HORIZONTAL_SPACING: f32 = 10.0;
+
     pub const FONT_SIZE: u32 = 28;
     pub const TEXT_RGBA: [f32; 4] = [0.5, 0.5, 0.5, 1.0];
-    pub const BAR_WIDTH: f32 = 310.0;
-    pub const BAR_HEIGHT: f32 = 25.0;
+
+    pub const BAR_WIDTH: f32 = 250.0;
+    pub const BAR_HEIGHT: f32 = 20.0;
+
+    pub const BUTTON_WIDTH: f32 = 200.0;
+    pub const BUTTON_HEIGHT: f32 = 50.0;
+    pub const BUTTON_COLD_RGBA: [f32; 4] = [0.3, 0.0, 0.0, 1.0];
+    pub const BUTTON_HOT_RGBA: [f32; 4] = [0.6, 0.0, 0.0, 1.0];
+    pub const BUTTON_ACTIVE_RGBA: [f32; 4] = [1.0, 0.0, 0.0, 1.0];
 }
 
 #[derive(Default)]
@@ -26,13 +34,24 @@ pub struct GUI {
     ui_cursor: Vec2<f32>,
     mouse_cursor: Vec2<f32>,
     window_size: Vec2<f32>,
+    lmb_is_just_up: bool,
+    lmb_is_down: bool,
 
     draw_direction: DrawDirection,
+
     vertical_spacing: f32,
     horizontal_spacing: f32,
+
     font_size: u32,
     text_color: Color,
+
+    button_size: Vec2<f32>,
+    button_cold_color: Color,
+    button_hot_color: Color,
+    button_active_color: Color,
+
     bar_size: Vec2<f32>,
+
     effect: u32,
 
     primitives: Vec<DrawPrimitive>,
@@ -49,7 +68,7 @@ impl GUI {
         }
     }
 
-    pub fn begin(&mut self, input: &mut Input) {
+    pub fn begin(&mut self, input: &Input) {
         self.primitives.clear();
         self.texts.clear();
 
@@ -59,6 +78,10 @@ impl GUI {
         self.horizontal_spacing = HORIZONTAL_SPACING;
         self.font_size = FONT_SIZE;
         self.text_color = Color::from_slice(&TEXT_RGBA);
+        self.button_size = Vec2::new(BUTTON_WIDTH, BUTTON_HEIGHT);
+        self.button_cold_color = Color::from_slice(&BUTTON_COLD_RGBA);
+        self.button_hot_color = Color::from_slice(&BUTTON_HOT_RGBA);
+        self.button_active_color = Color::from_slice(&BUTTON_ACTIVE_RGBA);
         self.bar_size = Vec2::new(BAR_WIDTH, BAR_HEIGHT);
         self.effect = 0;
 
@@ -69,6 +92,8 @@ impl GUI {
             (input.window_size.y - input.cursor_pos.y) as f32;
         self.window_size.x = input.window_size.x as f32;
         self.window_size.y = input.window_size.y as f32;
+        self.lmb_is_just_up = input.lmb_is_just_up;
+        self.lmb_is_down = input.lmb_is_down;
     }
 
     fn advance_rect(&mut self, size: Vec2<f32>) -> Rect {
@@ -160,6 +185,84 @@ impl GUI {
         for text in self.texts.iter() {
             draw_queue.extend_from_slice(&text.get_draw_primitives());
         }
+    }
+
+    pub fn rect_button(
+        &mut self,
+        string: String,
+        glyph_atlas: &GlyphAtlas,
+    ) -> bool {
+        let rect = self.advance_rect(self.button_size);
+        let text = Text::new(
+            rect.get_center(),
+            glyph_atlas,
+            SpaceType::ScreenSpace,
+            Origin::Center,
+            string,
+            self.font_size,
+            self.text_color,
+        );
+
+        let color = self.get_button_color(rect);
+        let primitive = DrawPrimitive::from_rect(
+            rect,
+            SpaceType::ScreenSpace,
+            1.0,
+            self.effect,
+            color,
+        );
+
+        self.primitives.push(primitive);
+        self.primitives
+            .extend_from_slice(&text.get_draw_primitives());
+
+        self.check_if_button_released(rect)
+    }
+
+    pub fn text_button(
+        &mut self,
+        string: String,
+        glyph_atlas: &GlyphAtlas,
+    ) -> bool {
+        let mut text = Text::new(
+            Vec2::zeros(),
+            glyph_atlas,
+            SpaceType::ScreenSpace,
+            Origin::BotLeft,
+            string,
+            self.font_size,
+            self.text_color,
+        );
+
+        let rect = self.advance_rect(text.get_bound_rect().get_size());
+        let color = self.get_button_color(rect);
+
+        text.set_color(color);
+        text.set_position(rect.bot_left);
+
+        self.primitives
+            .extend_from_slice(&text.get_draw_primitives());
+
+        self.check_if_button_released(rect)
+    }
+
+    fn get_button_color(&self, rect: Rect) -> Color {
+        let color;
+        if rect.collide_with_point(self.mouse_cursor) {
+            if self.lmb_is_down {
+                color = self.button_active_color;
+            } else {
+                color = self.button_hot_color;
+            }
+        } else {
+            color = self.button_cold_color
+        };
+
+        color
+    }
+
+    fn check_if_button_released(&self, rect: Rect) -> bool {
+        rect.collide_with_point(self.mouse_cursor) && self.lmb_is_just_up
     }
 
     pub fn rect_with_text(
