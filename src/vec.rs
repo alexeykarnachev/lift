@@ -469,6 +469,35 @@ impl Rect {
         self.top_right.x
     }
 
+    pub fn merge(&self, other: Rect) -> Self {
+        let bot_left = Vec2::new(
+            self.bot_left.x.min(other.bot_left.x),
+            self.bot_left.y.min(other.bot_left.y),
+        );
+        let top_right = Vec2::new(
+            self.top_right.x.max(other.top_right.x),
+            self.top_right.y.max(other.top_right.y),
+        );
+
+        Self {
+            bot_left,
+            top_right,
+        }
+    }
+
+    pub fn expand_from_center(
+        &self,
+        add_width: f32,
+        add_height: f32,
+    ) -> Self {
+        let center = self.get_center();
+        let mut size = self.get_size();
+        size.x += add_width;
+        size.y += add_height;
+
+        Self::from_center(center, size)
+    }
+
     pub fn collide_with_point(&self, p: Vec2<f32>) -> bool {
         p.x > self.bot_left.x
             && p.x < self.top_right.x

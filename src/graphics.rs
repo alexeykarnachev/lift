@@ -4,7 +4,6 @@
 
 use crate::entity::*;
 use crate::level::Level;
-use crate::ui::*;
 use crate::vec::{Origin, Rect, Vec2};
 use core::fmt::Debug;
 use enum_iterator::{all, Sequence};
@@ -533,15 +532,6 @@ pub fn draw_attack(attack: &Attack, draw_queue: &mut Vec<DrawPrimitive>) {
 
 pub fn draw_level(level: &Level, draw_queue: &mut Vec<DrawPrimitive>) {
     draw_queue.extend_from_slice(&level.draw_primitives);
-}
-
-pub fn draw_text(text: &Text, draw_queue: &mut Vec<DrawPrimitive>) {
-    draw_queue.extend_from_slice(&text.get_draw_primitives());
-}
-
-pub fn draw_ui(ui: &UI, draw_queue: &mut Vec<DrawPrimitive>) {
-    ui.rects.iter().for_each(|r| draw_queue.push(*r));
-    ui.texts.iter().for_each(|t| draw_text(t, draw_queue));
 }
 
 #[derive(Copy, Clone, Debug, Sequence)]

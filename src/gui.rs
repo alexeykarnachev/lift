@@ -4,8 +4,8 @@ use crate::input::*;
 use crate::vec::*;
 
 mod defaults {
-    pub const VERTICAL_SPACING: f32 = 10.0;
-    pub const HORIZONTAL_SPACING: f32 = 10.0;
+    pub const VERTICAL_PADDING: f32 = 10.0;
+    pub const HORIZONTAL_PADDING: f32 = 10.0;
 
     pub const FONT_SIZE: u32 = 28;
     pub const TEXT_RGBA: [f32; 4] = [0.5, 0.5, 0.5, 1.0];
@@ -15,12 +15,17 @@ mod defaults {
 
     pub const BUTTON_WIDTH: f32 = 200.0;
     pub const BUTTON_HEIGHT: f32 = 50.0;
-    pub const BUTTON_COLD_RGBA: [f32; 4] = [0.3, 0.0, 0.0, 1.0];
-    pub const BUTTON_HOT_RGBA: [f32; 4] = [0.6, 0.0, 0.0, 1.0];
-    pub const BUTTON_ACTIVE_RGBA: [f32; 4] = [1.0, 0.0, 0.0, 1.0];
-    pub const SPRITE_COLD_ALPHA: f32 = 0.1;
-    pub const SPRITE_HOT_ALPHA: f32 = 0.5;
+    pub const BUTTON_COLD_RGBA: [f32; 4] = [0.6, 0.6, 0.6, 1.0];
+    pub const BUTTON_HOT_RGBA: [f32; 4] = [0.8, 0.8, 0.8, 1.0];
+    pub const BUTTON_ACTIVE_RGBA: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
+
+    pub const SPRITE_COLD_ALPHA: f32 = 0.5;
+    pub const SPRITE_HOT_ALPHA: f32 = 0.8;
     pub const SPRITE_ACTIVE_ALPHA: f32 = 1.0;
+    pub const SPRITE_SCALE: f32 = 4.0;
+
+    pub const GROUP_BACKGROUND_RGBA: [f32; 4] = [0.05, 0.05, 0.05, 1.0];
+    pub const GROUP_BACKGROUND_PADDING: f32 = 50.0;
 }
 
 #[derive(PartialEq)]
@@ -50,8 +55,8 @@ pub struct GUI {
 
     draw_direction: DrawDirection,
 
-    vertical_spacing: f32,
-    horizontal_spacing: f32,
+    vertical_padding: f32,
+    horizontal_padding: f32,
 
     font_size: u32,
     text_color: Color,
@@ -60,13 +65,20 @@ pub struct GUI {
     button_cold_color: Color,
     button_hot_color: Color,
     button_active_color: Color,
+
     sprite_cold_alpha: f32,
     sprite_hot_alpha: f32,
     sprite_active_alpha: f32,
+    sprite_scale: f32,
+
+    group_background_color: Color,
+    group_background_padding: f32,
 
     bar_size: Vec2<f32>,
 
     effect: u32,
+    is_group_started: bool,
+    group_rect: Option<Rect>,
 
     primitives: Vec<DrawPrimitive>,
     texts: Vec<Text>,
@@ -88,8 +100,8 @@ impl GUI {
 
         use defaults::*;
         self.draw_direction = DrawDirection::Down;
-        self.vertical_spacing = VERTICAL_SPACING;
-        self.horizontal_spacing = HORIZONTAL_SPACING;
+        self.vertical_padding = VERTICAL_PADDING;
+        self.horizontal_padding = HORIZONTAL_PADDING;
         self.font_size = FONT_SIZE;
         self.text_color = Color::from_slice(&TEXT_RGBA);
         self.button_size = Vec2::new(BUTTON_WIDTH, BUTTON_HEIGHT);
@@ -99,8 +111,13 @@ impl GUI {
         self.sprite_cold_alpha = SPRITE_COLD_ALPHA;
         self.sprite_hot_alpha = SPRITE_HOT_ALPHA;
         self.sprite_active_alpha = SPRITE_ACTIVE_ALPHA;
+        self.sprite_scale = SPRITE_SCALE;
+        self.group_background_color =
+            Color::from_slice(&GROUP_BACKGROUND_RGBA);
+        self.group_background_padding = GROUP_BACKGROUND_PADDING;
         self.bar_size = Vec2::new(BAR_WIDTH, BAR_HEIGHT);
         self.effect = 0;
+        self.is_group_started = false;
 
         self.ui_cursor.x = 0.0;
         self.ui_cursor.y = input.window_size.y as f32;
@@ -113,11 +130,15 @@ impl GUI {
         self.lmb_is_down = input.lmb_is_down;
     }
 
+    pub fn get_ui_cursor(&self) -> Vec2<f32> {
+        self.ui_cursor
+    }
+
     fn advance_rect(&mut self, size: Vec2<f32>) -> Rect {
         use DrawDirection::*;
 
-        let y_step = self.vertical_spacing + size.y;
-        let x_step = self.horizontal_spacing + size.x;
+        let y_step = self.vertical_padding + size.y;
+        let x_step = self.horizontal_padding + size.x;
         let rect;
         match self.draw_direction {
             Down => {
@@ -138,7 +159,19 @@ impl GUI {
             }
         }
 
+        if self.is_group_started {
+            self.group_rect = if let Some(group_rect) = self.group_rect {
+                Some(group_rect.merge(rect))
+            } else {
+                Some(rect)
+            };
+        }
+
         rect
+    }
+
+    pub fn start_group(&mut self) {
+        self.is_group_started = true;
     }
 
     pub fn advance_cursor(&mut self, x: f32, y: f32) {
@@ -160,12 +193,16 @@ impl GUI {
         self.ui_cursor.y = 0.0;
     }
 
-    pub fn set_horizontal_spacing(&mut self, spacing: f32) {
-        self.horizontal_spacing = spacing;
+    pub fn set_cursor_at(&mut self, position: Vec2<f32>) {
+        self.ui_cursor = position;
     }
 
-    pub fn set_vertical_spacing(&mut self, spacing: f32) {
-        self.vertical_spacing = spacing;
+    pub fn set_horizontal_padding(&mut self, padding: f32) {
+        self.horizontal_padding = padding;
+    }
+
+    pub fn set_vertical_padding(&mut self, padding: f32) {
+        self.vertical_padding = padding;
     }
 
     pub fn set_bar_size_scale(
@@ -176,6 +213,10 @@ impl GUI {
         use defaults::*;
         self.bar_size.x = BAR_WIDTH * width_scale;
         self.bar_size.y = BAR_HEIGHT * height_scale;
+    }
+
+    pub fn set_font_size(&mut self, font_size: u32) {
+        self.font_size = font_size;
     }
 
     pub fn add_bar_size(&mut self, width: f32, height: f32) {
@@ -189,12 +230,16 @@ impl GUI {
         self.bar_size.y = BAR_HEIGHT;
     }
 
-    pub fn reset_horizontal_spacing(&mut self) {
-        self.horizontal_spacing = defaults::HORIZONTAL_SPACING;
+    pub fn reset_horizontal_padding(&mut self) {
+        self.horizontal_padding = defaults::HORIZONTAL_PADDING;
     }
 
-    pub fn reset_vertical_spacing(&mut self) {
-        self.vertical_spacing = defaults::VERTICAL_SPACING;
+    pub fn reset_vertical_padding(&mut self) {
+        self.vertical_padding = defaults::VERTICAL_PADDING;
+    }
+
+    pub fn reset_font_size(&mut self) {
+        self.font_size = defaults::FONT_SIZE;
     }
 
     pub fn draw(&self, draw_queue: &mut Vec<DrawPrimitive>) {
@@ -206,7 +251,7 @@ impl GUI {
 
     pub fn rect_button(
         &mut self,
-        string: String,
+        string: &str,
         glyph_atlas: &GlyphAtlas,
     ) -> bool {
         use ButtonState::*;
@@ -217,7 +262,7 @@ impl GUI {
             glyph_atlas,
             SpaceType::ScreenSpace,
             Origin::Center,
-            string,
+            string.to_string(),
             self.font_size,
             self.text_color,
         );
@@ -245,7 +290,7 @@ impl GUI {
 
     pub fn text_button(
         &mut self,
-        string: String,
+        string: &str,
         glyph_atlas: &GlyphAtlas,
     ) -> bool {
         use ButtonState::*;
@@ -255,12 +300,16 @@ impl GUI {
             glyph_atlas,
             SpaceType::ScreenSpace,
             Origin::BotLeft,
-            string,
+            string.to_string(),
             self.font_size,
             self.text_color,
         );
 
-        let rect = self.advance_rect(text.get_bound_rect().get_size());
+        let rect_size = text
+            .get_bound_rect()
+            .get_size()
+            .with_y(self.font_size as f32);
+        let rect = self.advance_rect(rect_size);
         let state = self.get_button_state(rect);
         let color = match state {
             Cold => self.button_cold_color,
@@ -277,7 +326,7 @@ impl GUI {
         state == ButtonState::Released
     }
 
-    pub fn sprite_button(&mut self, scale: f32, sprite: Sprite) -> bool {
+    pub fn sprite_button(&mut self, sprite: Sprite) -> bool {
         use ButtonState::*;
 
         let mut primitive = DrawPrimitive::from_sprite(
@@ -289,7 +338,7 @@ impl GUI {
             None,
             false,
             TextureType::SpriteTexture,
-            scale,
+            self.sprite_scale,
         );
         let rect = self.advance_rect(primitive.rect.get_size());
         let state = self.get_button_state(rect);
@@ -306,7 +355,7 @@ impl GUI {
         state == ButtonState::Released
     }
 
-    pub fn sprite(&mut self, scale: f32, sprite: Sprite, alpha: f32) {
+    pub fn sprite(&mut self, sprite: Sprite, alpha: f32) {
         let mut primitive = DrawPrimitive::from_sprite(
             SpaceType::ScreenSpace,
             1.0,
@@ -316,7 +365,7 @@ impl GUI {
             Some(Color::only_alpha(alpha)),
             false,
             TextureType::SpriteTexture,
-            scale,
+            self.sprite_scale,
         );
         let rect = self.advance_rect(primitive.rect.get_size());
         primitive.rect = rect;
@@ -342,12 +391,34 @@ impl GUI {
         state
     }
 
+    pub fn text(&mut self, string: &str, glyph_atlas: &GlyphAtlas) {
+        let mut text = Text::new(
+            Vec2::zeros(),
+            glyph_atlas,
+            SpaceType::ScreenSpace,
+            Origin::BotLeft,
+            string.to_string(),
+            self.font_size,
+            self.text_color,
+        );
+
+        let rect_size = text
+            .get_bound_rect()
+            .get_size()
+            .with_y(self.font_size as f32);
+        let rect = self.advance_rect(rect_size);
+        text.set_position(rect.bot_left);
+
+        self.primitives
+            .extend_from_slice(&text.get_draw_primitives());
+    }
+
     pub fn rect_with_text(
         &mut self,
         rect_size: Vec2<f32>,
         rect_color: Color,
         font_size: u32,
-        string: String,
+        string: &str,
         text_color: Color,
         glyph_atlas: &GlyphAtlas,
     ) {
@@ -364,7 +435,7 @@ impl GUI {
             glyph_atlas,
             SpaceType::ScreenSpace,
             Origin::Center,
-            string,
+            string.to_string(),
             font_size,
             text_color,
         );
@@ -386,10 +457,25 @@ impl GUI {
         self.primitives.push(primitive);
     }
 
-    // pub fn button() -> bool {
-    //
-    // }
+    pub fn group_background(&mut self) {
+        if !self.is_group_started {
+            return;
+        }
 
-    // pub fn text() {
-    // }
+        self.is_group_started = false;
+        if let Some(rect) = self.group_rect {
+            let rect = rect.expand_from_center(
+                self.group_background_padding,
+                self.group_background_padding,
+            );
+            let primitive = DrawPrimitive::from_rect(
+                rect,
+                SpaceType::ScreenSpace,
+                0.9,
+                0,
+                self.group_background_color,
+            );
+            self.primitives.push(primitive);
+        }
+    }
 }

@@ -11,7 +11,6 @@ use crate::input::*;
 use crate::level::*;
 use crate::player_stats::*;
 use crate::prefabs::*;
-use crate::ui::*;
 use crate::utils::smooth_step;
 use crate::vec::*;
 use std::f32::consts::PI;
@@ -78,7 +77,7 @@ impl World {
         use WorldState::*;
         match self.state {
             MainMenu => {
-                // self.update_main_menu_gui(input);
+                self.update_main_menu_gui(input);
             }
             Play => {
                 if input.take_action(Keyaction::SkillsTree) {
@@ -101,7 +100,7 @@ impl World {
                 if input.take_action(Keyaction::SkillsTree) {
                     self.state = Play;
                 } else {
-                    // self.update_skill_tree_ui(input);
+                    self.update_skills_tree_gui(input);
                 }
             }
             Quit => {}
@@ -716,14 +715,107 @@ impl World {
         }
     }
 
-    fn update_main_menu_ui(&mut self, input: &mut Input) {
-        // use DrawDirection::*;
+    fn update_skills_tree_gui(&mut self, input: &mut Input) {
+        use DrawDirection::*;
+        use SkillsChainType::*;
+        use WorldState::*;
 
-        // self.gui.begin(input);
+        let stats = self.level.player.stats.as_mut().unwrap();
 
-        // self.gui.set_cursor_at_bot_left();
+        self.gui.begin(input);
 
-        // self.gui.set_draw_direction(Up);
+        self.gui.start_group();
+
+        self.gui.set_cursor_at_top_left();
+        self.gui.advance_cursor(50.0, -50.0);
+        self.gui.set_draw_direction(Down);
+        self.gui.text(
+            &format!("Points: {:?}", stats.n_skill_points),
+            &self.glyph_atlas,
+        );
+
+        self.gui.advance_cursor(0.0, -80.0);
+        let cursor = self.gui.get_ui_cursor();
+        self.update_skills_chain_gui(Attack);
+        self.gui.set_cursor_at(cursor.add_y(-100.0));
+        self.update_skills_chain_gui(Agility);
+        self.gui.set_cursor_at(cursor.add_y(-200.0));
+        self.update_skills_chain_gui(Durability);
+        self.gui.set_cursor_at(cursor.add_y(-300.0));
+        self.update_skills_chain_gui(Light);
+
+        self.gui.group_background();
+    }
+
+    fn update_skills_chain_gui(&mut self, type_: SkillsChainType) {
+        use DrawDirection::*;
+        use SkillsChainType::*;
+
+        let sprite_name = match type_ {
+            Attack => "attack_skills",
+            Durability => "durability_skills",
+            Agility => "agility_skills",
+            Light => "light_skills",
+        };
+        let arrow_sprite = self.sprite_atlas.sprites["skills_arrow"][0];
+        let stats = self.level.player.stats.as_mut().unwrap();
+        let has_points = stats.n_skill_points > 0;
+        let skills = stats.get_skills_chain_by_type(type_);
+        let n_learned = skills.n_learned;
+        let n_skills = skills.skills.len();
+
+        self.gui.set_horizontal_padding(20.0);
+        self.gui.set_draw_direction(Right);
+        for i in 0..n_skills {
+            let skill_sprite = self.sprite_atlas.sprites[sprite_name][i];
+            if i < n_learned {
+                self.gui.sprite(skill_sprite, 1.0);
+            } else if i == n_learned && has_points {
+                if self.gui.sprite_button(skill_sprite) {
+                    self.level
+                        .player
+                        .stats
+                        .as_mut()
+                        .unwrap()
+                        .force_learn_next(type_);
+                }
+            } else {
+                self.gui.sprite(skill_sprite, 0.1);
+            }
+
+            if i < n_skills - 1 {
+                let alpha = if n_learned > 0 && i < n_learned - 1 {
+                    1.0
+                } else if i < n_learned {
+                    0.4
+                } else {
+                    0.1
+                };
+                self.gui.sprite(arrow_sprite, alpha);
+            }
+        }
+    }
+
+    fn update_main_menu_gui(&mut self, input: &mut Input) {
+        use DrawDirection::*;
+        use WorldState::*;
+
+        self.gui.begin(input);
+
+        self.gui.set_cursor_at_bot_left();
+        self.gui.advance_cursor(25.0, 25.0);
+
+        self.gui.set_font_size(37);
+        self.gui.set_draw_direction(Up);
+        if self.gui.text_button("Quit", &self.glyph_atlas) {
+            self.state = Quit;
+        }
+        if self.gui.text_button("Options", &self.glyph_atlas) {
+            println!("Options are not implemented");
+        }
+        if self.gui.text_button("New Game", &self.glyph_atlas) {
+            self.state = Play;
+        }
     }
 
     fn update_game_gui(&mut self, input: &mut Input) {
@@ -740,12 +832,12 @@ impl World {
         self.gui.set_cursor_at_bot_left();
 
         self.gui.set_draw_direction(Right);
-        self.gui.set_horizontal_spacing(0.0);
+        self.gui.set_horizontal_padding(0.0);
         self.gui.rect_with_text(
             Vec2::new(77.0, 77.0),
             Color::expbar(exp_ratio),
             28,
-            level.to_string(),
+            &level.to_string(),
             Color::black(1.0),
             &self.glyph_atlas,
         );
@@ -755,35 +847,12 @@ impl World {
         self.gui.add_bar_size(10.0, 0.0);
         self.gui.bar(exp_ratio, Color::expbar(exp_ratio));
 
-        self.gui.reset_horizontal_spacing();
+        self.gui.reset_horizontal_padding();
         self.gui.set_default_bar_size();
         self.gui.advance_cursor(10.0, 0.0);
         self.gui
             .bar(stamina_ratio, Color::staminabar(stamina_ratio));
         self.gui.bar(health_ratio, Color::healthbar(health_ratio));
-
-        if self
-            .gui
-            .text_button("TEST test 1".to_string(), &self.glyph_atlas)
-        {
-            println!("11111");
-        }
-
-        if self
-            .gui
-            .rect_button("TEST test 2".to_string(), &self.glyph_atlas)
-        {
-            println!("22222");
-        }
-
-        self.gui.set_draw_direction(Right);
-        let sprite = self.sprite_atlas.sprites["light_skills"][0];
-        if self.gui.sprite_button(4.0, sprite) {
-            println!("SPRITE");
-        }
-
-        let sprite = self.sprite_atlas.sprites["attack_skills"][2];
-        self.gui.sprite(6.0, sprite, 1.0);
     }
 }
 

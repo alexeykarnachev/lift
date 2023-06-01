@@ -15,7 +15,6 @@ mod level;
 mod player_stats;
 mod prefabs;
 mod renderer;
-mod ui;
 mod utils;
 mod vec;
 mod world;
