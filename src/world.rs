@@ -734,20 +734,33 @@ impl World {
             &self.glyph_atlas,
         );
 
+        let mut hovered = None;
         self.gui.advance_cursor(0.0, -80.0);
         let cursor = self.gui.get_ui_cursor();
-        self.update_skills_chain_gui(Attack);
+        hovered = hovered.or(self.update_skills_chain_gui(Attack));
         self.gui.set_cursor_at(cursor.add_y(-100.0));
-        self.update_skills_chain_gui(Agility);
+        hovered = hovered.or(self.update_skills_chain_gui(Agility));
         self.gui.set_cursor_at(cursor.add_y(-200.0));
-        self.update_skills_chain_gui(Durability);
+        hovered = hovered.or(self.update_skills_chain_gui(Durability));
         self.gui.set_cursor_at(cursor.add_y(-300.0));
-        self.update_skills_chain_gui(Light);
+        hovered = hovered.or(self.update_skills_chain_gui(Light));
+
+        self.gui.set_font_size(16);
+        self.gui.set_cursor_at(cursor.add_y(-350.0));
+        if let Some(skill) = hovered {
+            self.gui.text(&skill.description, &self.glyph_atlas);
+        } else {
+            self.gui.text(" ", &self.glyph_atlas);
+        }
 
         self.gui.group_background();
     }
 
-    fn update_skills_chain_gui(&mut self, type_: SkillsChainType) {
+    fn update_skills_chain_gui(
+        &mut self,
+        type_: SkillsChainType,
+    ) -> Option<Skill> {
+        use ButtonState::*;
         use DrawDirection::*;
         use SkillsChainType::*;
 
@@ -764,24 +777,19 @@ impl World {
         let n_learned = skills.n_learned;
         let n_skills = skills.skills.len();
 
+        let mut hovered_skill = None;
+        let mut learned_skill_type = None;
         self.gui.set_horizontal_padding(20.0);
         self.gui.set_draw_direction(Right);
         for i in 0..n_skills {
             let skill_sprite = self.sprite_atlas.sprites[sprite_name][i];
-            if i < n_learned {
-                self.gui.sprite(skill_sprite, 1.0);
+            let state = if i < n_learned {
+                self.gui.sprite(skill_sprite, 1.0)
             } else if i == n_learned && has_points {
-                if self.gui.sprite_button(skill_sprite) {
-                    self.level
-                        .player
-                        .stats
-                        .as_mut()
-                        .unwrap()
-                        .force_learn_next(type_);
-                }
+                self.gui.sprite_button(skill_sprite)
             } else {
-                self.gui.sprite(skill_sprite, 0.1);
-            }
+                self.gui.sprite(skill_sprite, 0.1)
+            };
 
             if i < n_skills - 1 {
                 let alpha = if n_learned > 0 && i < n_learned - 1 {
@@ -793,10 +801,32 @@ impl World {
                 };
                 self.gui.sprite(arrow_sprite, alpha);
             }
+
+            match state {
+                Released | Active | Hot => {
+                    hovered_skill = Some(skills.skills[i].clone());
+                    if state == Released {
+                        learned_skill_type = Some(type_);
+                    }
+                }
+                _ => {}
+            }
         }
+
+        if let Some(type_) = learned_skill_type {
+            self.level
+                .player
+                .stats
+                .as_mut()
+                .unwrap()
+                .force_learn_next(type_);
+        }
+
+        hovered_skill
     }
 
     fn update_main_menu_gui(&mut self, input: &mut Input) {
+        use ButtonState::*;
         use DrawDirection::*;
         use WorldState::*;
 
@@ -807,13 +837,14 @@ impl World {
 
         self.gui.set_font_size(37);
         self.gui.set_draw_direction(Up);
-        if self.gui.text_button("Quit", &self.glyph_atlas) {
+        if self.gui.text_button("Quit", &self.glyph_atlas) == Released {
             self.state = Quit;
         }
-        if self.gui.text_button("Options", &self.glyph_atlas) {
+        if self.gui.text_button("Options", &self.glyph_atlas) == Released {
             println!("Options are not implemented");
         }
-        if self.gui.text_button("New Game", &self.glyph_atlas) {
+        if self.gui.text_button("New Game", &self.glyph_atlas) == Released
+        {
             self.state = Play;
         }
     }

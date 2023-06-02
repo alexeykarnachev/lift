@@ -29,7 +29,7 @@ mod defaults {
 }
 
 #[derive(PartialEq)]
-enum ButtonState {
+pub enum ButtonState {
     Cold,
     Hot,
     Active,
@@ -253,7 +253,7 @@ impl GUI {
         &mut self,
         string: &str,
         glyph_atlas: &GlyphAtlas,
-    ) -> bool {
+    ) -> ButtonState {
         use ButtonState::*;
 
         let rect = self.advance_rect(self.button_size);
@@ -285,14 +285,14 @@ impl GUI {
         self.primitives
             .extend_from_slice(&text.get_draw_primitives());
 
-        state == ButtonState::Released
+        state
     }
 
     pub fn text_button(
         &mut self,
         string: &str,
         glyph_atlas: &GlyphAtlas,
-    ) -> bool {
+    ) -> ButtonState {
         use ButtonState::*;
 
         let mut text = Text::new(
@@ -323,10 +323,10 @@ impl GUI {
         self.primitives
             .extend_from_slice(&text.get_draw_primitives());
 
-        state == ButtonState::Released
+        state
     }
 
-    pub fn sprite_button(&mut self, sprite: Sprite) -> bool {
+    pub fn sprite_button(&mut self, sprite: Sprite) -> ButtonState {
         use ButtonState::*;
 
         let mut primitive = DrawPrimitive::from_sprite(
@@ -352,10 +352,10 @@ impl GUI {
 
         self.primitives.push(primitive);
 
-        state == ButtonState::Released
+        state
     }
 
-    pub fn sprite(&mut self, sprite: Sprite, alpha: f32) {
+    pub fn sprite(&mut self, sprite: Sprite, alpha: f32) -> ButtonState {
         let mut primitive = DrawPrimitive::from_sprite(
             SpaceType::ScreenSpace,
             1.0,
@@ -368,9 +368,41 @@ impl GUI {
             self.sprite_scale,
         );
         let rect = self.advance_rect(primitive.rect.get_size());
+        let state = self.get_button_state(rect);
         primitive.rect = rect;
 
         self.primitives.push(primitive);
+
+        state
+    }
+
+    pub fn text(
+        &mut self,
+        string: &str,
+        glyph_atlas: &GlyphAtlas,
+    ) -> ButtonState {
+        let mut text = Text::new(
+            Vec2::zeros(),
+            glyph_atlas,
+            SpaceType::ScreenSpace,
+            Origin::BotLeft,
+            string.to_string(),
+            self.font_size,
+            self.text_color,
+        );
+
+        let rect_size = text
+            .get_bound_rect()
+            .get_size()
+            .with_y(self.font_size as f32);
+        let rect = self.advance_rect(rect_size);
+        let state = self.get_button_state(rect);
+        text.set_position(rect.bot_left);
+
+        self.primitives
+            .extend_from_slice(&text.get_draw_primitives());
+
+        state
     }
 
     fn get_button_state(&self, rect: Rect) -> ButtonState {
@@ -389,28 +421,6 @@ impl GUI {
         };
 
         state
-    }
-
-    pub fn text(&mut self, string: &str, glyph_atlas: &GlyphAtlas) {
-        let mut text = Text::new(
-            Vec2::zeros(),
-            glyph_atlas,
-            SpaceType::ScreenSpace,
-            Origin::BotLeft,
-            string.to_string(),
-            self.font_size,
-            self.text_color,
-        );
-
-        let rect_size = text
-            .get_bound_rect()
-            .get_size()
-            .with_y(self.font_size as f32);
-        let rect = self.advance_rect(rect_size);
-        text.set_position(rect.bot_left);
-
-        self.primitives
-            .extend_from_slice(&text.get_draw_primitives());
     }
 
     pub fn rect_with_text(
