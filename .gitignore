@@ -1,2 +1,5 @@
 *.swp
 /target
+/assets/raw
+/aseprite/
+/tiled/

@@ -28,16 +28,17 @@ mod player {
     }
 
     pub mod dashing {
-        pub const SPEED: f32 = 200.0;
+        pub const SPEED: f32 = 150.0;
         pub const STAMINA_COST: f32 = 15000.0;
-        pub const ACTION_TIME: f32 = 0.5;
+        pub const ACTION_TIME: f32 = 0.8;
+        pub const RECOVERY_TIME: f32 = 0.2;
         pub const COOLDOWN_TIME: f32 = 0.3;
     }
 
     pub mod animator {
         pub const IDLE_DURATION: f32 = 1.2;
         pub const RUN_DURATION: f32 = 0.8;
-        pub const SLIDE_DURATION: f32 = 0.5;
+        pub const ROLL_DURATION: f32 = 1.0;
         pub const CLIMB_DURATION: f32 = 1.0;
         pub const ATTACK_DURATION: f32 = 0.3;
     }
@@ -204,7 +205,7 @@ pub fn create_player(
         AbilityTimer::new(
             0.0,
             dashing::ACTION_TIME,
-            0.0,
+            dashing::RECOVERY_TIME,
             dashing::COOLDOWN_TIME,
         ),
     );
@@ -228,21 +229,21 @@ pub fn create_player(
         ),
     );
     animator.add(
-        "run",
+        "walk",
         AnimatedSprite::new(
             sprite_atlas,
-            "knight_run",
+            "knight_walk",
             animator::RUN_DURATION,
             Repeat,
             BotCenter,
         ),
     );
     animator.add(
-        "slide",
+        "roll",
         AnimatedSprite::new(
             sprite_atlas,
-            "knight_slide",
-            animator::SLIDE_DURATION,
+            "knight_roll",
+            animator::ROLL_DURATION,
             Once,
             BotCenter,
         ),

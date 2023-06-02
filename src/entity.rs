@@ -26,7 +26,7 @@ pub enum Behaviour {
 pub enum State {
     Initial,
     Idle,
-    Running,
+    Walking,
     Dashing,
     Attacking,
     Falling,

@@ -186,11 +186,11 @@ impl World {
                                 enemy.force_attack();
                                 enemy.state = Attacking;
                             } else {
-                                enemy.state = Running;
+                                enemy.state = Walking;
                             }
                         }
                     }
-                    Running => {
+                    Walking => {
                         enemy.play_animation("move");
                         enemy.set_orientation(to_player_orientation);
                         enemy.set_weapon(0);
@@ -282,11 +282,11 @@ impl World {
                                     enemy.force_attack();
                                     enemy.state = Attacking;
                                 } else {
-                                    enemy.state = Running;
+                                    enemy.state = Walking;
                                 }
                             }
                         }
-                        Running => {
+                        Walking => {
                             enemy.play_animation("wave");
                             enemy.set_orientation(to_player_orientation);
 
@@ -388,11 +388,11 @@ impl World {
                                 enemy.force_attack();
                                 enemy.state = Attacking;
                             } else {
-                                enemy.state = Running;
+                                enemy.state = Walking;
                             }
                         }
                     }
-                    Running => {
+                    Walking => {
                         enemy.play_animation("move");
                         enemy.set_orientation(to_player_orientation);
 
@@ -488,7 +488,7 @@ impl World {
             Idle => {
                 player.play_animation("idle");
                 if is_left_action || is_right_action {
-                    player.state = Running;
+                    player.state = Walking;
                 } else if is_attack_action
                     && player.check_if_weapon_ready()
                     && player.check_if_enough_stamina_for_attack()
@@ -501,7 +501,7 @@ impl World {
                     player.state = Climbing;
                 }
             }
-            Running => {
+            Walking => {
                 if !player.is_on_floor {
                     player.state = Falling;
                 } else if (is_down_action || is_up_action)
@@ -517,7 +517,7 @@ impl World {
                 } else {
                     if is_left_action || is_right_action {
                         player.set_orientation(is_right_action);
-                        player.play_animation("run");
+                        player.play_animation("walk");
                         if input.is_action(Dash)
                             && player.check_if_dashing_ready()
                             && player.check_if_enough_stamina_for_dashing()
@@ -536,7 +536,7 @@ impl World {
                 }
             }
             Dashing => {
-                player.play_animation("slide");
+                player.play_animation("roll");
                 if !player.check_if_dashing() {
                     player.state = Idle;
                 } else if (is_down_action || is_up_action)
