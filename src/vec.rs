@@ -298,6 +298,17 @@ impl Rect {
         }
     }
 
+    pub fn from_xywh(xywh: &[f32; 4]) -> Self {
+        let bot_left = Vec2::new(xywh[0], xywh[1]);
+        let top_right =
+            Vec2::new(bot_left.x + xywh[2], bot_left.y + xywh[3]);
+
+        Self {
+            bot_left,
+            top_right,
+        }
+    }
+
     pub fn from_origin(
         origin: Origin,
         position: Vec2<f32>,

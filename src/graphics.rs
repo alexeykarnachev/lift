@@ -6,7 +6,7 @@ use crate::entity::*;
 use crate::level::Level;
 use crate::vec::{Origin, Rect, Vec2};
 use core::fmt::Debug;
-use enum_iterator::{all, Sequence};
+use enum_iterator::Sequence;
 use fontdue::Font;
 use fontdue::Metrics;
 use image::imageops::flip_vertical_in_place;
@@ -569,17 +569,4 @@ impl From<EffectType> for u32 {
     fn from(e: EffectType) -> u32 {
         e as u32
     }
-}
-
-pub fn enum_to_shader_source<T: Sequence + Debug + Copy + Into<u32>>(
-) -> String {
-    let mut source = String::new();
-
-    for variant in all::<T>().collect::<Vec<_>>() {
-        let definition =
-            format!("const uint {:?} = {:?};\n", variant, variant.into());
-        source.push_str(&definition);
-    }
-
-    source
 }

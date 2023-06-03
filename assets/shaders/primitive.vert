@@ -1,8 +1,4 @@
-struct Camera {
-    vec4 world_xywh;
-};
-
-uniform Camera camera;
+uniform vec4 camera_xywh;
 uniform vec2 screen_size;
 
 layout (location = 0) in vec4 a_xywh;
@@ -19,15 +15,15 @@ out vec4 vs_rgba;
 out vec2 vs_uv;
 out vec2 vs_pos;
 
-vec2 project(vec2 pos, Camera camera) {
+vec2 project(vec2 pos) {
     vec2 proj = pos;
 
     if (a_space == WorldSpace) {
-        proj -= camera.world_xywh.xy;
+        proj -= camera_xywh.xy;
     }
 
     if (a_space == WorldSpace || a_space == CameraSpace) {
-        proj /= 0.5 * camera.world_xywh.zw;
+        proj /= 0.5 * camera_xywh.zw;
     } else if (a_space == ScreenSpace) {
         proj = 2.0 * proj / screen_size - 1.0;
     }
@@ -40,7 +36,7 @@ void main(void) {
     vec2 size = a_xywh.zw;
 
     pos += 0.5 * RECT_IDX_TO_NDC[gl_VertexID] * size;
-    vec2 proj = project(pos, camera);
+    vec2 proj = project(pos);
 
     vec2 local_uv = RECT_IDX_TO_UV[gl_VertexID];
     local_uv.y = 1.0 - local_uv.y;

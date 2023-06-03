@@ -27,7 +27,7 @@ vec4 get_color() {
     if (vs_tex_id == SpriteTexture) {
         vec2 tex_size = vec2(textureSize(sprite_atlas_tex, 0));
         vec2 uv = vs_uv;
-        uv = floor(uv) + min(fract(uv) / fwidth(uv), 1.0) - 0.5;
+        uv = vec2(floor(uv.x), ceil(uv.y)) + min(fract(uv) / fwidth(uv), 1.0) - 0.5;
         uv /= tex_size;
         color = texture(sprite_atlas_tex, uv);
         color = vec4(color.rgb + vs_rgba.rgb, vs_rgba.a * color.a);
@@ -104,8 +104,4 @@ void main(void) {
 
     frag_color = color;
 }
-
-
-
-
 

@@ -1,10 +1,13 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
-use crate::entity::*;
-use crate::graphics::*;
-use crate::vec::Vec2;
-use crate::world::*;
+use crate::entity::Light;
+use crate::vec::*;
+use core::fmt::Debug;
+use enum_iterator::{all, Sequence};
+use image::imageops::flip_vertical_in_place;
+use image::io::Reader as ImageReader;
+// use crate::world::*;
 use glow::HasContext;
 use std::fs;
 use std::mem::size_of;
@@ -24,9 +27,30 @@ pub struct Renderer {
     gl: glow::Context,
     _gl_context: sdl2::video::GLContext,
 
-    primitive_renderer: PrimitiveRenderer,
-    hdr_resolve_renderer: HDRResolveRenderer,
+    // Primitive renderer
+    primitive_program: glow::NativeProgram,
+    primitive_vao: glow::NativeVertexArray,
+    a_xywh: Attribute<f32>,
+    a_space: Attribute<u32>,
+    a_effect: Attribute<u32>,
+    a_tex_uvwh: Attribute<f32>,
+    a_rgba: Attribute<f32>,
+    a_tex_id: Attribute<u32>,
+    a_flip: Attribute<f32>,
 
+    // HDR resolve renderer
+    hdr_resolve_program: glow::NativeProgram,
+    hdr_buffer_size: Vec2<u32>,
+    hdr_fbo: glow::NativeFramebuffer,
+    hdr_tex: glow::Texture,
+
+    // Resource textures
+    sprite_atlas_tex: glow::Texture,
+    // glyph_atlas_tex: Option<glow::Texture>,
+
+    // World
+    camera_position: Vec2<f32>,
+    camera_view_size: Vec2<f32>,
     primitives: Vec<DrawPrimitive>,
     lights: Vec<Light>,
 }
@@ -36,7 +60,10 @@ impl Renderer {
         sdl: &sdl2::Sdl,
         window_name: &str,
         window_size: Vec2<u32>,
+        sprite_atlas_image_fp: &str,
     ) -> Self {
+        // ---------------------------------------------------------------
+        // Initialize gl and window
         let video = sdl.video().unwrap();
 
         let window = video
@@ -60,65 +87,327 @@ impl Renderer {
 
         video.gl_set_swap_interval(1).unwrap();
 
-        let primitive_renderer = PrimitiveRenderer::new(&gl);
-        let hdr_resolve_renderer =
-            HDRResolveRenderer::new(&gl, window_size);
+        // ---------------------------------------------------------------
+        // Initialize primitive renderer
+        let primitive_program = create_program(
+            &gl,
+            Some(COMMON_GLSL_SHADER_FP),
+            PRIMITIVE_VERT_SHADER_FP,
+            PRIMITIVE_FRAG_SHADER_FP,
+        );
+        let primitive_vao = create_vao(&gl);
+        unsafe {
+            gl.bind_vertex_array(Some(primitive_vao));
+        }
+
+        let a_xywh = Attribute::new(
+            &gl,
+            primitive_program,
+            4,
+            "a_xywh",
+            glow::FLOAT,
+            MAX_N_INSTANCED_PRIMITIVES,
+            1,
+        );
+        let a_space = Attribute::new(
+            &gl,
+            primitive_program,
+            1,
+            "a_space",
+            glow::UNSIGNED_INT,
+            MAX_N_INSTANCED_PRIMITIVES,
+            1,
+        );
+        let a_effect = Attribute::new(
+            &gl,
+            primitive_program,
+            1,
+            "a_effect",
+            glow::UNSIGNED_INT,
+            MAX_N_INSTANCED_PRIMITIVES,
+            1,
+        );
+        let a_tex_uvwh = Attribute::new(
+            &gl,
+            primitive_program,
+            4,
+            "a_tex_uvwh",
+            glow::FLOAT,
+            MAX_N_INSTANCED_PRIMITIVES,
+            1,
+        );
+        let a_rgba = Attribute::new(
+            &gl,
+            primitive_program,
+            4,
+            "a_rgba",
+            glow::FLOAT,
+            MAX_N_INSTANCED_PRIMITIVES,
+            1,
+        );
+        let a_tex_id = Attribute::new(
+            &gl,
+            primitive_program,
+            1,
+            "a_tex_id",
+            glow::UNSIGNED_INT,
+            MAX_N_INSTANCED_PRIMITIVES,
+            1,
+        );
+        let a_flip = Attribute::new(
+            &gl,
+            primitive_program,
+            1,
+            "a_flip",
+            glow::FLOAT,
+            MAX_N_INSTANCED_PRIMITIVES,
+            1,
+        );
+
+        // ---------------------------------------------------------------
+        // Initialize HDR resolve renderer
+        let hdr_buffer_size = window_size;
+        let hdr_resolve_program = create_program(
+            &gl,
+            Some(COMMON_GLSL_SHADER_FP),
+            SCREEN_RECT_VERT_SHADER_FP,
+            HDR_RESOLVE_FRAG_SHADER_FP,
+        );
+        let hdr_tex;
+        let hdr_fbo;
+        unsafe {
+            hdr_fbo = gl.create_framebuffer().unwrap();
+            hdr_tex = create_texture(
+                &gl,
+                glow::RGBA32F as i32,
+                hdr_buffer_size.x as i32,
+                hdr_buffer_size.y as i32,
+                glow::RGBA,
+                glow::FLOAT,
+                None,
+                glow::NEAREST,
+            );
+            gl.bind_framebuffer(glow::FRAMEBUFFER, Some(hdr_fbo));
+            gl.framebuffer_texture_2d(
+                glow::FRAMEBUFFER,
+                glow::COLOR_ATTACHMENT0,
+                glow::TEXTURE_2D,
+                Some(hdr_tex),
+                0,
+            );
+            gl.draw_buffer(glow::COLOR_ATTACHMENT0);
+            gl.bind_framebuffer(glow::FRAMEBUFFER, None);
+        }
+
+        // ---------------------------------------------------------------
+        // Initialize texture (sprites and glyphs)
+        let mut sprite_atlas_image =
+            ImageReader::open(sprite_atlas_image_fp)
+                .unwrap()
+                .decode()
+                .unwrap();
+        flip_vertical_in_place(&mut sprite_atlas_image);
+
+        let sprite_atlas_tex = create_texture(
+            &gl,
+            glow::RGBA as i32,
+            sprite_atlas_image.width() as i32,
+            sprite_atlas_image.height() as i32,
+            glow::RGBA,
+            glow::UNSIGNED_BYTE,
+            Some(&sprite_atlas_image.as_bytes().to_vec()),
+            glow::LINEAR,
+        );
 
         Self {
             window,
             gl,
             _gl_context,
-            primitive_renderer,
-            hdr_resolve_renderer,
+            primitive_program,
+            primitive_vao,
+            a_xywh,
+            a_space,
+            a_effect,
+            a_tex_uvwh,
+            a_rgba,
+            a_tex_id,
+            a_flip,
+            hdr_resolve_program,
+            hdr_buffer_size,
+            hdr_fbo,
+            hdr_tex,
+            sprite_atlas_tex,
+            camera_position: Vec2::zeros(),
+            camera_view_size: Vec2::zeros(),
             primitives: Vec::with_capacity(MAX_N_INSTANCED_PRIMITIVES),
             lights: Vec::with_capacity(MAX_N_LIGHTS),
         }
     }
 
-    pub fn render(&mut self, world: &World) {
-        self.load_resources(world);
-        self.fill_primitives(world);
-        self.fill_lights(world);
+    pub fn clear_queue(&mut self) {
+        self.primitives.clear();
+        self.lights.clear();
+    }
 
-        self.hdr_resolve_renderer.bind_framebuffer(&self.gl);
+    pub fn push_primitive(&mut self, primitive: DrawPrimitive) {
+        self.primitives.push(primitive);
+    }
 
+    pub fn push_light(&mut self, light: Light) {
+        self.lights.push(light);
+    }
+
+    pub fn set_camera(
+        &mut self,
+        camera_position: Vec2<f32>,
+        camera_view_size: Vec2<f32>,
+    ) {
+        self.camera_position = camera_position;
+        self.camera_view_size = camera_view_size;
+    }
+
+    pub fn render(&mut self) {
+        let screen_size =
+            [self.window.size().0 as f32, self.window.size().1 as f32];
+        let camera_xywh = [
+            self.camera_position.to_array(),
+            self.camera_view_size.to_array(),
+        ]
+        .concat();
+        // Sort draw primitives by their z-value
+        self.primitives
+            .sort_by(|a, b| a.z.partial_cmp(&b.z).unwrap());
+
+        // Fill up draw primitives related shader vao attributes
+        for primitive in self.primitives.iter() {
+            self.a_xywh.push_data(&primitive.rect.to_xywh());
+            self.a_space.push_data(&[primitive.space as u32]);
+            self.a_effect.push_data(&[primitive.effect]);
+            self.a_flip.push_data(&[(primitive.flip as i32) as f32]);
+            self.a_tex_id.push_data(&[primitive.tex as u32]);
+            self.a_tex_uvwh.push_data(&primitive.xywh);
+            self.a_rgba.push_data(&primitive.rgba);
+        }
+
+        // Render primitives
         unsafe {
+            self.gl.bind_vertex_array(Some(self.primitive_vao));
+            self.a_xywh.sync_data(&self.gl);
+            self.a_space.sync_data(&self.gl);
+            self.a_effect.sync_data(&self.gl);
+            self.a_rgba.sync_data(&self.gl);
+            self.a_tex_uvwh.sync_data(&self.gl);
+            self.a_tex_id.sync_data(&self.gl);
+            self.a_flip.sync_data(&self.gl);
+
+            self.gl.use_program(Some(self.primitive_program));
+            set_uniform_2_f32(
+                &self.gl,
+                self.primitive_program,
+                "screen_size",
+                &screen_size,
+            );
+            set_uniform_4_f32(
+                &self.gl,
+                self.primitive_program,
+                "camera_xywh",
+                &camera_xywh,
+            );
+
+            set_uniform_1_i32(
+                &self.gl,
+                self.primitive_program,
+                "sprite_atlas_tex",
+                0,
+            );
+            self.gl.active_texture(glow::TEXTURE0 + 0);
+            self.gl.bind_texture(
+                glow::TEXTURE_2D,
+                Some(self.sprite_atlas_tex),
+            );
+
+            // if let Some(&self.glyph_atlas_tex) = self.&self.glyph_atlas_tex {
+            //     set_uniform_1_i32(&self.gl, self.program, "&self.glyph_atlas_tex", 1);
+            //     &self.gl.active_texture(glow::TEXTURE0 + 1);
+            //     &self.gl.bind_texture(glow::TEXTURE_2D, Some(&self.glyph_atlas_tex));
+            // }
+
+            set_uniform_1_i32(
+                &self.gl,
+                self.primitive_program,
+                "n_lights",
+                self.lights.len() as i32,
+            );
+            for (i, light) in self.lights.iter().enumerate() {
+                let name = format!("lights[{}]", i).clone();
+                set_uniform_2_f32(
+                    &self.gl,
+                    self.primitive_program,
+                    &format!("{}.{}", name, "position"),
+                    &light.position.to_array(),
+                );
+                set_uniform_3_f32(
+                    &self.gl,
+                    self.primitive_program,
+                    &format!("{}.{}", name, "color"),
+                    &light.get_color().to_rgb_array(),
+                );
+                set_uniform_3_f32(
+                    &self.gl,
+                    self.primitive_program,
+                    &format!("{}.{}", name, "attenuation"),
+                    &light.attenuation,
+                );
+            }
+
+            self.gl.enable(glow::BLEND);
+            self.gl
+                .blend_func(glow::SRC_ALPHA, glow::ONE_MINUS_SRC_ALPHA);
+            self.gl.viewport(
+                0,
+                0,
+                self.hdr_buffer_size.x as i32,
+                self.hdr_buffer_size.y as i32,
+            );
+            self.gl
+                .bind_framebuffer(glow::FRAMEBUFFER, Some(self.hdr_fbo));
             self.gl.clear_color(0.0, 0.0, 0.0, 1.0);
             self.gl
                 .clear(glow::COLOR_BUFFER_BIT | glow::DEPTH_BUFFER_BIT);
+            self.gl.draw_arrays_instanced(
+                glow::TRIANGLE_STRIP,
+                0,
+                4,
+                self.primitives.len() as i32,
+            );
+
+            // Resolve hdr buffer
+            self.gl.use_program(Some(self.hdr_resolve_program));
+            set_uniform_1_i32(
+                &self.gl,
+                self.hdr_resolve_program,
+                "tex",
+                0,
+            );
+
+            self.gl.active_texture(glow::TEXTURE0 + 0);
+            self.gl.bind_texture(glow::TEXTURE_2D, Some(self.hdr_tex));
+
+            self.gl.viewport(
+                0,
+                0,
+                screen_size[0] as i32,
+                screen_size[1] as i32,
+            );
+            self.gl.bind_framebuffer(glow::FRAMEBUFFER, None);
+            self.gl.draw_arrays(glow::TRIANGLE_STRIP, 0, 4);
         }
-
-        let screen_size =
-            [self.window.size().0 as f32, self.window.size().1 as f32];
-        self.primitive_renderer.render(
-            &self.gl,
-            &world.camera,
-            &screen_size,
-            &self.lights,
-            &self.primitives,
-        );
-
-        self.bind_screen_framebuffer();
-        self.hdr_resolve_renderer.render(&self.gl);
 
         self.window.gl_swap_window();
     }
 
+    /*
     pub fn load_resources(&mut self, world: &World) {
-        if self.primitive_renderer.sprite_atlas_tex.is_none() {
-            let tex = create_texture(
-                &self.gl,
-                glow::RGBA as i32,
-                world.sprite_atlas.size[0] as i32,
-                world.sprite_atlas.size[1] as i32,
-                glow::RGBA,
-                glow::UNSIGNED_BYTE,
-                Some(&world.sprite_atlas.image),
-                glow::LINEAR,
-            );
-            self.primitive_renderer.sprite_atlas_tex = Some(tex);
-        }
-
         if self.primitive_renderer.glyph_atlas_tex.is_none() {
             let tex = create_texture(
                 &self.gl,
@@ -160,9 +449,6 @@ impl Renderer {
         // draw_collider(&world.player, &mut self.primitives);
 
         world.gui.draw(&mut self.primitives);
-
-        self.primitives
-            .sort_by(|a, b| a.z.partial_cmp(&b.z).unwrap());
     }
 
     pub fn fill_lights(&mut self, world: &World) {
@@ -183,288 +469,7 @@ impl Renderer {
             self.lights.push(light);
         }
     }
-
-    fn bind_screen_framebuffer(&self) {
-        let (width, height) = self.window.size();
-        unsafe {
-            self.gl.viewport(0, 0, width as i32, height as i32);
-            self.gl.bind_framebuffer(glow::FRAMEBUFFER, None);
-        }
-    }
-}
-
-struct PrimitiveRenderer {
-    program: glow::NativeProgram,
-
-    sprite_atlas_tex: Option<glow::Texture>,
-    glyph_atlas_tex: Option<glow::Texture>,
-
-    vao: glow::NativeVertexArray,
-    a_xywh: Attribute<f32>,
-    a_space: Attribute<u32>,
-    a_effect: Attribute<u32>,
-    a_tex_uvwh: Attribute<f32>,
-    a_rgba: Attribute<f32>,
-    a_tex_id: Attribute<u32>,
-    a_flip: Attribute<f32>,
-}
-
-impl PrimitiveRenderer {
-    pub fn new(gl: &glow::Context) -> Self {
-        let program = create_program(
-            gl,
-            Some(COMMON_GLSL_SHADER_FP),
-            PRIMITIVE_VERT_SHADER_FP,
-            PRIMITIVE_FRAG_SHADER_FP,
-        );
-
-        let vao = create_vao(gl);
-        unsafe {
-            gl.bind_vertex_array(Some(vao));
-        }
-
-        let a_xywh = Attribute::new(
-            gl,
-            program,
-            4,
-            "a_xywh",
-            glow::FLOAT,
-            MAX_N_INSTANCED_PRIMITIVES,
-            1,
-        );
-        let a_space = Attribute::new(
-            gl,
-            program,
-            1,
-            "a_space",
-            glow::UNSIGNED_INT,
-            MAX_N_INSTANCED_PRIMITIVES,
-            1,
-        );
-        let a_effect = Attribute::new(
-            gl,
-            program,
-            1,
-            "a_effect",
-            glow::UNSIGNED_INT,
-            MAX_N_INSTANCED_PRIMITIVES,
-            1,
-        );
-        let a_tex_uvwh = Attribute::new(
-            gl,
-            program,
-            4,
-            "a_tex_uvwh",
-            glow::FLOAT,
-            MAX_N_INSTANCED_PRIMITIVES,
-            1,
-        );
-        let a_rgba = Attribute::new(
-            gl,
-            program,
-            4,
-            "a_rgba",
-            glow::FLOAT,
-            MAX_N_INSTANCED_PRIMITIVES,
-            1,
-        );
-        let a_tex_id = Attribute::new(
-            gl,
-            program,
-            1,
-            "a_tex_id",
-            glow::UNSIGNED_INT,
-            MAX_N_INSTANCED_PRIMITIVES,
-            1,
-        );
-        let a_flip = Attribute::new(
-            gl,
-            program,
-            1,
-            "a_flip",
-            glow::FLOAT,
-            MAX_N_INSTANCED_PRIMITIVES,
-            1,
-        );
-
-        Self {
-            program,
-            sprite_atlas_tex: None,
-            glyph_atlas_tex: None,
-            vao,
-            a_xywh,
-            a_space,
-            a_effect,
-            a_tex_uvwh,
-            a_rgba,
-            a_tex_id,
-            a_flip,
-        }
-    }
-
-    pub fn render(
-        &mut self,
-        gl: &glow::Context,
-        camera: &Camera,
-        screen_size: &[f32; 2],
-        lights: &Vec<Light>,
-        primitives: &Vec<DrawPrimitive>,
-    ) {
-        primitives.iter().for_each(|p| self.push_primitive(p));
-
-        unsafe {
-            gl.use_program(Some(self.program));
-            set_uniform_2_f32(
-                gl,
-                self.program,
-                "screen_size",
-                screen_size,
-            );
-
-            if let Some(sprite_atlas_tex) = self.sprite_atlas_tex {
-                set_uniform_1_i32(gl, self.program, "sprite_atlas_tex", 0);
-                gl.active_texture(glow::TEXTURE0 + 0);
-                gl.bind_texture(glow::TEXTURE_2D, Some(sprite_atlas_tex));
-            }
-
-            if let Some(glyph_atlas_tex) = self.glyph_atlas_tex {
-                set_uniform_1_i32(gl, self.program, "glyph_atlas_tex", 1);
-                gl.active_texture(glow::TEXTURE0 + 1);
-                gl.bind_texture(glow::TEXTURE_2D, Some(glyph_atlas_tex));
-            }
-
-            set_uniform_lights(gl, self.program, lights)
-        }
-
-        self.sync_data(gl);
-
-        set_uniform_camera(gl, self.program, camera);
-        unsafe {
-            gl.enable(glow::BLEND);
-            gl.blend_func(glow::SRC_ALPHA, glow::ONE_MINUS_SRC_ALPHA);
-            gl.draw_arrays_instanced(
-                glow::TRIANGLE_STRIP,
-                0,
-                4,
-                primitives.len() as i32,
-            );
-        }
-    }
-
-    fn push_primitive(&mut self, primitive: &DrawPrimitive) {
-        self.a_xywh.push_data(&primitive.rect.to_xywh());
-        self.a_space.push_data(&[primitive.space as u32]);
-        self.a_effect.push_data(&[primitive.effect]);
-        self.a_flip.push_data(&[(primitive.flip as i32) as f32]);
-
-        if let Some(tex) = primitive.tex {
-            self.a_tex_id.push_data(&[tex as u32]);
-        } else {
-            self.a_tex_id.push_data(&[0]);
-        }
-
-        if let Some(sprite) = &primitive.sprite {
-            self.a_tex_uvwh.push_data(&sprite.to_tex_xywh());
-        } else {
-            self.a_tex_uvwh.push_data(&[0.0; 4]);
-        }
-
-        if let Some(color) = &primitive.color {
-            self.a_rgba.push_data(&color.to_array());
-        } else {
-            self.a_rgba.push_data(&[0.0; 4]);
-        }
-    }
-
-    fn sync_data(&mut self, gl: &glow::Context) {
-        unsafe {
-            gl.bind_vertex_array(Some(self.vao));
-        }
-        self.a_xywh.sync_data(gl);
-        self.a_space.sync_data(gl);
-        self.a_effect.sync_data(gl);
-        self.a_rgba.sync_data(gl);
-        self.a_tex_uvwh.sync_data(gl);
-        self.a_tex_id.sync_data(gl);
-        self.a_flip.sync_data(gl);
-    }
-}
-
-struct HDRResolveRenderer {
-    program: glow::NativeProgram,
-    fbo: glow::NativeFramebuffer,
-    tex: glow::Texture,
-    buffer_size: Vec2<u32>,
-}
-
-impl HDRResolveRenderer {
-    pub fn new(gl: &glow::Context, buffer_size: Vec2<u32>) -> Self {
-        let program = create_program(
-            gl,
-            Some(COMMON_GLSL_SHADER_FP),
-            SCREEN_RECT_VERT_SHADER_FP,
-            HDR_RESOLVE_FRAG_SHADER_FP,
-        );
-
-        let fbo;
-        let tex;
-        let width = buffer_size.x as i32;
-        let height = buffer_size.y as i32;
-        unsafe {
-            fbo = gl.create_framebuffer().unwrap();
-            tex = create_texture(
-                gl,
-                glow::RGBA32F as i32,
-                width,
-                height,
-                glow::RGBA,
-                glow::FLOAT,
-                None,
-                glow::NEAREST,
-            );
-            gl.bind_framebuffer(glow::FRAMEBUFFER, Some(fbo));
-            gl.framebuffer_texture_2d(
-                glow::FRAMEBUFFER,
-                glow::COLOR_ATTACHMENT0,
-                glow::TEXTURE_2D,
-                Some(tex),
-                0,
-            );
-            gl.draw_buffer(glow::COLOR_ATTACHMENT0);
-            gl.bind_framebuffer(glow::FRAMEBUFFER, None);
-        }
-
-        Self {
-            program,
-            fbo,
-            tex,
-            buffer_size,
-        }
-    }
-
-    pub fn bind_framebuffer(&self, gl: &glow::Context) {
-        unsafe {
-            gl.viewport(
-                0,
-                0,
-                self.buffer_size.x as i32,
-                self.buffer_size.y as i32,
-            );
-            gl.bind_framebuffer(glow::FRAMEBUFFER, Some(self.fbo));
-        }
-    }
-
-    pub fn render(&self, gl: &glow::Context) {
-        unsafe {
-            gl.use_program(Some(self.program));
-            set_uniform_1_i32(gl, self.program, "tex", 0);
-
-            gl.active_texture(glow::TEXTURE0 + 0);
-            gl.bind_texture(glow::TEXTURE_2D, Some(self.tex));
-
-            gl.draw_arrays(glow::TRIANGLE_STRIP, 0, 4);
-        }
-    }
+    */
 }
 
 pub struct Attribute<T> {
@@ -697,48 +702,6 @@ fn create_texture(
     tex
 }
 
-fn set_uniform_camera(
-    gl: &glow::Context,
-    program: glow::NativeProgram,
-    camera: &Camera,
-) {
-    let view_size = camera.get_view_size();
-    let world_xywh =
-        [camera.position.to_array(), view_size.to_array()].concat();
-
-    set_uniform_4_f32(gl, program, "camera.world_xywh", &world_xywh);
-}
-
-fn set_uniform_lights(
-    gl: &glow::Context,
-    program: glow::NativeProgram,
-    lights: &[Light],
-) {
-    set_uniform_1_i32(gl, program, "n_lights", lights.len() as i32);
-
-    for (i, light) in lights.iter().enumerate() {
-        let name = format!("lights[{}]", i).clone();
-        set_uniform_2_f32(
-            gl,
-            program,
-            &format!("{}.{}", name, "position"),
-            &light.position.to_array(),
-        );
-        set_uniform_3_f32(
-            gl,
-            program,
-            &format!("{}.{}", name, "color"),
-            &light.get_color().to_rgb_array(),
-        );
-        set_uniform_3_f32(
-            gl,
-            program,
-            &format!("{}.{}", name, "attenuation"),
-            &light.attenuation,
-        );
-    }
-}
-
 fn set_uniform_1_f32(
     gl: &glow::Context,
     program: glow::NativeProgram,
@@ -809,4 +772,63 @@ fn cast_slice_to_u8<T>(slice: &[T]) -> &[u8] {
     }
 
     casted
+}
+
+pub struct DrawPrimitive {
+    pub z: f32,
+    pub rect: Rect,
+    pub space: SpaceType,
+    pub tex: TextureType,
+    pub xywh: [f32; 4],
+    pub rgba: [f32; 4],
+    pub effect: u32,
+    pub flip: bool,
+}
+
+#[derive(Copy, Clone, Debug, Sequence)]
+pub enum SpaceType {
+    WorldSpace = 1,
+    CameraSpace = 2,
+    ScreenSpace = 3,
+}
+impl From<SpaceType> for u32 {
+    fn from(e: SpaceType) -> u32 {
+        e as u32
+    }
+}
+
+#[derive(Copy, Clone, Debug, Sequence)]
+pub enum TextureType {
+    ProceduralTexture = 1,
+    SpriteTexture = 2,
+    GlyphTexture = 3,
+}
+impl From<TextureType> for u32 {
+    fn from(e: TextureType) -> u32 {
+        e as u32
+    }
+}
+
+#[derive(Copy, Clone, Debug, Sequence)]
+pub enum EffectType {
+    ApplyLightEffect = 1 << 0,
+    StoneWallEffect = 1 << 1,
+}
+impl From<EffectType> for u32 {
+    fn from(e: EffectType) -> u32 {
+        e as u32
+    }
+}
+
+pub fn enum_to_shader_source<T: Sequence + Debug + Copy + Into<u32>>(
+) -> String {
+    let mut source = String::new();
+
+    for variant in all::<T>().collect::<Vec<_>>() {
+        let definition =
+            format!("const uint {:?} = {:?};\n", variant, variant.into());
+        source.push_str(&definition);
+    }
+
+    source
 }

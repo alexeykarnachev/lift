@@ -39,9 +39,19 @@ class Sprite:
         return [(bl[0], bl[1] + 1), (tr[0] + 1, tr[1])]
 
     def to_meta(self, sheet_h):
+        # NOTE:
+        # When convertic sprite to the meta (coordinates on the sprite sheet)
+        # we shrink its size by 1 pixel on each size, because the sprite
+        # has been extruded and we need to un-extrude its size back when
+        # saving the sheet meta
         x, y = self.tl
+        x += 1
+        y += 1
+        
         y = sheet_h - y - 1
         w, h = self.w, self.h
+        w -= 2
+        h -= 2
 
         return {
             "name": self.name,
@@ -195,7 +205,7 @@ if __name__ == "__main__":
         range(len(sprites)), key=lambda i: -sprites[i].image.size
     )
 
-    sheet = np.zeros((0, 0, 4), dtype=np.uint8)
+    sheet = np.zeros((0, 0, 5), dtype=np.uint8)
 
     tls_to_try = [(0, 0)]
 
@@ -209,7 +219,7 @@ if __name__ == "__main__":
                 if (
                     sheet.shape[1] > max_x
                     and sheet.shape[0] > max_y
-                    and sheet[min_y:max_y, min_x:max_x, :].max() == 0
+                    and sheet[min_y:max_y, min_x:max_x, -1].max() == 0
                 ):
                     best_tl_idx = i
                     break
@@ -219,7 +229,7 @@ if __name__ == "__main__":
                     (
                         sheet.shape[0] + sprite.h,
                         sheet.shape[1] + sprite.w,
-                        4,
+                        5,
                     ),
                     dtype=np.uint8,
                 )
@@ -232,9 +242,11 @@ if __name__ == "__main__":
         min_x, min_y = tl
         max_x = min_x + sprite.w
         max_y = min_y + sprite.h
-        sheet[min_y:max_y, min_x:max_x, :] = sprite.image
+        sheet[min_y:max_y, min_x:max_x, :-1] = sprite.image
+        sheet[min_y:max_y, min_x:max_x, -1] = 1
         tls_to_try.extend(sprite.get_neighbor_tls())
 
+    sheet = sheet[..., :-1]
     # --------------------------------------------------------------------
     # Prepare sheet meta file (sprites and colliders coordinates)
     # NOTE: aseprite assumes that the min y is at the top of the sheet,
