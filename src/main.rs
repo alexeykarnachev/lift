@@ -8,6 +8,7 @@ use vec::Vec2;
 use world::*;
 
 mod entity;
+mod frame_atlas;
 mod graphics;
 mod gui;
 mod input;

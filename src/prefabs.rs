@@ -21,7 +21,7 @@ mod player {
 
     pub mod weapon {
         pub const ANTICIPATION_TIME: f32 = 0.1;
-        pub const ACTION_TIME: f32 = 0.3;
+        pub const ACTION_TIME: f32 = 2.0;
         pub const DAMAGE: f32 = 800.0;
         pub const KNOCKBACK: f32 = 120.0;
         pub const STAMINA_COST: f32 = 10000.0;
@@ -40,7 +40,7 @@ mod player {
         pub const RUN_DURATION: f32 = 0.8;
         pub const ROLL_DURATION: f32 = 1.0;
         pub const CLIMB_DURATION: f32 = 1.0;
-        pub const ATTACK_DURATION: f32 = 0.3;
+        pub const ATTACK_DURATION: f32 = 2.1;
     }
 }
 
