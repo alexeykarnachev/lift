@@ -23,7 +23,6 @@ _MASK_LAYER_PREFIX = "mask_"
 @dataclass
 class Sprite:
     name: str
-    tag: str
     frame_idx: int
     image: np.ndarray
     tl: Tuple[int, int]
@@ -77,7 +76,6 @@ class Sprite:
 @dataclass
 class Mask:
     name: str
-    tag: str
     frame_idx: int
     tl: Tuple[int, int]
     w: int
@@ -125,6 +123,8 @@ if __name__ == "__main__":
         for frame in frames:
             name = frame["filename"]
             sprite_name, layer_name, tag, frame_idx = name.split(".")
+            if tag:
+                sprite_name += f"_{tag}"
             frame_idx = int(frame_idx)
 
             is_mask = False
@@ -151,7 +151,6 @@ if __name__ == "__main__":
                 image = sheet[y : y + h, x : x + w, :]
                 sprite = Sprite(
                     name=sprite_name,
-                    tag=tag,
                     frame_idx=frame_idx,
                     image=image,
                     tl=(0, 0),
@@ -182,7 +181,6 @@ if __name__ == "__main__":
                     top_right = (right_x, top_y)
                     mask = Mask(
                         name=sprite_name,
-                        tag=tag,
                         frame_idx=frame_idx,
                         tl=(left_x, top_y),
                         w=w,
@@ -251,7 +249,7 @@ if __name__ == "__main__":
     sheet_h, sheet_w = sheet.shape[:2]
     meta = {
         "size": [sheet_w, sheet_h],
-        "frames": defaultdict(lambda: defaultdict(list)),
+        "frames": defaultdict(list),
     }
     for sprite_name in sprites:
         sprites_ = sprites[sprite_name]
@@ -270,7 +268,7 @@ if __name__ == "__main__":
                 _SPRITE_LAYER: sprite_meta,
                 "masks": masks_meta,
             }
-            meta["frames"][sprite.name][sprite.tag].append(frame_meta)
+            meta["frames"][sprite.name].append(frame_meta)
 
     # Save the final sheet and meta json
     cv2.imwrite(str(out_dir / "atlas.png"), sheet)

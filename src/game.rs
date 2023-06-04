@@ -1,22 +1,27 @@
+use crate::entities::knight::Knight;
 use crate::frame::FrameAtlas;
+// use crate::input::Keyaction;
+use crate::input::*;
 use crate::renderer::*;
 use crate::vec::*;
-use crate::Input;
 
 pub struct Game {
-    frame_atlas: FrameAtlas,
-
     camera: Camera,
+
+    frame_atlas: FrameAtlas,
+    player: Knight,
 }
 
 impl Game {
     pub fn new(frame_atlas_fp: &str) -> Self {
         let frame_atlas = FrameAtlas::new(frame_atlas_fp);
         let camera = Camera::new(Vec2::zeros());
+        let player = Knight::new(&frame_atlas);
 
         Self {
-            frame_atlas,
             camera,
+            frame_atlas,
+            player,
         }
     }
 
@@ -29,15 +34,7 @@ impl Game {
         renderer
             .set_camera(self.camera.position, self.camera.get_view_size());
 
-        let idx = 0;
-
-        let xywh =
-            self.frame_atlas.get_sprite_xywh("knight_attack", "0", idx);
-        let pivot = Pivot::BotCenter(Vec2::zeros());
-        let primitive =
-            DrawPrimitive::world_sprite(xywh, pivot, false, false);
-        let bl = primitive.rect.get_bot_left();
-        renderer.push_primitive(primitive);
+        self.player.update(dt, input, renderer);
     }
 }
 
