@@ -806,7 +806,7 @@ impl DrawPrimitive {
             xywh,
             color: Color::only_alpha(1.0),
             effect: 0,
-            flip: false,
+            flip,
         }
     }
 

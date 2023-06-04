@@ -1,48 +1,61 @@
 use crate::vec::Vec2;
 use sdl2::event::{Event, WindowEvent};
 use sdl2::keyboard::Keycode;
-use sdl2::mouse::MouseButton;
 
-#[derive(Debug)]
-pub enum Keyaction {
-    Left,
-    Right,
-    Up,
-    Down,
-    Attack,
-    Dash,
-    SkillsTree,
-    _N,
-}
+pub fn keycode_as_usize(code: Keycode) -> usize {
+    // CapsLock is the first key which has greater than ascii range
+    // code number
+    let caps_lock = Keycode::CapsLock as usize;
 
-const N_KEYACTIONS: usize = Keyaction::_N as usize;
-
-pub fn keycode_to_keyaction(
-    code: Keycode,
-    repeat: bool,
-) -> Option<Keyaction> {
-    match code {
-        Keycode::Left | Keycode::A => Some(Keyaction::Left),
-        Keycode::Right | Keycode::D => Some(Keyaction::Right),
-        Keycode::Up | Keycode::W => Some(Keyaction::Up),
-        Keycode::Down | Keycode::S => Some(Keyaction::Down),
-        Keycode::Space => Some(Keyaction::Attack),
-        Keycode::LCtrl => Some(Keyaction::Dash),
-        Keycode::T if !repeat => Some(Keyaction::SkillsTree),
-        _ => None,
+    let mut idx = code as usize;
+    if idx >= Keycode::CapsLock as usize {
+        idx = (idx - caps_lock) + 128
     }
+
+    idx
 }
 
 struct Accum {
     cursor_pos: Vec2<i32>,
-    lmb_press_pos: Option<Vec2<i32>>,
-    rmb_press_pos: Option<Vec2<i32>>,
-    lmb_is_just_up: bool,
-    rmb_is_just_up: bool,
+
+    mouse_press_pos: [Option<Vec2<i32>>; N_MOUSE_BUTTONS],
+    mouse_is_pressed: [bool; N_MOUSE_BUTTONS],
+    mouse_is_released: [bool; N_MOUSE_BUTTONS],
+
+    key_is_pressed: [bool; N_KEYBOARD_KEYS],
+    key_is_released: [bool; N_KEYBOARD_KEYS],
+
     wheel_d: i32,
 }
 
-const N_KEYS: usize = 256;
+impl Accum {
+    pub fn new() -> Self {
+        Self {
+            cursor_pos: Vec2::new(0, 0),
+
+            mouse_press_pos: [None; N_MOUSE_BUTTONS],
+            mouse_is_pressed: [false; N_MOUSE_BUTTONS],
+            mouse_is_released: [false; N_MOUSE_BUTTONS],
+
+            key_is_pressed: [false; N_KEYBOARD_KEYS],
+            key_is_released: [false; N_KEYBOARD_KEYS],
+
+            wheel_d: 0,
+        }
+    }
+
+    pub fn reset(&mut self) {
+        self.mouse_press_pos.fill(None);
+        self.mouse_is_pressed.fill(false);
+        self.mouse_is_released.fill(false);
+        self.key_is_pressed.fill(false);
+        self.key_is_released.fill(false);
+        self.wheel_d = 0;
+    }
+}
+
+const N_KEYBOARD_KEYS: usize = 512;
+const N_MOUSE_BUTTONS: usize = 16;
 pub struct Input {
     accum: Accum,
 
@@ -53,30 +66,22 @@ pub struct Input {
     pub cursor_prev_pos: Vec2<i32>,
     pub cursor_d: Vec2<i32>,
 
-    pub lmb_press_pos: Option<Vec2<i32>>,
-    pub rmb_press_pos: Option<Vec2<i32>>,
-    pub lmb_is_down: bool,
-    pub rmb_is_down: bool,
-    pub mmb_is_down: bool,
-    pub lmb_is_just_up: bool,
-    pub rmb_is_just_up: bool,
+    mouse_press_pos: [Option<Vec2<i32>>; N_MOUSE_BUTTONS],
+    mouse_is_down: [bool; N_MOUSE_BUTTONS],
+    mouse_is_pressed: [bool; N_MOUSE_BUTTONS],
+    mouse_is_released: [bool; N_MOUSE_BUTTONS],
+
+    key_is_down: [bool; N_KEYBOARD_KEYS],
+    key_is_pressed: [bool; N_KEYBOARD_KEYS],
+    key_is_released: [bool; N_KEYBOARD_KEYS],
 
     pub wheel_d: i32,
-
-    pub key_is_down: [bool; N_KEYACTIONS],
 }
 
 impl Input {
     pub fn new(initial_window_size: Vec2<u32>) -> Self {
         Self {
-            accum: Accum {
-                cursor_pos: Vec2::new(0, 0),
-                lmb_press_pos: None,
-                rmb_press_pos: None,
-                lmb_is_just_up: false,
-                rmb_is_just_up: false,
-                wheel_d: 0,
-            },
+            accum: Accum::new(),
             should_quit: false,
             window_size: Vec2::new(
                 initial_window_size.x as i32,
@@ -85,16 +90,25 @@ impl Input {
             cursor_pos: Vec2::new(0, 0),
             cursor_prev_pos: Vec2::new(0, 0),
             cursor_d: Vec2::new(0, 0),
-            lmb_press_pos: None,
-            rmb_press_pos: None,
-            lmb_is_down: false,
-            rmb_is_down: false,
-            mmb_is_down: false,
-            lmb_is_just_up: false,
-            rmb_is_just_up: false,
+            mouse_press_pos: [None; N_MOUSE_BUTTONS],
+            mouse_is_down: [false; N_MOUSE_BUTTONS],
+            mouse_is_pressed: [false; N_MOUSE_BUTTONS],
+            mouse_is_released: [false; N_MOUSE_BUTTONS],
+
+            key_is_down: [false; N_KEYBOARD_KEYS],
+            key_is_pressed: [false; N_KEYBOARD_KEYS],
+            key_is_released: [false; N_KEYBOARD_KEYS],
+
             wheel_d: 0,
-            key_is_down: [false; N_KEYACTIONS],
         }
+    }
+
+    pub fn key_is_down(&self, code: Keycode) -> bool {
+        self.key_is_down[keycode_as_usize(code)]
+    }
+
+    pub fn key_is_pressed(&self, code: Keycode) -> bool {
+        self.key_is_pressed[keycode_as_usize(code)]
     }
 
     pub fn handle_event(&mut self, event: &Event) {
@@ -110,54 +124,21 @@ impl Input {
                 self.accum.cursor_pos = Vec2::new(*x, *y);
             }
             Event::MouseButtonDown {
-                mouse_btn: MouseButton::Left,
-                x,
-                y,
-                ..
+                mouse_btn, x, y, ..
             } => {
-                if !self.lmb_is_down {
-                    self.accum.lmb_press_pos = Some(Vec2::new(*x, *y));
+                let idx = *mouse_btn as usize;
+                if !self.mouse_is_down[idx] {
+                    let press_pos = Some(Vec2::new(*x, *y));
+                    self.accum.mouse_press_pos[idx] = press_pos;
+                    self.accum.mouse_is_pressed[idx] = true;
                 }
 
-                self.lmb_is_down = true;
+                self.mouse_is_down[idx] = true;
             }
-            Event::MouseButtonDown {
-                mouse_btn: MouseButton::Right,
-                x,
-                y,
-                ..
-            } => {
-                if !self.rmb_is_down {
-                    self.accum.rmb_press_pos = Some(Vec2::new(*x, *y));
-                }
-
-                self.rmb_is_down = true;
-            }
-            Event::MouseButtonDown {
-                mouse_btn: MouseButton::Middle,
-                ..
-            } => {
-                self.mmb_is_down = true;
-            }
-            Event::MouseButtonUp {
-                mouse_btn: MouseButton::Left,
-                ..
-            } => {
-                self.lmb_is_down = false;
-                self.accum.lmb_is_just_up = true;
-            }
-            Event::MouseButtonUp {
-                mouse_btn: MouseButton::Right,
-                ..
-            } => {
-                self.rmb_is_down = false;
-                self.accum.rmb_is_just_up = true;
-            }
-            Event::MouseButtonUp {
-                mouse_btn: MouseButton::Middle,
-                ..
-            } => {
-                self.mmb_is_down = false;
+            Event::MouseButtonUp { mouse_btn, .. } => {
+                let idx = *mouse_btn as usize;
+                self.mouse_is_down[idx] = false;
+                self.accum.mouse_is_released[idx] = true;
             }
             Event::MouseWheel { y, .. } => {
                 self.accum.wheel_d += *y;
@@ -167,18 +148,20 @@ impl Input {
                 repeat,
                 ..
             } => {
-                if let Some(action) = keycode_to_keyaction(*code, *repeat)
-                {
-                    self.key_is_down[action as usize] = true;
+                let idx = keycode_as_usize(*code);
+                if !self.key_is_down[idx] {
+                    self.accum.key_is_pressed[idx] = true;
                 }
+
+                self.key_is_down[idx] = true;
             }
             Event::KeyUp {
                 keycode: Some(code),
                 ..
             } => {
-                if let Some(action) = keycode_to_keyaction(*code, false) {
-                    self.key_is_down[action as usize] = false;
-                }
+                let idx = keycode_as_usize(*code);
+                self.accum.key_is_released[idx] = true;
+                self.key_is_down[idx] = false;
             }
             _ => {}
         }
@@ -188,28 +171,15 @@ impl Input {
         self.cursor_d = self.accum.cursor_pos - self.cursor_pos;
         self.cursor_prev_pos = self.cursor_pos;
         self.cursor_pos = self.accum.cursor_pos;
-        self.lmb_press_pos = self.accum.lmb_press_pos;
-        self.rmb_press_pos = self.accum.rmb_press_pos;
-        self.lmb_is_just_up = self.accum.lmb_is_just_up;
-        self.rmb_is_just_up = self.accum.rmb_is_just_up;
+
+        self.mouse_press_pos = self.accum.mouse_press_pos;
+        self.mouse_is_pressed = self.accum.mouse_is_pressed;
+        self.mouse_is_released = self.accum.mouse_is_released;
+        self.key_is_pressed = self.accum.key_is_pressed;
+        self.key_is_released = self.accum.key_is_released;
+
         self.wheel_d = self.accum.wheel_d;
 
-        self.accum.lmb_press_pos = None;
-        self.accum.rmb_press_pos = None;
-        self.accum.lmb_is_just_up = false;
-        self.accum.rmb_is_just_up = false;
-        self.accum.wheel_d = 0;
-    }
-
-    pub fn is_action(&self, action: Keyaction) -> bool {
-        self.key_is_down[action as usize]
-    }
-
-    pub fn take_action(&mut self, action: Keyaction) -> bool {
-        let idx = action as usize;
-        let is_action = self.key_is_down[idx];
-        self.key_is_down[idx] = false;
-
-        is_action
+        self.accum.reset();
     }
 }

@@ -53,41 +53,48 @@ impl FrameAtlas {
 
         serde_json::from_str(&meta).unwrap()
     }
-
-    pub fn get_animator(
-        &self,
-        name: &str,
-        frame_duration: f32,
-        is_repeat: bool,
-    ) -> FrameAnimator {
-        let frames = self
-            .name_to_frames
-            .get(name)
-            .expect(&format!("FrameAtlas should contain {}", name))
-            .clone();
-
-        FrameAnimator::new(frames, frame_duration, is_repeat)
-    }
 }
 
 pub struct FrameAnimator {
-    frames: Vec<Frame>,
+    atlas: FrameAtlas,
+
+    name: &'static str,
     frame_duration: f32,
-    cycle: f32,
     is_repeat: bool,
+
+    pub cycle: f32,
 }
 
 impl FrameAnimator {
     pub fn new(
-        frames: Vec<Frame>,
+        atlas: FrameAtlas,
+        name: &'static str,
         frame_duration: f32,
         is_repeat: bool,
     ) -> Self {
         Self {
-            frames,
+            atlas,
+            name,
             frame_duration,
-            cycle: 0.0,
             is_repeat,
+            cycle: 0.0,
+        }
+    }
+
+    pub fn play(
+        &mut self,
+        name: &'static str,
+        frame_duration: f32,
+        is_repeat: bool,
+    ) {
+        if name != self.name
+            || frame_duration != self.frame_duration
+            || is_repeat != self.is_repeat
+        {
+            self.name = name;
+            self.frame_duration = frame_duration;
+            self.is_repeat = is_repeat;
+            self.cycle = 0.0;
         }
     }
 
@@ -95,8 +102,9 @@ impl FrameAnimator {
         !self.is_repeat && self.cycle == 1.0
     }
 
-    pub fn update(&mut self, dt: f32) -> &Frame {
-        let n_frames = self.frames.len() as f32;
+    pub fn update(&mut self, dt: f32) -> Frame {
+        let frames = self.atlas.name_to_frames.get(self.name).unwrap();
+        let n_frames = frames.len() as f32;
         let max_idx = n_frames - 1.0;
 
         self.cycle += dt / (n_frames * self.frame_duration);
@@ -108,6 +116,6 @@ impl FrameAnimator {
 
         let idx = (self.cycle * max_idx).round() as usize;
 
-        &self.frames[idx]
+        frames[idx].clone()
     }
 }

@@ -8,7 +8,6 @@ use crate::vec::*;
 pub struct Game {
     camera: Camera,
 
-    frame_atlas: FrameAtlas,
     player: Knight,
 }
 
@@ -16,13 +15,9 @@ impl Game {
     pub fn new(frame_atlas_fp: &str) -> Self {
         let frame_atlas = FrameAtlas::new(frame_atlas_fp);
         let camera = Camera::new(Vec2::zeros());
-        let player = Knight::new(&frame_atlas);
+        let player = Knight::new(frame_atlas, Vec2::zeros());
 
-        Self {
-            camera,
-            frame_atlas,
-            player,
-        }
+        Self { camera, player }
     }
 
     pub fn update(
@@ -49,8 +44,7 @@ impl Camera {
     fn new(position: Vec2<f32>) -> Self {
         Self {
             position,
-            // view_width: 500.0,
-            view_width: 150.0,
+            view_width: 500.0,
             aspect: 1.77,
         }
     }
