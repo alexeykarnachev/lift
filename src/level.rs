@@ -1,7 +1,7 @@
 use crate::entity::*;
 use crate::graphics::*;
 use crate::prefabs::*;
-use crate::vec::{Origin, Rect, Vec2};
+use crate::vec::{Rect, Vec2};
 use serde::Deserialize;
 use std::fs;
 
@@ -87,8 +87,10 @@ impl Level {
                                 let x = j as f32 * tilewidth;
                                 let y = height - i as f32 * tileheight;
                                 let position = Vec2::new(x, y);
-                                let mut sprite = sprites[idx - 1];
+                                let sprite = sprites[idx - 1];
+                                /*
                                 sprite.origin = Origin::TopLeft;
+                                */
 
                                 let primitive = DrawPrimitive::from_sprite(
                                     SpaceType::WorldSpace,

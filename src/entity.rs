@@ -1224,7 +1224,7 @@ pub struct Text {
     position: Vec2<f32>,
     draw_primitives: Vec<DrawPrimitive>,
 }
-
+/*
 impl Text {
     pub fn new(
         position: Vec2<f32>,
@@ -1331,6 +1331,7 @@ impl Text {
         }
     }
 }
+*/
 
 #[derive(Copy, Clone)]
 struct Particle {

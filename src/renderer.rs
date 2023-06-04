@@ -785,6 +785,34 @@ pub struct DrawPrimitive {
     pub flip: bool,
 }
 
+impl DrawPrimitive {
+    pub fn world_sprite(
+        xywh: [f32; 4],
+        pivot: Pivot,
+        apply_light: bool,
+        flip: bool,
+    ) -> Self {
+        let size = Vec2::new(xywh[2], xywh[3]);
+        let rect = Rect::from_pivot(pivot, size);
+        let effect = if apply_light {
+            EffectType::ApplyLightEffect as u32
+        } else {
+            0
+        };
+
+        Self {
+            z: 0.0,
+            rect,
+            space: SpaceType::WorldSpace,
+            tex: TextureType::SpriteTexture,
+            xywh,
+            rgba: [0.0, 0.0, 0.0, 1.0],
+            effect: 0,
+            flip: false,
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug, Sequence)]
 pub enum SpaceType {
     WorldSpace = 1,

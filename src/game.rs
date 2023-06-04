@@ -28,22 +28,32 @@ impl Game {
     ) {
         renderer
             .set_camera(self.camera.position, self.camera.get_view_size());
-        let sprite_xywh =
-            self.frame_atlas.get_sprite_xywh("knight_attack", 7);
-        let rect_size =
-            Vec2::new(sprite_xywh[2], sprite_xywh[3]).scale(3.0);
-        let rect = Rect::from_bot_center(Vec2::zeros(), rect_size);
-        let primitive = DrawPrimitive {
-            z: 0.0,
-            rect,
-            space: SpaceType::WorldSpace,
-            tex: TextureType::SpriteTexture,
-            xywh: sprite_xywh,
-            rgba: [0.3, 0.0, 0.0, 1.0],
-            effect: 0,
-            flip: false,
-        };
+
+        let idx = 7;
+
+        let xywh = self.frame_atlas.get_sprite_xywh("knight_attack", idx);
+        let pivot = Pivot::BotCenter(Vec2::zeros());
+        let primitive =
+            DrawPrimitive::world_sprite(xywh, pivot, false, false);
+        let bl = primitive.rect.get_bot_left();
         renderer.push_primitive(primitive);
+
+        if let Some(rect) =
+            self.frame_atlas.get_attack_collider("knight_attack", idx)
+        {
+            let rect = rect.translate(bl);
+            let primitive = DrawPrimitive {
+                z: 0.0,
+                rect,
+                space: SpaceType::WorldSpace,
+                tex: TextureType::ProceduralTexture,
+                xywh: [0.0; 4],
+                rgba: [1.0, 0.0, 0.0, 0.5],
+                effect: 0,
+                flip: false,
+            };
+            renderer.push_primitive(primitive);
+        }
     }
 }
 
@@ -58,7 +68,8 @@ impl Camera {
     fn new(position: Vec2<f32>) -> Self {
         Self {
             position,
-            view_width: 500.0,
+            // view_width: 500.0,
+            view_width: 150.0,
             aspect: 1.77,
         }
     }

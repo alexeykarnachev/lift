@@ -176,10 +176,13 @@ if __name__ == "__main__":
 
                     # Shift the collider on 1 pixel because the corresponding
                     # sprite has been expanded
-                    left_x += 1
+                    # left_x += 1
                     bot_y += 1
-                    right_x += 1
+                    # right_x += 1
                     top_y += 1
+
+                    w=right_x - left_x + 1
+                    h=bot_y - top_y + 1
 
                     bot_left = (left_x, bot_y)
                     top_right = (right_x, top_y)
@@ -187,8 +190,8 @@ if __name__ == "__main__":
                         name=sprite_name,
                         frame_idx=frame_idx,
                         tl=(left_x, top_y),
-                        w=right_x - left_x + 1,
-                        h=bot_y - top_y + 1,
+                        w=w,
+                        h=h,
                     )
                 if layer_name == _RIGID_COLLIDER_LAYER:
                     rigid_colliders.append(collider)

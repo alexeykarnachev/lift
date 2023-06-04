@@ -12,7 +12,12 @@
                     "w": 140,
                     "h": 33
                 },
-                "rigid_collider": null,
+                "rigid_collider": {
+                    "x": 61,
+                    "y": 29,
+                    "w": 21,
+                    "h": 29
+                },
                 "attack_collider": null
             },
             {
@@ -22,7 +27,12 @@
                     "w": 140,
                     "h": 33
                 },
-                "rigid_collider": null,
+                "rigid_collider": {
+                    "x": 61,
+                    "y": 29,
+                    "w": 19,
+                    "h": 29
+                },
                 "attack_collider": null
             },
             {
@@ -32,8 +42,18 @@
                     "w": 140,
                     "h": 33
                 },
-                "rigid_collider": null,
-                "attack_collider": null
+                "rigid_collider": {
+                    "x": 61,
+                    "y": 28,
+                    "w": 23,
+                    "h": 28
+                },
+                "attack_collider": {
+                    "x": 68,
+                    "y": 21,
+                    "w": 34,
+                    "h": 4
+                }
             },
             {
                 "sprite": {
@@ -42,7 +62,12 @@
                     "w": 140,
                     "h": 33
                 },
-                "rigid_collider": null,
+                "rigid_collider": {
+                    "x": 61,
+                    "y": 28,
+                    "w": 21,
+                    "h": 28
+                },
                 "attack_collider": null
             },
             {
@@ -52,7 +77,12 @@
                     "w": 140,
                     "h": 33
                 },
-                "rigid_collider": null,
+                "rigid_collider": {
+                    "x": 61,
+                    "y": 28,
+                    "w": 21,
+                    "h": 28
+                },
                 "attack_collider": null
             },
             {
@@ -62,7 +92,12 @@
                     "w": 140,
                     "h": 33
                 },
-                "rigid_collider": null,
+                "rigid_collider": {
+                    "x": 61,
+                    "y": 29,
+                    "w": 20,
+                    "h": 29
+                },
                 "attack_collider": null
             },
             {
@@ -72,7 +107,12 @@
                     "w": 140,
                     "h": 33
                 },
-                "rigid_collider": null,
+                "rigid_collider": {
+                    "x": 61,
+                    "y": 30,
+                    "w": 19,
+                    "h": 30
+                },
                 "attack_collider": null
             },
             {
@@ -82,8 +122,18 @@
                     "w": 140,
                     "h": 33
                 },
-                "rigid_collider": null,
-                "attack_collider": null
+                "rigid_collider": {
+                    "x": 61,
+                    "y": 26,
+                    "w": 19,
+                    "h": 26
+                },
+                "attack_collider": {
+                    "x": 53,
+                    "y": 33,
+                    "w": 48,
+                    "h": 28
+                }
             },
             {
                 "sprite": {
@@ -92,8 +142,18 @@
                     "w": 140,
                     "h": 33
                 },
-                "rigid_collider": null,
-                "attack_collider": null
+                "rigid_collider": {
+                    "x": 61,
+                    "y": 27,
+                    "w": 22,
+                    "h": 27
+                },
+                "attack_collider": {
+                    "x": 77,
+                    "y": 29,
+                    "w": 23,
+                    "h": 18
+                }
             },
             {
                 "sprite": {
@@ -102,7 +162,12 @@
                     "w": 140,
                     "h": 33
                 },
-                "rigid_collider": null,
+                "rigid_collider": {
+                    "x": 61,
+                    "y": 27,
+                    "w": 23,
+                    "h": 27
+                },
                 "attack_collider": null
             },
             {
@@ -112,7 +177,12 @@
                     "w": 140,
                     "h": 33
                 },
-                "rigid_collider": null,
+                "rigid_collider": {
+                    "x": 65,
+                    "y": 28,
+                    "w": 17,
+                    "h": 28
+                },
                 "attack_collider": null
             },
             {
@@ -122,7 +192,12 @@
                     "w": 140,
                     "h": 33
                 },
-                "rigid_collider": null,
+                "rigid_collider": {
+                    "x": 72,
+                    "y": 28,
+                    "w": 21,
+                    "h": 28
+                },
                 "attack_collider": null
             },
             {
@@ -132,7 +207,12 @@
                     "w": 140,
                     "h": 33
                 },
-                "rigid_collider": null,
+                "rigid_collider": {
+                    "x": 73,
+                    "y": 28,
+                    "w": 20,
+                    "h": 28
+                },
                 "attack_collider": null
             },
             {
@@ -142,7 +222,12 @@
                     "w": 140,
                     "h": 33
                 },
-                "rigid_collider": null,
+                "rigid_collider": {
+                    "x": 77,
+                    "y": 28,
+                    "w": 18,
+                    "h": 28
+                },
                 "attack_collider": null
             },
             {
@@ -152,8 +237,18 @@
                     "w": 140,
                     "h": 33
                 },
-                "rigid_collider": null,
-                "attack_collider": null
+                "rigid_collider": {
+                    "x": 89,
+                    "y": 26,
+                    "w": 23,
+                    "h": 26
+                },
+                "attack_collider": {
+                    "x": 91,
+                    "y": 24,
+                    "w": 49,
+                    "h": 18
+                }
             },
             {
                 "sprite": {
@@ -162,8 +257,18 @@
                     "w": 140,
                     "h": 33
                 },
-                "rigid_collider": null,
-                "attack_collider": null
+                "rigid_collider": {
+                    "x": 89,
+                    "y": 27,
+                    "w": 22,
+                    "h": 27
+                },
+                "attack_collider": {
+                    "x": 93,
+                    "y": 21,
+                    "w": 36,
+                    "h": 15
+                }
             },
             {
                 "sprite": {
@@ -172,7 +277,12 @@
                     "w": 140,
                     "h": 33
                 },
-                "rigid_collider": null,
+                "rigid_collider": {
+                    "x": 89,
+                    "y": 27,
+                    "w": 22,
+                    "h": 27
+                },
                 "attack_collider": null
             },
             {
@@ -182,7 +292,12 @@
                     "w": 140,
                     "h": 33
                 },
-                "rigid_collider": null,
+                "rigid_collider": {
+                    "x": 89,
+                    "y": 27,
+                    "w": 22,
+                    "h": 27
+                },
                 "attack_collider": null
             },
             {
@@ -192,7 +307,12 @@
                     "w": 140,
                     "h": 33
                 },
-                "rigid_collider": null,
+                "rigid_collider": {
+                    "x": 89,
+                    "y": 27,
+                    "w": 22,
+                    "h": 27
+                },
                 "attack_collider": null
             },
             {
@@ -202,7 +322,12 @@
                     "w": 140,
                     "h": 33
                 },
-                "rigid_collider": null,
+                "rigid_collider": {
+                    "x": 72,
+                    "y": 28,
+                    "w": 21,
+                    "h": 28
+                },
                 "attack_collider": null
             },
             {
@@ -212,7 +337,12 @@
                     "w": 140,
                     "h": 33
                 },
-                "rigid_collider": null,
+                "rigid_collider": {
+                    "x": 65,
+                    "y": 28,
+                    "w": 17,
+                    "h": 28
+                },
                 "attack_collider": null
             }
         ],
@@ -225,7 +355,7 @@
                     "h": 29
                 },
                 "rigid_collider": {
-                    "x": 10,
+                    "x": 9,
                     "y": 29,
                     "w": 22,
                     "h": 29
@@ -240,7 +370,7 @@
                     "h": 29
                 },
                 "rigid_collider": {
-                    "x": 9,
+                    "x": 8,
                     "y": 24,
                     "w": 23,
                     "h": 24
@@ -255,7 +385,7 @@
                     "h": 29
                 },
                 "rigid_collider": {
-                    "x": 8,
+                    "x": 7,
                     "y": 14,
                     "w": 23,
                     "h": 14
@@ -270,7 +400,7 @@
                     "h": 29
                 },
                 "rigid_collider": {
-                    "x": 11,
+                    "x": 10,
                     "y": 20,
                     "w": 20,
                     "h": 20
@@ -285,7 +415,7 @@
                     "h": 29
                 },
                 "rigid_collider": {
-                    "x": 16,
+                    "x": 15,
                     "y": 19,
                     "w": 12,
                     "h": 19
@@ -300,7 +430,7 @@
                     "h": 29
                 },
                 "rigid_collider": {
-                    "x": 11,
+                    "x": 10,
                     "y": 14,
                     "w": 21,
                     "h": 14
@@ -315,7 +445,7 @@
                     "h": 29
                 },
                 "rigid_collider": {
-                    "x": 8,
+                    "x": 7,
                     "y": 14,
                     "w": 22,
                     "h": 14
@@ -330,7 +460,7 @@
                     "h": 29
                 },
                 "rigid_collider": {
-                    "x": 6,
+                    "x": 5,
                     "y": 27,
                     "w": 18,
                     "h": 27
@@ -345,7 +475,7 @@
                     "h": 29
                 },
                 "rigid_collider": {
-                    "x": 7,
+                    "x": 6,
                     "y": 29,
                     "w": 20,
                     "h": 29
@@ -360,7 +490,7 @@
                     "h": 29
                 },
                 "rigid_collider": {
-                    "x": 9,
+                    "x": 8,
                     "y": 29,
                     "w": 21,
                     "h": 29
@@ -375,7 +505,7 @@
                     "h": 29
                 },
                 "rigid_collider": {
-                    "x": 9,
+                    "x": 8,
                     "y": 29,
                     "w": 24,
                     "h": 29
@@ -392,7 +522,7 @@
                     "h": 30
                 },
                 "rigid_collider": {
-                    "x": 9,
+                    "x": 8,
                     "y": 30,
                     "w": 24,
                     "h": 30
@@ -407,7 +537,7 @@
                     "h": 30
                 },
                 "rigid_collider": {
-                    "x": 9,
+                    "x": 8,
                     "y": 30,
                     "w": 24,
                     "h": 30
@@ -422,7 +552,7 @@
                     "h": 30
                 },
                 "rigid_collider": {
-                    "x": 9,
+                    "x": 8,
                     "y": 30,
                     "w": 24,
                     "h": 30
@@ -437,7 +567,7 @@
                     "h": 30
                 },
                 "rigid_collider": {
-                    "x": 9,
+                    "x": 8,
                     "y": 30,
                     "w": 24,
                     "h": 30
@@ -452,7 +582,7 @@
                     "h": 30
                 },
                 "rigid_collider": {
-                    "x": 9,
+                    "x": 8,
                     "y": 30,
                     "w": 24,
                     "h": 30
@@ -467,7 +597,7 @@
                     "h": 30
                 },
                 "rigid_collider": {
-                    "x": 9,
+                    "x": 8,
                     "y": 30,
                     "w": 24,
                     "h": 30
@@ -482,7 +612,7 @@
                     "h": 30
                 },
                 "rigid_collider": {
-                    "x": 9,
+                    "x": 8,
                     "y": 29,
                     "w": 25,
                     "h": 29
@@ -497,7 +627,7 @@
                     "h": 30
                 },
                 "rigid_collider": {
-                    "x": 9,
+                    "x": 8,
                     "y": 28,
                     "w": 26,
                     "h": 28
@@ -512,7 +642,7 @@
                     "h": 30
                 },
                 "rigid_collider": {
-                    "x": 9,
+                    "x": 8,
                     "y": 27,
                     "w": 25,
                     "h": 27
@@ -527,7 +657,7 @@
                     "h": 30
                 },
                 "rigid_collider": {
-                    "x": 9,
+                    "x": 8,
                     "y": 27,
                     "w": 24,
                     "h": 27
@@ -542,7 +672,7 @@
                     "h": 30
                 },
                 "rigid_collider": {
-                    "x": 9,
+                    "x": 8,
                     "y": 28,
                     "w": 22,
                     "h": 28
@@ -557,7 +687,7 @@
                     "h": 30
                 },
                 "rigid_collider": {
-                    "x": 9,
+                    "x": 8,
                     "y": 29,
                     "w": 22,
                     "h": 29
@@ -572,7 +702,7 @@
                     "h": 30
                 },
                 "rigid_collider": {
-                    "x": 9,
+                    "x": 8,
                     "y": 30,
                     "w": 23,
                     "h": 30
@@ -587,7 +717,7 @@
                     "h": 30
                 },
                 "rigid_collider": {
-                    "x": 9,
+                    "x": 8,
                     "y": 30,
                     "w": 24,
                     "h": 30
@@ -602,7 +732,7 @@
                     "h": 30
                 },
                 "rigid_collider": {
-                    "x": 9,
+                    "x": 8,
                     "y": 30,
                     "w": 24,
                     "h": 30
@@ -619,7 +749,7 @@
                     "h": 30
                 },
                 "rigid_collider": {
-                    "x": 19,
+                    "x": 18,
                     "y": 29,
                     "w": 17,
                     "h": 29
@@ -634,7 +764,7 @@
                     "h": 30
                 },
                 "rigid_collider": {
-                    "x": 21,
+                    "x": 20,
                     "y": 30,
                     "w": 14,
                     "h": 30
@@ -649,7 +779,7 @@
                     "h": 30
                 },
                 "rigid_collider": {
-                    "x": 21,
+                    "x": 20,
                     "y": 29,
                     "w": 14,
                     "h": 29
@@ -664,7 +794,7 @@
                     "h": 30
                 },
                 "rigid_collider": {
-                    "x": 19,
+                    "x": 18,
                     "y": 28,
                     "w": 16,
                     "h": 28
@@ -679,7 +809,7 @@
                     "h": 30
                 },
                 "rigid_collider": {
-                    "x": 19,
+                    "x": 18,
                     "y": 29,
                     "w": 16,
                     "h": 29
@@ -694,7 +824,7 @@
                     "h": 30
                 },
                 "rigid_collider": {
-                    "x": 21,
+                    "x": 20,
                     "y": 30,
                     "w": 14,
                     "h": 30
@@ -709,7 +839,7 @@
                     "h": 30
                 },
                 "rigid_collider": {
-                    "x": 21,
+                    "x": 20,
                     "y": 29,
                     "w": 14,
                     "h": 29
@@ -724,7 +854,7 @@
                     "h": 30
                 },
                 "rigid_collider": {
-                    "x": 20,
+                    "x": 19,
                     "y": 28,
                     "w": 16,
                     "h": 28

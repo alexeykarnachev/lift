@@ -59,7 +59,9 @@ impl FrameAtlas {
         idx: usize,
     ) -> Option<Rect> {
         if let Some(xywh) = self.get_frame(name, idx).rigid_collider {
-            return Some(Rect::from_xywh(&xywh.to_array()));
+            let position = Vec2::new(xywh.x as f32, xywh.y as f32);
+            let size = Vec2::new(xywh.w as f32, xywh.h as f32);
+            return Some(Rect::from_top_left(position, size));
         }
 
         None
@@ -71,7 +73,9 @@ impl FrameAtlas {
         idx: usize,
     ) -> Option<Rect> {
         if let Some(xywh) = self.get_frame(name, idx).attack_collider {
-            return Some(Rect::from_xywh(&xywh.to_array()));
+            let position = Vec2::new(xywh.x as f32, xywh.y as f32);
+            let size = Vec2::new(xywh.w as f32, xywh.h as f32);
+            return Some(Rect::from_top_left(position, size));
         }
 
         None

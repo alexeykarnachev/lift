@@ -4,7 +4,7 @@
 
 use crate::entity::*;
 use crate::level::Level;
-use crate::vec::{Origin, Rect, Vec2};
+use crate::vec::{Pivot, Rect, Vec2};
 use core::fmt::Debug;
 use enum_iterator::Sequence;
 use fontdue::Font;
@@ -23,7 +23,7 @@ pub struct Sprite {
     pub h: f32,
 
     #[serde(skip)]
-    pub origin: Origin,
+    pub pivot: Pivot,
 }
 
 impl Sprite {
@@ -91,7 +91,7 @@ pub struct AnimatedSprite {
     pub name: &'static str,
     pub duration: f32,
     pub animation_mode: AnimationMode,
-    pub origin: Origin,
+    pub pivot: Pivot,
     pub cycle: f32,
 
     frames: Vec<Sprite>,
@@ -103,7 +103,7 @@ impl AnimatedSprite {
         name: &'static str,
         duration: f32,
         animation_mode: AnimationMode,
-        origin: Origin,
+        pivot: Pivot,
     ) -> Self {
         let frames = sprite_atlas.sprites.get(name).unwrap_or_else(|| {
             panic!("There is no such sprite in the sprite atlas: {}", name)
@@ -113,7 +113,7 @@ impl AnimatedSprite {
             name,
             duration,
             animation_mode,
-            origin,
+            pivot,
             cycle: 0.0,
             frames: frames.to_vec(),
         }
@@ -149,7 +149,7 @@ impl AnimatedSprite {
         let frame_idx = (self.cycle * max_idx).round() as usize;
 
         let mut frame = self.frames[frame_idx];
-        frame.origin = self.origin;
+        frame.pivot = self.pivot;
 
         frame
     }
@@ -292,7 +292,7 @@ impl DrawPrimitive {
         scale: f32,
     ) -> Self {
         let size = Vec2::new(sprite.w, sprite.h).scale(scale);
-        let rect = Rect::from_origin(sprite.origin, position, size);
+        let rect = Rect::from_pivot(sprite.pivot, size);
         let color = if color.is_none() {
             Some(Color::only_alpha(1.0))
         } else {

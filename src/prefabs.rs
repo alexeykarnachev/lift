@@ -5,9 +5,9 @@ use crate::utils::frand;
 use std::f32::consts::PI;
 
 use crate::vec::*;
-use AnimationMode::*;
+// use AnimationMode::*;
 use EffectType::*;
-use Origin::*;
+// use Origin::*;
 
 mod player {
     pub const MAX_HEALTH: f32 = 2000.0 * 1000.0;
@@ -211,6 +211,7 @@ pub fn create_player(
     );
 
     let light = Light::player();
+    /*
     let mut animator = Animator::new(AnimatedSprite::new(
         sprite_atlas,
         "knight_idle",
@@ -268,6 +269,7 @@ pub fn create_player(
             BotCenter,
         ),
     );
+    */
 
     let mut entity = Entity::new(position);
     entity.behaviour = Some(Behaviour::Player);
@@ -281,7 +283,7 @@ pub fn create_player(
     entity.dashing = Some(dashing);
     entity.weapons = weapons;
     entity.light = Some(light);
-    entity.animator = Some(animator);
+    // entity.animator = Some(animator);
     entity.effect = ApplyLightEffect as u32;
     entity.stats = Some(Stats::new());
 
@@ -330,6 +332,7 @@ pub fn create_rat(
 
     let weapons = vec![floor_weapon, jump_weapon];
 
+    /*
     let mut animator = Animator::new(AnimatedSprite::new(
         sprite_atlas,
         "rat_idle",
@@ -387,6 +390,7 @@ pub fn create_rat(
             BotCenter,
         ),
     );
+    */
 
     let mut entity = Entity::new(position);
     entity.behaviour = Some(Behaviour::Rat);
@@ -399,7 +403,7 @@ pub fn create_rat(
     entity.current_health = MAX_HEALTH;
     entity.knockback_resist = KNOCKBACK_RESIST;
     entity.weapons = weapons;
-    entity.animator = Some(animator);
+    // entity.animator = Some(animator);
     entity.effect = ApplyLightEffect as u32;
     entity.exp_drop = EXP_DROP;
 
@@ -451,6 +455,7 @@ pub fn create_bat(
         ),
     );
 
+    /*
     let mut animator = Animator::new(AnimatedSprite::new(
         sprite_atlas,
         "bat_wave",
@@ -498,6 +503,7 @@ pub fn create_bat(
             TopCenter,
         ),
     );
+    */
 
     let mut entity = Entity::new(position);
     entity.behaviour = Some(Behaviour::Bat);
@@ -509,7 +515,7 @@ pub fn create_bat(
     entity.knockback_resist = KNOCKBACK_RESIST;
     entity.healing = Some(healing);
     entity.weapons = weapons;
-    entity.animator = Some(animator);
+    // entity.animator = Some(animator);
     entity.effect = ApplyLightEffect as u32;
     entity.exp_drop = EXP_DROP;
 
@@ -556,6 +562,7 @@ pub fn create_rat_king(
     );
     let weapons = vec![floor_weapon, roll_weapon];
 
+    /*
     let mut animator = Animator::new(AnimatedSprite::new(
         sprite_atlas,
         "rat_king_rise",
@@ -623,6 +630,7 @@ pub fn create_rat_king(
             BotCenter,
         ),
     );
+    */
 
     let mut entity = Entity::new(position);
     entity.behaviour = Some(Behaviour::RatKing);
@@ -635,7 +643,7 @@ pub fn create_rat_king(
     entity.current_health = MAX_HEALTH;
     entity.knockback_resist = KNOCKBACK_RESIST;
     entity.weapons = weapons;
-    entity.animator = Some(animator);
+    // entity.animator = Some(animator);
     entity.effect = ApplyLightEffect as u32;
     entity.exp_drop = EXP_DROP;
 
@@ -659,6 +667,7 @@ pub fn create_rat_nest(
         0.0,
     );
 
+    /*
     let mut animator = Animator::new(AnimatedSprite::new(
         sprite_atlas,
         "rat_nest_idle",
@@ -686,6 +695,7 @@ pub fn create_rat_nest(
             BotCenter,
         ),
     );
+    */
 
     let mut entity = Entity::new(position);
     entity.behaviour = Some(Behaviour::RatNest);
@@ -694,7 +704,7 @@ pub fn create_rat_nest(
     entity.max_health = MAX_HEALTH;
     entity.current_health = MAX_HEALTH;
     entity.knockback_resist = 9999.0;
-    entity.animator = Some(animator);
+    // entity.animator = Some(animator);
     entity.spawner = Some(spawner);
     entity.effect = ApplyLightEffect as u32;
     entity.exp_drop = EXP_DROP;
@@ -706,8 +716,9 @@ pub fn create_torch(
     position: Vec2<f32>,
     sprite_atlas: &SpriteAtlas,
 ) -> Entity {
-    use torch::*;
+    // use torch::*;
 
+    /*
     let animator = Animator::new(AnimatedSprite::new(
         sprite_atlas,
         "torch_burn",
@@ -715,11 +726,12 @@ pub fn create_torch(
         Repeat,
         TopCenter,
     ));
+    */
     let light = Light::torch();
 
     let mut entity = Entity::new(position);
     entity.light = Some(light);
-    entity.animator = Some(animator);
+    // entity.animator = Some(animator);
     entity.particles_emitter =
         ParticlesEmitter::torch(Vec2::new(0.0, 4.0));
 

@@ -249,36 +249,36 @@ impl<T: Float> Vec2<T> {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub enum Origin {
-    Center,
-    BotCenter,
-    TopCenter,
-    BotLeft,
-    TopLeft,
-    TopRight,
-    RightCenter,
-    LeftCenter,
+pub enum Pivot {
+    Center(Vec2<f32>),
+    BotCenter(Vec2<f32>),
+    TopCenter(Vec2<f32>),
+    BotLeft(Vec2<f32>),
+    TopLeft(Vec2<f32>),
+    TopRight(Vec2<f32>),
+    RightCenter(Vec2<f32>),
+    LeftCenter(Vec2<f32>),
 }
 
-impl Default for Origin {
+impl Default for Pivot {
     fn default() -> Self {
-        Self::Center
+        Self::Center(Vec2::zeros())
     }
 }
 
-impl Origin {
-    pub fn from_str(name: &str) -> Self {
+impl Pivot {
+    pub fn from_str(name: &str, position: Vec2<f32>) -> Self {
         match name {
-            "Center" => Self::Center,
-            "BotCenter" => Self::BotCenter,
-            "TopCenter" => Self::TopCenter,
-            "BotLeft" => Self::BotLeft,
-            "TopLeft" => Self::TopLeft,
-            "TopRight" => Self::TopRight,
-            "RightCenter" => Self::RightCenter,
-            "LeftCenter" => Self::LeftCenter,
+            "Center" => Self::Center(position),
+            "BotCenter" => Self::BotCenter(position),
+            "TopCenter" => Self::TopCenter(position),
+            "BotLeft" => Self::BotLeft(position),
+            "TopLeft" => Self::TopLeft(position),
+            "TopRight" => Self::TopRight(position),
+            "RightCenter" => Self::RightCenter(position),
+            "LeftCenter" => Self::LeftCenter(position),
             _ => {
-                panic!("Unknown Origin: {}", name)
+                panic!("Unknown Pivot: {}", name)
             }
         }
     }
@@ -298,32 +298,17 @@ impl Rect {
         }
     }
 
-    pub fn from_xywh(xywh: &[f32; 4]) -> Self {
-        let bot_left = Vec2::new(xywh[0], xywh[1]);
-        let top_right =
-            Vec2::new(bot_left.x + xywh[2], bot_left.y + xywh[3]);
-
-        Self {
-            bot_left,
-            top_right,
-        }
-    }
-
-    pub fn from_origin(
-        origin: Origin,
-        position: Vec2<f32>,
-        size: Vec2<f32>,
-    ) -> Self {
-        use Origin::*;
-        return match origin {
-            Center => Self::from_center(position, size),
-            BotCenter => Self::from_bot_center(position, size),
-            TopCenter => Self::from_top_center(position, size),
-            BotLeft => Self::from_bot_left(position, size),
-            TopLeft => Self::from_top_left(position, size),
-            TopRight => Self::from_top_right(position, size),
-            RightCenter => Self::from_right_center(position, size),
-            LeftCenter => Self::from_left_center(position, size),
+    pub fn from_pivot(pivot: Pivot, size: Vec2<f32>) -> Self {
+        use Pivot::*;
+        return match pivot {
+            Center(p) => Self::from_center(p, size),
+            BotCenter(p) => Self::from_bot_center(p, size),
+            TopCenter(p) => Self::from_top_center(p, size),
+            BotLeft(p) => Self::from_bot_left(p, size),
+            TopLeft(p) => Self::from_top_left(p, size),
+            TopRight(p) => Self::from_top_right(p, size),
+            RightCenter(p) => Self::from_right_center(p, size),
+            LeftCenter(p) => Self::from_left_center(p, size),
         };
     }
 
@@ -412,6 +397,14 @@ impl Rect {
 
     pub fn get_height(&self) -> f32 {
         self.get_size().y
+    }
+
+    pub fn get_bot_left(&self) -> Vec2<f32> {
+        self.bot_left
+    }
+
+    pub fn get_top_right(&self) -> Vec2<f32> {
+        self.top_right
     }
 
     pub fn get_center(&self) -> Vec2<f32> {

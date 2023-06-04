@@ -243,10 +243,12 @@ impl GUI {
     }
 
     pub fn draw(&self, draw_queue: &mut Vec<DrawPrimitive>) {
+        /*
         draw_queue.extend_from_slice(&self.primitives);
         for text in self.texts.iter() {
             draw_queue.extend_from_slice(&text.get_draw_primitives());
         }
+        */
     }
 
     pub fn rect_button(
@@ -257,6 +259,7 @@ impl GUI {
         use ButtonState::*;
 
         let rect = self.advance_rect(self.button_size);
+        /*
         let text = Text::new(
             rect.get_center(),
             glyph_atlas,
@@ -266,6 +269,7 @@ impl GUI {
             self.font_size,
             self.text_color,
         );
+        */
 
         let state = self.get_button_state(rect);
         let color = match state {
@@ -282,8 +286,10 @@ impl GUI {
         );
 
         self.primitives.push(primitive);
+        /*
         self.primitives
             .extend_from_slice(&text.get_draw_primitives());
+        */
 
         state
     }
@@ -295,6 +301,7 @@ impl GUI {
     ) -> ButtonState {
         use ButtonState::*;
 
+        /*
         let mut text = Text::new(
             Vec2::zeros(),
             glyph_atlas,
@@ -324,6 +331,9 @@ impl GUI {
             .extend_from_slice(&text.get_draw_primitives());
 
         state
+        */
+
+        Cold
     }
 
     pub fn sprite_button(&mut self, sprite: Sprite) -> ButtonState {
@@ -381,6 +391,7 @@ impl GUI {
         string: &str,
         glyph_atlas: &GlyphAtlas,
     ) -> ButtonState {
+        /*
         let mut text = Text::new(
             Vec2::zeros(),
             glyph_atlas,
@@ -403,6 +414,9 @@ impl GUI {
             .extend_from_slice(&text.get_draw_primitives());
 
         state
+        */
+
+        ButtonState::Cold
     }
 
     fn get_button_state(&self, rect: Rect) -> ButtonState {
@@ -432,6 +446,7 @@ impl GUI {
         text_color: Color,
         glyph_atlas: &GlyphAtlas,
     ) {
+        /*
         let rect = self.advance_rect(rect_size);
         let primitive = DrawPrimitive::from_rect(
             rect,
@@ -452,6 +467,7 @@ impl GUI {
         self.primitives.push(primitive);
         self.primitives
             .extend_from_slice(&text.get_draw_primitives());
+        */
     }
 
     pub fn bar(&mut self, fill_ratio: f32, color: Color) {
