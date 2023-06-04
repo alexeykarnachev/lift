@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from itertools import chain
 from collections import defaultdict
 import math
 from typing import Tuple
@@ -10,9 +11,19 @@ import cv2
 import numpy as np
 
 
+_THIS_DIR = Path(__file__).parent
+_ROOT_DIR = _THIS_DIR / ".."
+_ASEPRITE_DIR = _ROOT_DIR / "aseprite"
+_ASSETS_DIR = _ROOT_DIR / "assets/sprites"
+
+_SPRITE_LAYER = "sprite"
+_MASK_LAYER_PREFIX = "mask_"
+
+
 @dataclass
 class Sprite:
     name: str
+    tag: str
     frame_idx: int
     image: np.ndarray
     tl: Tuple[int, int]
@@ -47,7 +58,7 @@ class Sprite:
         x, y = self.tl
         x += 1
         y += 1
-        
+
         y = sheet_h - y - 1
         w, h = self.w, self.h
         w -= 2
@@ -64,8 +75,9 @@ class Sprite:
 
 
 @dataclass
-class Collider:
+class Mask:
     name: str
+    tag: str
     frame_idx: int
     tl: Tuple[int, int]
     w: int
@@ -85,31 +97,13 @@ class Collider:
         }
 
 
-_THIS_DIR = Path(__file__).parent
-_ROOT_DIR = _THIS_DIR / ".."
-_ASEPRITE_DIR = _ROOT_DIR / "aseprite"
-_ASSETS_DIR = _ROOT_DIR / "assets/sprites"
-
-_SPRITE_LAYER = "sprite"
-_RIGID_COLLIDER_LAYER = "rigid_collider"
-_ATTACK_COLLIDER_LAYER = "attack_collider"
-_COLLIDER_LAYERS = (_RIGID_COLLIDER_LAYER, _ATTACK_COLLIDER_LAYER)
-
-_ALLOWED_LAYERS = (
-    _SPRITE_LAYER,
-    _RIGID_COLLIDER_LAYER,
-    _ATTACK_COLLIDER_LAYER,
-)
-
-
 if __name__ == "__main__":
     out_dir = _ASSETS_DIR
 
     # --------------------------------------------------------------------
     # Parse aseprite files and extract sprite images from png images
-    sprites = []
-    rigid_colliders = []
-    attack_colliders = []
+    sprites = defaultdict(list)
+    masks = defaultdict(lambda: defaultdict(defaultdict))
     for file_path in _ASEPRITE_DIR.iterdir():
         if not str(file_path).endswith(".json"):
             continue
@@ -130,22 +124,21 @@ if __name__ == "__main__":
 
         for frame in frames:
             name = frame["filename"]
-            sprite_name, layer_name, frame_idx = name.split(".")
+            sprite_name, layer_name, tag, frame_idx = name.split(".")
             frame_idx = int(frame_idx)
-            if layer_name not in _ALLOWED_LAYERS:
+
+            is_mask = False
+            if layer_name.startswith(_MASK_LAYER_PREFIX):
+                layer_name = re.sub(r"^mask_", "", layer_name)
+                is_mask = True
+            elif layer_name != _SPRITE_LAYER:
                 raise ValueError(
-                    f"{name} frame contains unexpected layer: "
-                    "{layer_name}. Only {_ALLOWED_LAYERS} "
-                    "layers are allowed"
+                    f"Layer name: {layer_name} is not valid. "
+                    "The layer name should be `sprite` (which represents the actual sprite) "
+                    "or start with `mask_`."
                 )
 
             x, y, w, h = (frame["frame"][k] for k in ("x", "y", "w", "h"))
-
-            if _RIGID_COLLIDER_LAYER not in layer_names:
-                rigid_colliders.append(None)
-
-            if _ATTACK_COLLIDER_LAYER not in layer_names:
-                attack_colliders.append(None)
 
             if layer_name == _SPRITE_LAYER:
                 # Expand the sprite frame on 1 pixel on both sides, because
@@ -158,14 +151,15 @@ if __name__ == "__main__":
                 image = sheet[y : y + h, x : x + w, :]
                 sprite = Sprite(
                     name=sprite_name,
+                    tag=tag,
                     frame_idx=frame_idx,
                     image=image,
                     tl=(0, 0),
                 )
-                sprites.append(sprite)
-            elif layer_name in _COLLIDER_LAYERS:
+                sprites[sprite_name].append(sprite)
+            elif is_mask:
                 image = sheet[y : y + h, x : x + w, :].max(-1)
-                collider = None
+                mask = None
                 if image.max() > 0:
                     row = image.max(0)
                     col = image.max(1)
@@ -174,45 +168,43 @@ if __name__ == "__main__":
                     right_x = len(row) - row[::-1].argmax() - 1
                     bot_y = len(col) - col[::-1].argmax() - 1
 
-                    # Shift the collider on 1 pixel because the corresponding
+                    # Shift the mask on 1 pixel because the corresponding
                     # sprite has been expanded
                     # left_x += 1
-                    bot_y += 1
                     # right_x += 1
+                    bot_y += 1
                     top_y += 1
 
-                    w=right_x - left_x + 1
-                    h=bot_y - top_y + 1
+                    w = right_x - left_x + 1
+                    h = bot_y - top_y + 1
 
                     bot_left = (left_x, bot_y)
                     top_right = (right_x, top_y)
-                    collider = Collider(
+                    mask = Mask(
                         name=sprite_name,
+                        tag=tag,
                         frame_idx=frame_idx,
                         tl=(left_x, top_y),
                         w=w,
                         h=h,
                     )
-                if layer_name == _RIGID_COLLIDER_LAYER:
-                    rigid_colliders.append(collider)
-                elif layer_name == _ATTACK_COLLIDER_LAYER:
-                    attack_colliders.append(collider)
-                else:
-                    assert False, f"Unhandled layer: {layer_name}"
+
+                    masks[sprite_name][layer_name][frame_idx] = mask
             else:
                 assert False, f"Unhandled layer: {layer_name}"
 
     # --------------------------------------------------------------------
     # Pack sprites on the sheet
+    flat_sprites = list(chain(*sprites.values()))
     inds = sorted(
-        range(len(sprites)), key=lambda i: -sprites[i].image.size
+        range(len(flat_sprites)), key=lambda i: -flat_sprites[i].image.size
     )
 
     sheet = np.zeros((0, 0, 5), dtype=np.uint8)
 
     tls_to_try = [(0, 0)]
 
-    for sprite in sprites:
+    for sprite in flat_sprites:
         best_tl_idx = None
         while best_tl_idx is None:
             for i, tl in enumerate(tls_to_try):
@@ -259,58 +251,26 @@ if __name__ == "__main__":
     sheet_h, sheet_w = sheet.shape[:2]
     meta = {
         "size": [sheet_w, sheet_h],
-        "frames": defaultdict(list),
+        "frames": defaultdict(lambda: defaultdict(list)),
     }
-    for i in range(len(sprites)):
-        sprite = sprites[i]
-        rigid_collider = rigid_colliders[i]
-        attack_collider = attack_colliders[i]
+    for sprite_name in sprites:
+        sprites_ = sprites[sprite_name]
 
-        sprite_meta = sprite.to_meta(sheet_h)
-        rigid_collider_meta = (
-            rigid_collider.to_meta(sprite.h) if rigid_collider else None
-        )
-        attack_collider_meta = (
-            attack_collider.to_meta(sprite.h) if attack_collider else None
-        )
+        for i in range(len(sprites_)):
+            sprite = sprites_[i]
+            sprite_meta = sprite.to_meta(sheet_h)
 
-        if rigid_collider_meta:
-            assert sprite_meta["name"] == rigid_collider_meta["name"]
-            assert (
-                sprite_meta["frame_idx"]
-                == rigid_collider_meta["frame_idx"]
-            )
-        if attack_collider_meta:
-            assert sprite_meta["name"] == attack_collider_meta["name"]
-            assert (
-                sprite_meta["frame_idx"]
-                == attack_collider_meta["frame_idx"]
-            )
+            masks_meta = {}
+            for mask_name in masks[sprite_name]:
+                m = masks[sprite_name][mask_name].get(sprite.frame_idx)
+                if m:
+                    masks_meta[mask_name] = m.to_meta(sprite.h)
 
-        frame_meta = {
-            _SPRITE_LAYER: sprite_meta,
-            _RIGID_COLLIDER_LAYER: rigid_collider_meta,
-            _ATTACK_COLLIDER_LAYER: attack_collider_meta,
-        }
-        meta["frames"][sprite.name].append(frame_meta)
-
-    # Sort frames and delete `name` and `frame_idx` keys from the meta
-    frames_meta = meta["frames"]
-    for name in frames_meta:
-        frames_meta[name] = sorted(
-            frames_meta[name], key=lambda d: d[_SPRITE_LAYER]["frame_idx"]
-        )
-        for frame_meta in frames_meta[name]:
-            del frame_meta[_SPRITE_LAYER]["frame_idx"]
-            del frame_meta[_SPRITE_LAYER]["name"]
-
-            if frame_meta[_RIGID_COLLIDER_LAYER]:
-                del frame_meta[_RIGID_COLLIDER_LAYER]["frame_idx"]
-                del frame_meta[_RIGID_COLLIDER_LAYER]["name"]
-
-            if frame_meta[_ATTACK_COLLIDER_LAYER]:
-                del frame_meta[_ATTACK_COLLIDER_LAYER]["frame_idx"]
-                del frame_meta[_ATTACK_COLLIDER_LAYER]["name"]
+            frame_meta = {
+                _SPRITE_LAYER: sprite_meta,
+                "masks": masks_meta,
+            }
+            meta["frames"][sprite.name][sprite.tag].append(frame_meta)
 
     # Save the final sheet and meta json
     cv2.imwrite(str(out_dir / "atlas.png"), sheet)

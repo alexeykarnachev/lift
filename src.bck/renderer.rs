@@ -1,13 +1,12 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
-use crate::frame::XYWH;
 use crate::vec::*;
 use core::fmt::Debug;
 use enum_iterator::{all, Sequence};
-use glow::HasContext;
 use image::imageops::flip_vertical_in_place;
 use image::io::Reader as ImageReader;
+use glow::HasContext;
 use std::fs;
 use std::mem::size_of;
 
@@ -284,8 +283,8 @@ impl Renderer {
             self.a_effect.push_data(&[primitive.effect]);
             self.a_flip.push_data(&[(primitive.flip as i32) as f32]);
             self.a_tex_id.push_data(&[primitive.tex as u32]);
-            self.a_tex_uvwh.push_data(&primitive.xywh.to_array());
-            self.a_rgba.push_data(&primitive.color.to_rbga());
+            self.a_tex_uvwh.push_data(&primitive.xywh);
+            self.a_rgba.push_data(&primitive.rgba);
         }
 
         // Render primitives
@@ -349,7 +348,7 @@ impl Renderer {
                     &self.gl,
                     self.primitive_program,
                     &format!("{}.{}", name, "color"),
-                    &light.color.to_rbga(),
+                    &light.color.to_rbga()
                 );
                 set_uniform_3_f32(
                     &self.gl,
@@ -778,20 +777,21 @@ pub struct DrawPrimitive {
     pub rect: Rect,
     pub space: SpaceType,
     pub tex: TextureType,
-    pub xywh: XYWH,
-    pub color: Color,
+    pub xywh: [f32; 4],
+    pub rgba: [f32; 4],
     pub effect: u32,
     pub flip: bool,
 }
 
 impl DrawPrimitive {
     pub fn world_sprite(
-        xywh: XYWH,
+        xywh: [f32; 4],
         pivot: Pivot,
         apply_light: bool,
         flip: bool,
     ) -> Self {
-        let rect = Rect::from_pivot(pivot, xywh.to_size());
+        let size = Vec2::new(xywh[2], xywh[3]);
+        let rect = Rect::from_pivot(pivot, size);
         let effect = if apply_light {
             EffectType::ApplyLightEffect as u32
         } else {
@@ -804,7 +804,7 @@ impl DrawPrimitive {
             space: SpaceType::WorldSpace,
             tex: TextureType::SpriteTexture,
             xywh,
-            color: Color::only_alpha(1.0),
+            rgba: [0.0, 0.0, 0.0, 1.0],
             effect: 0,
             flip: false,
         }
@@ -816,8 +816,8 @@ impl DrawPrimitive {
             rect,
             space: SpaceType::WorldSpace,
             tex: TextureType::ProceduralTexture,
-            xywh: XYWH::zeros(),
-            color,
+            xywh: [0.0; 4],
+            rgba: color.to_rbga(),
             effect: 0,
             flip: false,
         }
@@ -931,6 +931,7 @@ impl Color {
         }
     }
 }
+
 
 pub fn enum_to_shader_source<T: Sequence + Debug + Copy + Into<u32>>(
 ) -> String {

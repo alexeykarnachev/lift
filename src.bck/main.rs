@@ -7,9 +7,15 @@ use renderer::Renderer;
 use std::time::Instant;
 use vec::Vec2;
 
-mod frame;
+mod entity;
+mod frame_atlas;
 mod game;
+mod graphics;
+mod gui;
 mod input;
+mod level;
+mod player_stats;
+mod prefabs;
 mod renderer;
 mod utils;
 mod vec;

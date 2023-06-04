@@ -1,4 +1,4 @@
-use crate::frame::FrameAtlas;
+use crate::frame_atlas::FrameAtlas;
 use crate::renderer::*;
 use crate::vec::*;
 use crate::Input;
@@ -29,15 +29,22 @@ impl Game {
         renderer
             .set_camera(self.camera.position, self.camera.get_view_size());
 
-        let idx = 0;
+        let idx = 7;
 
-        let xywh =
-            self.frame_atlas.get_sprite_xywh("knight_attack", "0", idx);
+        let xywh = self.frame_atlas.get_sprite_xywh("knight_attack", idx);
         let pivot = Pivot::BotCenter(Vec2::zeros());
         let primitive =
             DrawPrimitive::world_sprite(xywh, pivot, false, false);
         let bl = primitive.rect.get_bot_left();
         renderer.push_primitive(primitive);
+
+        if let Some(rect) =
+            self.frame_atlas.get_attack_collider("knight_attack", idx)
+        {
+            let rect = rect.translate(bl);
+            let primitive = DrawPrimitive::world_rect(rect, Color::green(0.5));
+            renderer.push_primitive(primitive);
+        }
     }
 }
 
