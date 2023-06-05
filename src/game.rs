@@ -18,7 +18,7 @@ impl Game {
     pub fn new(frame_atlas_fp: &str) -> Self {
         let frame_atlas = FrameAtlas::new(frame_atlas_fp);
         let camera = Camera::new(Vec2::zeros());
-        let player = Knight::new(frame_atlas, Vec2::zeros());
+        let player = Knight::new(frame_atlas, Vec2::new(-50.0, 150.0));
         let rigid_colliders = vec![
             Rect::from_top_center(
                 Vec2::new(0.0, -20.0),
@@ -34,7 +34,7 @@ impl Game {
             camera,
             rigid_colliders,
             player,
-            gravity: 200.0,
+            gravity: 400.0,
         }
     }
 
