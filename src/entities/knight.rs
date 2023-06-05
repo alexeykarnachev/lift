@@ -114,7 +114,6 @@ impl Knight {
             }
             Walk => {
                 if is_roll_action {
-                    self.can_perform_combo = true;
                     self.set_curr_state(Roll);
                 } else if is_jump_action {
                     self.set_curr_state(JumpUp);
@@ -131,14 +130,6 @@ impl Knight {
             Roll => {
                 let speed = 150.0 * (1.0 - self.animator.cycle.powf(2.0));
                 self.position.x += self.look_dir * speed * dt;
-
-                if is_attack_action && self.can_perform_combo {
-                    if self.animator.cycle > 0.7 {
-                        self.set_next_state(Attack0);
-                    } else {
-                        self.can_perform_combo = false;
-                    }
-                }
             }
             JumpUp => {
                 if self.velocity.y > 0.0 {
@@ -164,7 +155,6 @@ impl Knight {
             }
             JumpLanding => {
                 if is_roll_action {
-                    self.can_perform_combo = true;
                     self.set_curr_state(Roll);
                 } else if is_step_action {
                     self.immediate_step(
