@@ -19,6 +19,7 @@ pub struct Knight {
     can_perform_combo: bool,
 
     position: Vec2<f32>,
+    velocity: Vec2<f32>,
     look_at_right: bool,
 
     animator: FrameAnimator,
@@ -35,6 +36,7 @@ impl Knight {
             next_state: Idle,
             can_perform_combo: false,
             position,
+            velocity: Vec2::zeros(),
             look_at_right: true,
             animator,
         }
@@ -43,6 +45,8 @@ impl Knight {
     pub fn update(
         &mut self,
         dt: f32,
+        gravity: f32,
+        rigid_colliders: &[Rect],
         input: &mut Input,
         renderer: &mut Renderer,
     ) {
@@ -82,7 +86,7 @@ impl Knight {
                     }
                 }
             }
-            Attack2 => { }
+            Attack2 => {}
             Walk => {
                 if is_roll_action {
                     self.set_curr_state(Roll);
@@ -116,10 +120,27 @@ impl Knight {
             false,
             !self.look_at_right,
         );
+        let sprite_rect = primitive.rect;
         renderer.push_primitive(primitive);
 
         if self.animator.is_finished() {
             self.set_curr_state(self.next_state);
+        }
+
+        if let Some(my_collider) = frame.get_mask(
+            "rigid",
+            Pivot::BotLeft(sprite_rect.get_bot_left()),
+            !self.look_at_right,
+        ) {
+            let primitive =
+                DrawPrimitive::world_rect(my_collider, Color::green(0.5));
+            renderer.push_primitive(primitive);
+            self.update_kinematic(
+                dt,
+                gravity,
+                my_collider,
+                rigid_colliders,
+            );
         }
     }
 
@@ -143,5 +164,30 @@ impl Knight {
 
     fn set_next_state(&mut self, state: State) {
         self.next_state = state;
+    }
+
+    fn update_kinematic(
+        &mut self,
+        dt: f32,
+        gravity: f32,
+        my_collider: Rect,
+        rigid_colliders: &[Rect],
+    ) {
+        self.velocity.y -= gravity * dt;
+
+        let step = self.velocity.scale(dt);
+        self.position += step;
+
+        for collider in rigid_colliders {
+            let mtv = my_collider.collide_aabb(*collider);
+            self.position += mtv;
+
+            if mtv.y.abs() > 0.0 {
+                self.velocity.y = 0.0
+            }
+            if mtv.x.abs() > 0.0 {
+                self.velocity.x = 0.0
+            }
+        }
     }
 }

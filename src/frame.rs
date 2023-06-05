@@ -37,7 +37,42 @@ impl XYWH {
 #[derive(Deserialize, Clone, Debug)]
 pub struct Frame {
     pub sprite: XYWH,
-    pub masks: HashMap<String, XYWH>,
+    masks: HashMap<String, XYWH>,
+}
+
+impl Frame {
+    pub fn get_mask(
+        &self,
+        name: &str,
+        pivot: Pivot,
+        flip: bool,
+    ) -> Option<Rect> {
+        use Pivot::*;
+
+        if let Some(xywh) = self.masks.get(name) {
+            let size = xywh.to_size();
+            let position = xywh.to_position();
+            let rect = match pivot {
+                BotLeft(pivot) => {
+                    if flip {
+                        let pivot = pivot.add_x(self.sprite.w as f32);
+                        let position = pivot + position.mul_x(-1.0);
+                        Rect::from_top_right(position, size)
+                    } else {
+                        let position = pivot + position;
+                        Rect::from_top_left(position, size)
+                    }
+                }
+                _ => {
+                    todo!()
+                }
+            };
+
+            return Some(rect);
+        }
+
+        None
+    }
 }
 
 #[derive(Deserialize)]

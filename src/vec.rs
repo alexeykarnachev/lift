@@ -286,8 +286,8 @@ impl Pivot {
 
 #[derive(Debug, Copy, Clone, Default)]
 pub struct Rect {
-    pub bot_left: Vec2<f32>,
-    pub top_right: Vec2<f32>,
+    bot_left: Vec2<f32>,
+    top_right: Vec2<f32>,
 }
 
 impl Rect {
@@ -502,14 +502,14 @@ impl Rect {
         Self::from_center(center, size)
     }
 
-    pub fn collide_with_point(&self, p: Vec2<f32>) -> bool {
+    pub fn check_if_collides_with_point(&self, p: Vec2<f32>) -> bool {
         p.x > self.bot_left.x
             && p.x < self.top_right.x
             && p.y > self.bot_left.y
             && p.y < self.top_right.y
     }
 
-    pub fn collide_with_rect(&self, rect: Rect) -> bool {
+    pub fn check_if_collides_with_rect(&self, rect: Rect) -> bool {
         let sum_width = self.get_width() + rect.get_width();
         let sum_height = self.get_height() + rect.get_height();
 
@@ -524,7 +524,7 @@ impl Rect {
         width <= sum_width && height <= sum_height
     }
 
-    pub fn collide_with_line(
+    pub fn check_if_collides_with_line(
         &self,
         start: Vec2<f32>,
         end: Vec2<f32>,
@@ -568,6 +568,32 @@ impl Rect {
         }
 
         true
+    }
+
+    pub fn collide_aabb(&self, other: Rect) -> Vec2<f32> {
+        let mut mtv = Vec2::zeros();
+
+        if self.check_if_collides_with_rect(other) {
+            mtv.x = if other.get_x_max() > self.get_x_max() {
+                other.get_x_min() - self.get_x_max()
+            } else {
+                other.get_x_max() - self.get_x_min()
+            };
+
+            mtv.y = if other.get_y_max() > self.get_y_max() {
+                other.get_y_min() - self.get_y_max()
+            } else {
+                other.get_y_max() - self.get_y_min()
+            };
+
+            if mtv.x.abs() > mtv.y.abs() {
+                mtv.x = 0.0;
+            } else {
+                mtv.y = 0.0;
+            }
+        }
+
+        mtv
     }
 
     pub fn to_xywh(&self) -> [f32; 4] {
