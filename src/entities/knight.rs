@@ -3,10 +3,10 @@ use crate::input::*;
 use crate::renderer::*;
 use crate::vec::*;
 
-#[derive(PartialEq, Eq, Hash, Copy, Clone)]
+#[derive(PartialEq, Eq, Hash, Copy, Clone, Debug)]
 enum State {
     Idle,
-    Move,
+    Walk,
     Roll,
     Attack0,
     Attack1,
@@ -56,19 +56,18 @@ impl Knight {
         match self.curr_state {
             Idle => {
                 if is_attack_action {
-                    self.curr_state = Attack0;
-                    self.next_state = Idle;
+                    self.set_curr_state(Attack0);
                     self.can_perform_combo = true;
                 } else if is_left_action || is_right_action {
-                    self.curr_state = Move;
+                    self.set_curr_state(Walk);
                 }
             }
             Attack0 => {
                 if is_attack_action && self.can_perform_combo {
                     if self.animator.cycle > 0.7 {
-                        self.next_state = Attack1;
+                        self.set_next_state(Attack1);
                     } else {
-                        self.next_state = Idle;
+                        self.set_next_state(Idle);
                         self.can_perform_combo = false
                     }
                 }
@@ -76,23 +75,19 @@ impl Knight {
             Attack1 => {
                 if is_attack_action && self.can_perform_combo {
                     if self.animator.cycle > 0.7 {
-                        self.next_state = Attack2;
+                        self.set_next_state(Attack2);
                     } else {
-                        self.next_state = Idle;
+                        self.set_next_state(Idle);
                         self.can_perform_combo = false
                     }
                 }
             }
-            Attack2 => {
-                self.next_state = Idle;
-            }
-            Move => {
+            Attack2 => { }
+            Walk => {
                 if is_roll_action {
-                    self.curr_state = Roll;
-                    self.next_state = Idle;
+                    self.set_curr_state(Roll);
                 } else if is_attack_action {
-                    self.curr_state = Attack0;
-                    self.next_state = Idle;
+                    self.set_curr_state(Attack0);
                     self.can_perform_combo = true;
                 } else if is_left_action {
                     self.position.x -= 100.0 * dt;
@@ -101,7 +96,7 @@ impl Knight {
                     self.position.x += 100.0 * dt;
                     self.look_at_right = true;
                 } else {
-                    self.curr_state = Idle;
+                    self.set_curr_state(Idle);
                 }
             }
             Roll => {
@@ -114,8 +109,6 @@ impl Knight {
             }
         }
 
-        self.play_animation();
-
         let frame = self.animator.update(dt);
         let primitive = DrawPrimitive::world_sprite(
             frame.sprite,
@@ -126,20 +119,29 @@ impl Knight {
         renderer.push_primitive(primitive);
 
         if self.animator.is_finished() {
-            self.curr_state = self.next_state;
-            self.next_state = Idle;
+            self.set_curr_state(self.next_state);
         }
     }
 
-    fn play_animation(&mut self) {
+    fn set_curr_state(&mut self, state: State) {
         use State::*;
+
+        if self.curr_state != state {
+            self.next_state = Idle;
+        }
+
+        self.curr_state = state;
         match self.curr_state {
             Idle => self.animator.play("knight_idle", 0.07, true),
-            Move => self.animator.play("knight_walk", 0.07, true),
+            Walk => self.animator.play("knight_walk", 0.07, true),
             Roll => self.animator.play("knight_roll", 0.07, false),
             Attack0 => self.animator.play("knight_attack_0", 0.07, false),
             Attack1 => self.animator.play("knight_attack_1", 0.07, false),
             Attack2 => self.animator.play("knight_attack_2", 0.07, false),
         }
+    }
+
+    fn set_next_state(&mut self, state: State) {
+        self.next_state = state;
     }
 }
