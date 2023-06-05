@@ -7,6 +7,7 @@ use renderer::Renderer;
 use std::time::Instant;
 use vec::Vec2;
 
+mod components;
 mod entities;
 mod frame;
 mod game;
