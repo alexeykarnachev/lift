@@ -141,7 +141,11 @@ impl FrameAnimator {
             panic!("Can't update not started Animator. Call `play` method with some animation to start it")
         }
 
-        let frames = self.atlas.name_to_frames.get(self.name).unwrap();
+        let frames = self
+            .atlas
+            .name_to_frames
+            .get(self.name)
+            .expect(&format!("FrameAtlas should have {}", self.name));
         let n_frames = frames.len() as f32;
         let max_idx = n_frames - 1.0;
 

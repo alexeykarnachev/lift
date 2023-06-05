@@ -62,6 +62,7 @@ impl Game {
         self.wolf.update(
             dt,
             self.gravity,
+            self.player.get_position(),
             &self.rigid_colliders,
             renderer,
         );

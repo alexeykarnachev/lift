@@ -7,7 +7,7 @@ use crate::vec::*;
 #[derive(PartialEq, Debug, Clone, Copy)]
 enum State {
     Idle,
-    Walk,
+    Run,
     Roll,
     JumpUp,
     JumpDown,
@@ -82,7 +82,7 @@ impl Knight {
                     self.set_curr_state(JumpUp);
                     self.krs.velocity.y += self.jump_speed;
                 } else if is_left_action || is_right_action {
-                    self.set_curr_state(Walk);
+                    self.set_curr_state(Run);
                 }
             }
             Attack0 => {
@@ -111,7 +111,7 @@ impl Knight {
                     self.is_attack2_step_done = true;
                 }
             }
-            Walk => {
+            Run => {
                 if is_roll_action {
                     self.set_curr_state(Roll);
                 } else if is_jump_action {
@@ -182,7 +182,7 @@ impl Knight {
         self.curr_state = state;
         match self.curr_state {
             Idle => self.animator.play("knight_idle", 0.07, true),
-            Walk => self.animator.play("knight_walk", 0.07, true),
+            Run => self.animator.play("knight_run", 0.07, true),
             Roll => self.animator.play("knight_roll", 0.07, false),
             JumpUp => self.animator.play("knight_jump_up", 0.07, false),
             JumpDown => {
@@ -199,5 +199,9 @@ impl Knight {
 
     fn set_next_state(&mut self, state: State) {
         self.next_state = state;
+    }
+
+    pub fn get_position(&self) -> Vec2<f32> {
+        self.krs.position
     }
 }
