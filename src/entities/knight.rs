@@ -3,7 +3,7 @@ use crate::input::*;
 use crate::renderer::*;
 use crate::vec::*;
 
-#[derive(PartialEq, Eq, Hash, Copy, Clone, Debug)]
+#[derive(PartialEq, Debug, Clone, Copy)]
 enum State {
     Idle,
     Walk,
@@ -37,13 +37,9 @@ pub struct Knight {
 
 impl Knight {
     pub fn new(frame_atlas: FrameAtlas, position: Vec2<f32>) -> Self {
-        use State::*;
-        let animator =
-            FrameAnimator::new(frame_atlas, "knight_idle", 0.1, true);
-
         Self {
-            curr_state: Idle,
-            next_state: Idle,
+            curr_state: State::Idle,
+            next_state: State::Idle,
             can_perform_combo: false,
             is_attack2_step_done: false,
             position,
@@ -54,7 +50,7 @@ impl Knight {
             jump_speed: 150.0,
             landing_move_speed_mult: 0.7,
             attack2_step: 8.0,
-            animator,
+            animator: FrameAnimator::new(frame_atlas),
         }
     }
 
@@ -68,6 +64,7 @@ impl Knight {
     ) {
         use sdl2::keyboard::Keycode::*;
         use State::*;
+
         let is_attack_action = input.key_is_pressed(Space);
         let is_left_action = input.key_is_down(A);
         let is_right_action = input.key_is_down(D);
@@ -75,8 +72,14 @@ impl Knight {
         let is_roll_action = input.key_is_pressed(LCtrl);
         let is_step_action = is_right_action || is_left_action;
 
+        if self.velocity.y < 0.0 {
+            self.set_curr_state(JumpDown);
+        }
+
         match self.curr_state {
             Idle => {
+                self.set_curr_state(Idle);
+
                 if is_attack_action {
                     self.set_curr_state(Attack0);
                     self.can_perform_combo = true;
@@ -154,9 +157,7 @@ impl Knight {
                 }
             }
             JumpLanding => {
-                if is_roll_action {
-                    self.set_curr_state(Roll);
-                } else if is_step_action {
+                if is_step_action {
                     self.immediate_step(
                         self.landing_move_speed_mult * dt,
                         is_right_action,

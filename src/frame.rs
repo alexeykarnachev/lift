@@ -75,7 +75,7 @@ impl Frame {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub struct FrameAtlas {
     size: [u32; 2],
     #[serde(rename = "frames")]
@@ -92,6 +92,7 @@ impl FrameAtlas {
 
 pub struct FrameAnimator {
     atlas: FrameAtlas,
+    is_started: bool,
 
     name: &'static str,
     frame_duration: f32,
@@ -101,17 +102,13 @@ pub struct FrameAnimator {
 }
 
 impl FrameAnimator {
-    pub fn new(
-        atlas: FrameAtlas,
-        name: &'static str,
-        frame_duration: f32,
-        is_repeat: bool,
-    ) -> Self {
+    pub fn new(atlas: FrameAtlas) -> Self {
         Self {
             atlas,
-            name,
-            frame_duration,
-            is_repeat,
+            is_started: false,
+            name: "",
+            frame_duration: 0.0,
+            is_repeat: false,
             cycle: 0.0,
         }
     }
@@ -122,6 +119,8 @@ impl FrameAnimator {
         frame_duration: f32,
         is_repeat: bool,
     ) {
+        self.is_started = true;
+
         if name != self.name
             || frame_duration != self.frame_duration
             || is_repeat != self.is_repeat
@@ -138,6 +137,10 @@ impl FrameAnimator {
     }
 
     pub fn update(&mut self, dt: f32) -> Frame {
+        if !self.is_started {
+            panic!("Can't update not started Animator. Call `play` method with some animation to start it")
+        }
+
         let frames = self.atlas.name_to_frames.get(self.name).unwrap();
         let n_frames = frames.len() as f32;
         let max_idx = n_frames - 1.0;
