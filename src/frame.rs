@@ -91,6 +91,10 @@ impl FrameAtlas {
 
         serde_json::from_str(&meta).unwrap()
     }
+
+    pub fn new_animator(&'static self) -> FrameAnimator {
+        FrameAnimator::new(self)
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -140,9 +144,9 @@ impl FrameAnimator {
         !self.is_repeat && self.cycle == 1.0
     }
 
-    pub fn update(&mut self, dt: f32) -> Frame {
+    pub fn update(&mut self, dt: f32) -> Option<&Frame> {
         if !self.is_started {
-            panic!("Can't update not started Animator. Call `play` method with some animation to start it")
+            return None
         }
 
         let frames = self
@@ -162,6 +166,6 @@ impl FrameAnimator {
 
         let idx = (self.cycle * max_idx).round() as usize;
 
-        frames[idx].clone()
+        Some(&frames[idx])
     }
 }

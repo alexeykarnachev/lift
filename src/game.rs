@@ -18,6 +18,7 @@ enum State {
 const MAX_N_ENTITIES: usize = 1024;
 
 pub struct Game {
+    frame_atlas: &'static FrameAtlas,
     camera: Camera,
     gravity: f32,
 
@@ -34,10 +35,12 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn new() -> Self {
+    pub fn new(frame_atlas_fp: &str) -> Self {
         let camera = Camera::new(Vec2::zeros());
+        let frame_atlas = Box::new(FrameAtlas::new(frame_atlas_fp));
 
         Self {
+            frame_atlas: Box::leak(frame_atlas),
             camera,
             gravity: 400.0,
 
@@ -73,7 +76,7 @@ impl Game {
         Some(idx)
     }
 
-    pub fn new_wolf_ai(&mut self, position: Vec2<f32>, frame_atlas: &'static FrameAtlas) -> Option<usize> {
+    pub fn new_wolf_ai(&mut self, position: Vec2<f32>) -> Option<usize> {
         if self.n_entities == MAX_N_ENTITIES {
             return None;
         }
@@ -86,7 +89,7 @@ impl Game {
         self.positions[idx] = Some(position);
         self.move_speeds[idx] = Some(100.0);
 
-        self.frame_animators[idx] = Some(FrameAnimator::new(frame_atlas));
+        self.frame_animators[idx] = Some(self.frame_atlas.new_animator());
 
         Some(idx)
     }
@@ -100,17 +103,58 @@ impl Game {
         renderer
             .set_camera(self.camera.position, self.camera.get_view_size());
 
+        self.update_behaviours(dt);
         self.update_frame_animators(dt);
         self.update_renderer(renderer);
     }
 
+    fn update_behaviours(&mut self, dt: f32) {
+        use Behaviour::*;
+
+        for idx in 0..self.n_entities {
+            match self.behaviours[idx] {
+                Some(WolfAI) => {
+                    self.update_wolf_ai_behaviour(idx);
+                }
+                Some(KnightPlayer) => {
+                }
+                None => {}
+            }
+        }
+    }
+
+    fn update_wolf_ai_behaviour(&mut self, idx: usize) {
+        use State::*;
+
+        match self.states[idx] {
+            Some(Idle) => {
+                self.frame_animators[idx].as_mut().unwrap().play("wolf_idle", 0.1, true);
+            }
+            None => {
+                self.states[idx] = Some(Idle);
+            }
+            _ => {}
+        }
+    }
+
     fn update_frame_animators(&mut self, dt: f32) {
         for idx in 0..self.n_entities {
-            if let (Some(animator), Some(position)) = (self.frame_animators[idx].as_mut(), self.positions[idx]) {
-                let frame = animator.update(dt);
-                self.sprites[idx] = Some(frame.sprite);
-                self.rigid_colliders[idx] = frame.get_mask("rigid", Pivot::BotCenter(position), false);
-                self.attack_colliders[idx] = frame.get_mask("attack", Pivot::BotCenter(position), false);
+            if let (Some(animator), Some(position)) =
+                (self.frame_animators[idx].as_mut(), self.positions[idx])
+            {
+                if let Some(frame) = animator.update(dt) {
+                    self.sprites[idx] = Some(frame.sprite);
+                    self.rigid_colliders[idx] = frame.get_mask(
+                        "rigid",
+                        Pivot::BotCenter(position),
+                        false,
+                    );
+                    self.attack_colliders[idx] = frame.get_mask(
+                        "attack",
+                        Pivot::BotCenter(position),
+                        false,
+                    );
+                }
             }
         }
     }

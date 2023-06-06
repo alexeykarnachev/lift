@@ -2,7 +2,6 @@
 #![allow(unused_variables)]
 
 use game::*;
-use frame::*;
 use input::Input;
 use renderer::Renderer;
 use std::time::Instant;
@@ -28,11 +27,10 @@ fn main() {
         "./assets/sprites/atlas.png",
     );
     let mut input = Input::new(window_size);
-    let frame_atlas = FrameAtlas::new("./assets/sprites/atlas.json");
-    let mut game = Game::new();
+    let mut game = Game::new("./assets/sprites/atlas.json");
 
     game.new_knight_player(Vec2::new(0.0, 0.0));
-    game.new_wolf_ai(Vec2::new(40.0, 0.0), &frame_atlas);
+    game.new_wolf_ai(Vec2::new(40.0, 0.0));
 
     // ------------------------------------------------------------------
     let mut event_pump = sdl.event_pump().unwrap();
