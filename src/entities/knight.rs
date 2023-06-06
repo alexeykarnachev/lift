@@ -1,4 +1,3 @@
-use crate::components::KinematicRigidSprite;
 use crate::frame::*;
 use crate::input::*;
 use crate::renderer::*;
@@ -23,12 +22,16 @@ pub struct Knight {
     can_perform_combo: bool,
     is_attack2_step_done: bool,
 
+    position: Vec2<f32>,
+    velocity: Vec2<f32>,
+    look_dir: f32,
+    is_grounded: bool,
+
     move_speed: f32,
     jump_speed: f32,
     landing_move_speed: f32,
     attack2_step: f32,
 
-    krs: KinematicRigidSprite,
     animator: FrameAnimator,
 }
 
@@ -39,11 +42,14 @@ impl Knight {
             next_state: State::Idle,
             can_perform_combo: false,
             is_attack2_step_done: false,
+            position,
+            velocity: Vec2::zeros(),
+            look_dir: 1.0,
+            is_grounded: false,
             move_speed: 100.0,
             jump_speed: 150.0,
             landing_move_speed: 70.0,
             attack2_step: 8.0,
-            krs: KinematicRigidSprite::new(position),
             animator: FrameAnimator::new(frame_atlas),
         }
     }
@@ -67,7 +73,7 @@ impl Knight {
         let is_step_action = is_right_action || is_left_action;
         let dir = if is_right_action { 1.0 } else { -1.0 };
 
-        if self.krs.velocity.y < 0.0 {
+        if self.velocity.y < 0.0 {
             self.set_curr_state(JumpDown);
         }
 
@@ -80,7 +86,7 @@ impl Knight {
                     self.can_perform_combo = true;
                 } else if is_jump_action {
                     self.set_curr_state(JumpUp);
-                    self.krs.velocity.y += self.jump_speed;
+                    self.velocity.y += self.jump_speed;
                 } else if is_left_action || is_right_action {
                     self.set_curr_state(Run);
                 }
@@ -106,8 +112,7 @@ impl Knight {
             }
             Attack2 => {
                 if !self.is_attack2_step_done {
-                    self.krs.position.x +=
-                        self.krs.look_dir * self.attack2_step;
+                    self.position.x += self.look_dir * self.attack2_step;
                     self.is_attack2_step_done = true;
                 }
             }
@@ -116,45 +121,45 @@ impl Knight {
                     self.set_curr_state(Roll);
                 } else if is_jump_action {
                     self.set_curr_state(JumpUp);
-                    self.krs.velocity.y += self.jump_speed;
+                    self.velocity.y += self.jump_speed;
                 } else if is_attack_action {
                     self.set_curr_state(Attack0);
                     self.can_perform_combo = true;
                 } else if is_step_action {
-                    self.krs.do_immediate_step(dt, self.move_speed, dir);
+                    self.do_immediate_step(dt, self.move_speed, dir);
                 } else {
                     self.set_curr_state(Idle);
                 }
             }
             Roll => {
                 let speed = 150.0 * (1.0 - self.animator.cycle.powf(2.0));
-                self.krs.position.x += self.krs.look_dir * speed * dt;
+                self.position.x += self.look_dir * speed * dt;
             }
             JumpUp => {
-                if self.krs.velocity.y > 0.0 {
+                if self.velocity.y > 0.0 {
                     self.set_next_state(JumpUp);
                 } else {
                     self.set_next_state(JumpDown);
                 }
 
                 if is_step_action {
-                    self.krs.do_immediate_step(dt, self.move_speed, dir);
+                    self.do_immediate_step(dt, self.move_speed, dir);
                 }
             }
             JumpDown => {
-                if self.krs.is_grounded {
+                if self.is_grounded {
                     self.set_next_state(JumpLanding);
                 } else {
                     self.set_next_state(JumpDown);
                 }
 
                 if is_step_action {
-                    self.krs.do_immediate_step(dt, self.move_speed, dir);
+                    self.do_immediate_step(dt, self.move_speed, dir);
                 }
             }
             JumpLanding => {
                 if is_step_action {
-                    self.krs.do_immediate_step(
+                    self.do_immediate_step(
                         dt,
                         self.landing_move_speed,
                         dir,
@@ -166,10 +171,57 @@ impl Knight {
         if self.animator.is_finished() {
             self.set_curr_state(self.next_state);
         }
-
         let frame = self.animator.update(dt);
-        self.krs
-            .update(dt, gravity, frame, rigid_colliders, renderer);
+
+        self.velocity.y -= gravity * dt;
+        self.position += self.velocity.scale(dt);
+
+        let primitive = DrawPrimitive::world_sprite(
+            frame.sprite,
+            Pivot::BotCenter(self.position),
+            false,
+            self.look_dir < 0.0,
+        );
+        renderer.push_primitive(primitive);
+
+        if let Some(my_collider) = frame.get_mask(
+            "rigid",
+            Pivot::BotCenter(self.position),
+            self.look_dir < 0.0,
+        ) {
+            let mut is_grounded = false;
+            for collider in rigid_colliders {
+                let mtv = my_collider.collide_aabb(*collider);
+                self.position += mtv;
+
+                if mtv.y.abs() > 0.0 {
+                    self.velocity.y = 0.0;
+                }
+
+                if mtv.x.abs() > 0.0 {
+                    self.velocity.x = 0.0;
+                }
+
+                is_grounded |= mtv.y > 0.0;
+            }
+
+            self.is_grounded = is_grounded;
+            renderer.push_primitive(DrawPrimitive::world_rect(
+                my_collider,
+                Color::green(0.5),
+            ));
+        }
+
+        if let Some(attack) = frame.get_mask(
+            "attack",
+            Pivot::BotCenter(self.position),
+            self.look_dir < 0.0,
+        ) {
+            renderer.push_primitive(DrawPrimitive::world_rect(
+                attack,
+                Color::red(0.5),
+            ));
+        }
     }
 
     fn set_curr_state(&mut self, state: State) {
@@ -202,6 +254,11 @@ impl Knight {
     }
 
     pub fn get_position(&self) -> Vec2<f32> {
-        self.krs.position
+        self.position
+    }
+
+    pub fn do_immediate_step(&mut self, dt: f32, speed: f32, dir: f32) {
+        self.look_dir = dir;
+        self.position.x += dt * speed * dir;
     }
 }

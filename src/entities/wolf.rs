@@ -1,4 +1,3 @@
-use crate::components::*;
 use crate::frame::*;
 use crate::renderer::*;
 use crate::vec::*;
@@ -15,11 +14,15 @@ pub struct Wolf {
     curr_state: State,
     next_state: State,
 
+    position: Vec2<f32>,
+    velocity: Vec2<f32>,
+    look_dir: f32,
+    is_grounded: bool,
+
     move_speed: f32,
     view_dist: f32,
     attack_dist: f32,
 
-    krs: KinematicRigidSprite,
     animator: FrameAnimator,
 }
 
@@ -28,10 +31,13 @@ impl Wolf {
         Self {
             curr_state: State::Idle,
             next_state: State::Idle,
+            position,
+            velocity: Vec2::zeros(),
+            look_dir: 1.0,
+            is_grounded: false,
             move_speed: 50.0,
             view_dist: 200.0,
             attack_dist: 35.0,
-            krs: KinematicRigidSprite::new(position),
             animator: FrameAnimator::new(frame_atlas),
         }
     }
@@ -46,12 +52,12 @@ impl Wolf {
     ) {
         use State::*;
 
-        let to_player = player_position - self.krs.position;
+        let to_player = player_position - self.position;
         let dist = to_player.len();
         let dir = to_player.x.signum();
 
         if dist <= self.view_dist {
-            self.krs.look_dir = dir;
+            self.look_dir = dir;
         }
 
         match self.curr_state {
@@ -68,7 +74,7 @@ impl Wolf {
                 } else if dist >= self.view_dist {
                     self.set_curr_state(Idle);
                 } else {
-                    self.krs.do_immediate_step(dt, self.move_speed, dir);
+                    self.do_immediate_step(dt, self.move_speed, dir);
                 }
             }
             AttackPrepare => {
@@ -90,10 +96,57 @@ impl Wolf {
         if self.animator.is_finished() {
             self.set_curr_state(self.next_state);
         }
-
         let frame = self.animator.update(dt);
-        self.krs
-            .update(dt, gravity, frame, rigid_colliders, renderer);
+
+        self.velocity.y -= gravity * dt;
+        self.position += self.velocity.scale(dt);
+
+        let primitive = DrawPrimitive::world_sprite(
+            frame.sprite,
+            Pivot::BotCenter(self.position),
+            false,
+            self.look_dir < 0.0,
+        );
+        renderer.push_primitive(primitive);
+
+        if let Some(my_collider) = frame.get_mask(
+            "rigid",
+            Pivot::BotCenter(self.position),
+            self.look_dir < 0.0,
+        ) {
+            let mut is_grounded = false;
+            for collider in rigid_colliders {
+                let mtv = my_collider.collide_aabb(*collider);
+                self.position += mtv;
+
+                if mtv.y.abs() > 0.0 {
+                    self.velocity.y = 0.0;
+                }
+
+                if mtv.x.abs() > 0.0 {
+                    self.velocity.x = 0.0;
+                }
+
+                is_grounded |= mtv.y > 0.0;
+            }
+
+            self.is_grounded = is_grounded;
+            renderer.push_primitive(DrawPrimitive::world_rect(
+                my_collider,
+                Color::green(0.5),
+            ));
+        }
+
+        if let Some(attack) = frame.get_mask(
+            "attack",
+            Pivot::BotCenter(self.position),
+            self.look_dir < 0.0,
+        ) {
+            renderer.push_primitive(DrawPrimitive::world_rect(
+                attack,
+                Color::red(0.5),
+            ));
+        }
     }
 
     fn set_curr_state(&mut self, state: State) {
@@ -114,5 +167,10 @@ impl Wolf {
 
     fn set_next_state(&mut self, state: State) {
         self.next_state = state;
+    }
+
+    pub fn do_immediate_step(&mut self, dt: f32, speed: f32, dir: f32) {
+        self.look_dir = dir;
+        self.position.x += dt * speed * dir;
     }
 }
