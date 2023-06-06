@@ -36,10 +36,11 @@ impl KinematicRigidSprite {
             false,
             self.look_dir < 0.0,
         );
+        renderer.push_primitive(primitive);
 
         if let Some(my_collider) = frame.get_mask(
             "rigid",
-            Pivot::BotLeft(primitive.rect.get_bot_left()),
+            Pivot::BotCenter(self.position),
             self.look_dir < 0.0,
         ) {
             let mut is_grounded = false;
@@ -59,9 +60,11 @@ impl KinematicRigidSprite {
             }
 
             self.is_grounded = is_grounded;
+            renderer.push_primitive(DrawPrimitive::world_rect(
+                my_collider,
+                Color::green(0.5),
+            ));
         }
-
-        renderer.push_primitive(primitive);
     }
 
     pub fn do_immediate_step(&mut self, dt: f32, speed: f32, dir: f32) {

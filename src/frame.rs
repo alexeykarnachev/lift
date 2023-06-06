@@ -52,20 +52,23 @@ impl Frame {
         if let Some(xywh) = self.masks.get(name) {
             let size = xywh.to_size();
             let position = xywh.to_position();
-            let rect = match pivot {
-                BotLeft(pivot) => {
-                    if flip {
-                        let pivot = pivot.add_x(self.sprite.w as f32);
-                        let position = pivot + position.mul_x(-1.0);
-                        Rect::from_top_right(position, size)
-                    } else {
-                        let position = pivot + position;
-                        Rect::from_top_left(position, size)
-                    }
+            let pivot = match pivot {
+                BotLeft(pivot) => pivot,
+                BotCenter(pivot) => {
+                    pivot.add_x(-0.5 * self.sprite.w as f32)
                 }
                 _ => {
                     todo!()
                 }
+            };
+
+            let rect = if flip {
+                let pivot = pivot.add_x(self.sprite.w as f32);
+                let position = pivot + position.mul_x(-1.0);
+                Rect::from_top_right(position, size)
+            } else {
+                let position = pivot + position;
+                Rect::from_top_left(position, size)
             };
 
             return Some(rect);
