@@ -7,7 +7,7 @@ use renderer::Renderer;
 use std::time::Instant;
 use vec::Vec2;
 
-mod entities;
+// mod entities;
 mod frame;
 mod game;
 mod input;
@@ -28,6 +28,9 @@ fn main() {
     );
     let mut input = Input::new(window_size);
     let mut game = Game::new("./assets/sprites/atlas.json");
+
+    game.new_knight_player(Vec2::new(0.0, 0.0));
+    game.new_wolf_ai(Vec2::new(40.0, 0.0));
 
     // ------------------------------------------------------------------
     let mut event_pump = sdl.event_pump().unwrap();

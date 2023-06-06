@@ -1,46 +1,93 @@
-use crate::entities::knight::Knight;
-use crate::entities::wolf::Wolf;
-use crate::frame::FrameAtlas;
-// use crate::input::Keyaction;
+use crate::frame::*;
 use crate::input::*;
 use crate::renderer::*;
 use crate::vec::*;
 
+#[derive(Copy, Clone)]
+enum Behaviour {
+    KnightPlayer,
+    WolfAI,
+}
+
+#[derive(Copy, Clone)]
+enum State {
+    Idle,
+    Run,
+}
+
+const MAX_N_ENTITIES: usize = 1024;
+
 pub struct Game {
     camera: Camera,
-    rigid_colliders: Vec<Rect>,
-
-    player: Knight,
-    wolf: Wolf,
-
     gravity: f32,
+    frame_atlas: FrameAtlas,
+
+    n_entities: usize,
+    behaviours: [Option<Behaviour>; MAX_N_ENTITIES],
+    states: [Option<State>; MAX_N_ENTITIES],
+    positions: [Option<Vec2<f32>>; MAX_N_ENTITIES],
+    move_speeds: [Option<f32>; MAX_N_ENTITIES],
+
+    rigid_colliders: [Option<Rect>; MAX_N_ENTITIES],
+    attack_colliders: [Option<Rect>; MAX_N_ENTITIES],
+    sprites: [Option<XYWH>; MAX_N_ENTITIES],
 }
 
 impl Game {
     pub fn new(frame_atlas_fp: &str) -> Self {
         let frame_atlas = FrameAtlas::new(frame_atlas_fp);
         let camera = Camera::new(Vec2::zeros());
-        let player =
-            Knight::new(frame_atlas.clone(), Vec2::new(-50.0, 150.0));
-        let wolf = Wolf::new(frame_atlas.clone(), Vec2::new(20.0, 0.0));
-        let rigid_colliders = vec![
-            Rect::from_top_center(
-                Vec2::new(0.0, -20.0),
-                Vec2::new(1000.0, 50.0),
-            ),
-            Rect::from_bot_center(
-                Vec2::new(-50.0, -20.0),
-                Vec2::new(25.0, 100.0),
-            ),
-        ];
 
         Self {
             camera,
-            rigid_colliders,
-            player,
-            wolf,
             gravity: 400.0,
+            frame_atlas,
+
+            n_entities: 0,
+            behaviours: [None; MAX_N_ENTITIES],
+            states: [None; MAX_N_ENTITIES],
+            positions: [None; MAX_N_ENTITIES],
+            move_speeds: [None; MAX_N_ENTITIES],
+
+            rigid_colliders: [None; MAX_N_ENTITIES],
+            attack_colliders: [None; MAX_N_ENTITIES],
+            sprites: [None; MAX_N_ENTITIES],
         }
+    }
+
+    pub fn new_knight_player(
+        &mut self,
+        position: Vec2<f32>,
+    ) -> Option<usize> {
+        if self.n_entities == MAX_N_ENTITIES {
+            return None;
+        }
+
+        let idx = self.n_entities;
+        self.n_entities += 1;
+
+        self.behaviours[idx] = Some(Behaviour::KnightPlayer);
+        self.states[idx] = Some(State::Idle);
+        self.positions[idx] = Some(position);
+        self.move_speeds[idx] = Some(100.0);
+
+        Some(idx)
+    }
+
+    pub fn new_wolf_ai(&mut self, position: Vec2<f32>) -> Option<usize> {
+        if self.n_entities == MAX_N_ENTITIES {
+            return None;
+        }
+
+        let idx = self.n_entities;
+        self.n_entities += 1;
+
+        self.behaviours[idx] = Some(Behaviour::WolfAI);
+        self.states[idx] = Some(State::Idle);
+        self.positions[idx] = Some(position);
+        self.move_speeds[idx] = Some(100.0);
+
+        Some(idx)
     }
 
     pub fn update(
@@ -52,24 +99,35 @@ impl Game {
         renderer
             .set_camera(self.camera.position, self.camera.get_view_size());
 
-        self.player.update(
-            dt,
-            self.gravity,
-            &self.rigid_colliders,
-            input,
-            renderer,
-        );
-        self.wolf.update(
-            dt,
-            self.gravity,
-            self.player.get_position(),
-            &self.rigid_colliders,
-            renderer,
-        );
-        for rect in self.rigid_colliders.iter() {
-            let primitive =
-                DrawPrimitive::world_rect(*rect, Color::red(0.5));
-            renderer.push_primitive(primitive);
+        // self.update_frame_animators(dt);
+        self.update_renderer(renderer);
+    }
+
+    // fn update_frame_animators(&mut self, dt: f32) {
+    //     for idx in 0..self.n_entities {
+    //         if let Some(animator) = self.animators[idx] {
+    //             let frame = animator.update(state);
+    //         }
+    //     }
+    // }
+
+    fn update_renderer(&mut self, renderer: &mut Renderer) {
+        for idx in 0..self.n_entities {
+            if let (Some(sprite), Some(position)) =
+                (self.sprites[idx], self.positions[idx])
+            {
+                let pivot = Pivot::BotCenter(position);
+                let apply_light = false;
+                let flip = false;
+                let primitive = DrawPrimitive::world_sprite(
+                    sprite,
+                    pivot,
+                    apply_light,
+                    flip,
+                );
+
+                renderer.push_primitive(primitive);
+            }
         }
     }
 }
