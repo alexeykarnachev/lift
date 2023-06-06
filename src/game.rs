@@ -20,7 +20,6 @@ const MAX_N_ENTITIES: usize = 1024;
 pub struct Game {
     camera: Camera,
     gravity: f32,
-    frame_atlas: FrameAtlas,
 
     n_entities: usize,
     behaviours: [Option<Behaviour>; MAX_N_ENTITIES],
@@ -28,20 +27,19 @@ pub struct Game {
     positions: [Option<Vec2<f32>>; MAX_N_ENTITIES],
     move_speeds: [Option<f32>; MAX_N_ENTITIES],
 
+    frame_animators: [Option<FrameAnimator>; MAX_N_ENTITIES],
     rigid_colliders: [Option<Rect>; MAX_N_ENTITIES],
     attack_colliders: [Option<Rect>; MAX_N_ENTITIES],
     sprites: [Option<XYWH>; MAX_N_ENTITIES],
 }
 
 impl Game {
-    pub fn new(frame_atlas_fp: &str) -> Self {
-        let frame_atlas = FrameAtlas::new(frame_atlas_fp);
+    pub fn new() -> Self {
         let camera = Camera::new(Vec2::zeros());
 
         Self {
             camera,
             gravity: 400.0,
-            frame_atlas,
 
             n_entities: 0,
             behaviours: [None; MAX_N_ENTITIES],
@@ -49,6 +47,7 @@ impl Game {
             positions: [None; MAX_N_ENTITIES],
             move_speeds: [None; MAX_N_ENTITIES],
 
+            frame_animators: [None; MAX_N_ENTITIES],
             rigid_colliders: [None; MAX_N_ENTITIES],
             attack_colliders: [None; MAX_N_ENTITIES],
             sprites: [None; MAX_N_ENTITIES],
@@ -74,7 +73,7 @@ impl Game {
         Some(idx)
     }
 
-    pub fn new_wolf_ai(&mut self, position: Vec2<f32>) -> Option<usize> {
+    pub fn new_wolf_ai(&mut self, position: Vec2<f32>, frame_atlas: &'static FrameAtlas) -> Option<usize> {
         if self.n_entities == MAX_N_ENTITIES {
             return None;
         }
@@ -86,6 +85,8 @@ impl Game {
         self.states[idx] = Some(State::Idle);
         self.positions[idx] = Some(position);
         self.move_speeds[idx] = Some(100.0);
+
+        self.frame_animators[idx] = Some(FrameAnimator::new(frame_atlas));
 
         Some(idx)
     }
@@ -99,17 +100,20 @@ impl Game {
         renderer
             .set_camera(self.camera.position, self.camera.get_view_size());
 
-        // self.update_frame_animators(dt);
+        self.update_frame_animators(dt);
         self.update_renderer(renderer);
     }
 
-    // fn update_frame_animators(&mut self, dt: f32) {
-    //     for idx in 0..self.n_entities {
-    //         if let Some(animator) = self.animators[idx] {
-    //             let frame = animator.update(state);
-    //         }
-    //     }
-    // }
+    fn update_frame_animators(&mut self, dt: f32) {
+        for idx in 0..self.n_entities {
+            if let (Some(animator), Some(position)) = (self.frame_animators[idx].as_mut(), self.positions[idx]) {
+                let frame = animator.update(dt);
+                self.sprites[idx] = Some(frame.sprite);
+                self.rigid_colliders[idx] = frame.get_mask("rigid", Pivot::BotCenter(position), false);
+                self.attack_colliders[idx] = frame.get_mask("attack", Pivot::BotCenter(position), false);
+            }
+        }
+    }
 
     fn update_renderer(&mut self, renderer: &mut Renderer) {
         for idx in 0..self.n_entities {

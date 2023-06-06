@@ -249,18 +249,12 @@ if __name__ == "__main__":
     sheet_h, sheet_w = sheet.shape[:2]
     meta = {
         "size": [sheet_w, sheet_h],
-        "frames": [],
-        "index": {}
+        "frames": defaultdict(list),
     }
-
-    start = 0
     for sprite_name in sprites:
         sprites_ = sprites[sprite_name]
-        n_sprites = len(sprites_)
-        meta["index"][sprite_name] = [start, n_sprites]
-        start += n_sprites
 
-        for i in range(n_sprites):
+        for i in range(len(sprites_)):
             sprite = sprites_[i]
             sprite_meta = sprite.to_meta(sheet_h)
 
@@ -274,7 +268,7 @@ if __name__ == "__main__":
                 _SPRITE_LAYER: sprite_meta,
                 "masks": masks_meta,
             }
-            meta["frames"].append(frame_meta)
+            meta["frames"][sprite.name].append(frame_meta)
 
     # Save the final sheet and meta json
     cv2.imwrite(str(out_dir / "atlas.png"), sheet)

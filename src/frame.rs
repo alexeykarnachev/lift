@@ -3,8 +3,6 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs;
 
-const MAX_N_ANIMATIONS: usize = 16;
-
 #[derive(Deserialize, Copy, Clone, Debug)]
 pub struct XYWH {
     pub x: u32,
@@ -81,122 +79,89 @@ impl Frame {
 }
 
 #[derive(Deserialize, Clone)]
-struct FrameAtlasJson {
+pub struct FrameAtlas {
     size: [u32; 2],
     #[serde(rename = "frames")]
-    frames: Vec<Frame>,
-    index: HashMap<String, (usize, usize)>
-}
-
-#[derive(Default, Copy, Clone)]
-pub struct AnimationParams {
-    name: &'static str,
-    id: usize,
-    frame_duration: f32,
-    is_repeat: bool,
-}
-
-impl AnimationParams {
-    pub fn new(name: &'static str, id: usize, frame_duration: f32, is_repeat: bool) -> Self {
-        Self { name, id, frame_duration, is_repeat }
-    }
-}
-
-pub struct FrameAtlas {
-    frames: &'static [Frame],
-    name_to_slice: HashMap<String, &'static[Frame]>,
+    name_to_frames: HashMap<String, Vec<Frame>>,
 }
 
 impl FrameAtlas {
     pub fn new(file_path: &str) -> Self {
         let meta = fs::read_to_string(file_path).unwrap();
-        let atlas: FrameAtlasJson = serde_json::from_str(&meta).unwrap();
-        let frames = atlas.frames.leak();
 
-        let mut name_to_slice = HashMap::new();
-        for (name, (start, n_frames)) in atlas.index {
-            let slice = &frames[start..start + n_frames];
-            name_to_slice.insert(name, slice);
-        }
-
-        Self {
-            frames,
-            name_to_slice,
-        }
-    }
-
-    pub fn get_frame_animator(&self, animation_params: &[AnimationParams]) -> FrameAnimator {
-        if animation_params.len() > MAX_N_ANIMATIONS {
-            panic!("Can't create the Animator with more than {} animations", MAX_N_ANIMATIONS);
-        }
-
-        let mut prev_id = 0;
-        let mut id_offset = 0;
-        let mut frame_slices = [self.frames; MAX_N_ANIMATIONS];
-        let mut animation_params_arr = [AnimationParams::default(); MAX_N_ANIMATIONS];
-        for (i, params) in animation_params.iter().enumerate() {
-            let id = params.id;
-            if i == 0 {
-                prev_id = id;
-                id_offset = id;
-            } else if id - prev_id != 1 {
-                panic!("Animations must have a consecutive ids");
-            }
-            
-            let slice = self.name_to_slice.get(params.name).expect(&format!("FrameAtlas should contain animation `{}`", params.name));
-            frame_slices[i] = slice;
-            animation_params_arr[i] = params.clone();
-        }
-
-        FrameAnimator {
-            frame_slices,
-            animation_params: animation_params_arr,
-            n_animations: animation_params.len(),
-            id_offset,
-        }
+        serde_json::from_str(&meta).unwrap()
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct FrameAnimator {
-    frame_slices: [&'static[Frame]; MAX_N_ANIMATIONS],
-    animation_params: [AnimationParams; MAX_N_ANIMATIONS],
-    n_animations: usize,
-    id_offset: usize,
-}
+    atlas: &'static FrameAtlas,
+    is_started: bool,
 
-/*
-pub struct FrameAnimator {
-    n_frames: f32,
+    name: &'static str,
     frame_duration: f32,
     is_repeat: bool,
-    progress: f32,
+
+    pub cycle: f32,
 }
 
 impl FrameAnimator {
-    pub fn new(n_frames: usize, frame_duration: f32, is_repeat: bool) -> Self {
+    pub fn new(atlas: &'static FrameAtlas) -> Self {
         Self {
-            n_frames: n_frames as f32,
-            frame_duration,
-            is_repeat,
-            progress: 0.0,
+            atlas,
+            is_started: false,
+            name: "",
+            frame_duration: 0.0,
+            is_repeat: false,
+            cycle: 0.0,
+        }
+    }
+
+    pub fn play(
+        &mut self,
+        name: &'static str,
+        frame_duration: f32,
+        is_repeat: bool,
+    ) {
+        self.is_started = true;
+
+        if name != self.name
+            || frame_duration != self.frame_duration
+            || is_repeat != self.is_repeat
+        {
+            self.name = name;
+            self.frame_duration = frame_duration;
+            self.is_repeat = is_repeat;
+            self.cycle = 0.0;
         }
     }
 
     pub fn is_finished(&self) -> bool {
-        !self.is_repeat && self.progress == 1.0
+        !self.is_repeat && self.cycle == 1.0
     }
 
-    pub fn update(&mut self, dt: f32) -> usize {
-        self.progress += dt / (self.n_frames * self.frame_duration);
+    pub fn update(&mut self, dt: f32) -> Frame {
+        if !self.is_started {
+            panic!("Can't update not started Animator. Call `play` method with some animation to start it")
+        }
+
+        let frames = self
+            .atlas
+            .name_to_frames
+            .get(self.name)
+            .expect(&format!("FrameAtlas should have {}", self.name));
+        let n_frames = frames.len() as f32;
+        let max_idx = n_frames - 1.0;
+
+        self.cycle += dt / (n_frames * self.frame_duration);
         if self.is_repeat {
-            self.progress -= self.progress.floor();
+            self.cycle -= self.cycle.floor();
         } else {
-            self.progress = self.progress.min(1.0);
+            self.cycle = self.cycle.min(1.0);
         };
 
-        let idx = (self.progress * (self.n_frames - 1.0)).round() as usize;
+        let idx = (self.cycle * max_idx).round() as usize;
 
-        idx
+        frames[idx].clone()
     }
 }
-*/
