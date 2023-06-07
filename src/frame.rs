@@ -146,7 +146,7 @@ impl FrameAnimator {
 
     pub fn update(&mut self, dt: f32) -> Option<&Frame> {
         if !self.is_started {
-            return None
+            return None;
         }
 
         let frames = self

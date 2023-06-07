@@ -9,7 +9,7 @@ enum Behaviour {
     WolfAI,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 enum State {
     Idle,
     Run,
@@ -27,6 +27,7 @@ pub struct Game {
     states: [Option<State>; MAX_N_ENTITIES],
     positions: [Option<Vec2<f32>>; MAX_N_ENTITIES],
     move_speeds: [Option<f32>; MAX_N_ENTITIES],
+    look_dirs: [Option<f32>; MAX_N_ENTITIES],
 
     frame_animators: [Option<FrameAnimator>; MAX_N_ENTITIES],
     rigid_colliders: [Option<Rect>; MAX_N_ENTITIES],
@@ -49,6 +50,7 @@ impl Game {
             states: [None; MAX_N_ENTITIES],
             positions: [None; MAX_N_ENTITIES],
             move_speeds: [None; MAX_N_ENTITIES],
+            look_dirs: [None; MAX_N_ENTITIES],
 
             frame_animators: [None; MAX_N_ENTITIES],
             rigid_colliders: [None; MAX_N_ENTITIES],
@@ -72,6 +74,7 @@ impl Game {
         self.states[idx] = Some(State::Idle);
         self.positions[idx] = Some(position);
         self.move_speeds[idx] = Some(100.0);
+        self.frame_animators[idx] = Some(self.frame_atlas.new_animator());
 
         Some(idx)
     }
@@ -88,7 +91,6 @@ impl Game {
         self.states[idx] = Some(State::Idle);
         self.positions[idx] = Some(position);
         self.move_speeds[idx] = Some(100.0);
-
         self.frame_animators[idx] = Some(self.frame_atlas.new_animator());
 
         Some(idx)
@@ -103,22 +105,56 @@ impl Game {
         renderer
             .set_camera(self.camera.position, self.camera.get_view_size());
 
-        self.update_behaviours(dt);
+        self.update_behaviours(dt, input);
         self.update_frame_animators(dt);
         self.update_renderer(renderer);
     }
 
-    fn update_behaviours(&mut self, dt: f32) {
+    fn update_behaviours(&mut self, dt: f32, input: &Input) {
         use Behaviour::*;
 
         for idx in 0..self.n_entities {
             match self.behaviours[idx] {
+                Some(KnightPlayer) => {
+                    self.update_knight_player_behaviour(dt, idx, input);
+                }
                 Some(WolfAI) => {
                     self.update_wolf_ai_behaviour(idx);
                 }
-                Some(KnightPlayer) => {
-                }
                 None => {}
+            }
+        }
+    }
+
+    fn update_knight_player_behaviour(
+        &mut self,
+        dt: f32,
+        idx: usize,
+        input: &Input,
+    ) {
+        use sdl2::keyboard::Keycode::*;
+        use State::*;
+
+        let is_left_action = input.key_is_down(A);
+        let is_right_action = input.key_is_down(D);
+        let is_step_action = is_right_action || is_left_action;
+        let dir = if is_right_action { 1.0 } else { -1.0 };
+
+        let state = &mut self.states[idx];
+
+        match state {
+            Some(Idle) => {
+                if is_step_action {
+                    *state = Some(Run);
+                }
+            }
+            Some(Run) => {
+                if is_step_action {
+                    self.do_immediate_step(dt, idx, dir);
+                }
+            }
+            None => {
+                self.states[idx] = Some(Idle);
             }
         }
     }
@@ -127,9 +163,7 @@ impl Game {
         use State::*;
 
         match self.states[idx] {
-            Some(Idle) => {
-                self.frame_animators[idx].as_mut().unwrap().play("wolf_idle", 0.1, true);
-            }
+            Some(Idle) => {}
             None => {
                 self.states[idx] = Some(Idle);
             }
@@ -138,6 +172,9 @@ impl Game {
     }
 
     fn update_frame_animators(&mut self, dt: f32) {
+        use Behaviour::*;
+        use State::*;
+
         for idx in 0..self.n_entities {
             if let (Some(animator), Some(position)) =
                 (self.frame_animators[idx].as_mut(), self.positions[idx])
@@ -154,6 +191,22 @@ impl Game {
                         Pivot::BotCenter(position),
                         false,
                     );
+                }
+            }
+
+            if let (Some(animator), Some(behaviour), Some(state)) = (
+                self.frame_animators[idx].as_mut(),
+                self.behaviours[idx],
+                self.states[idx],
+            ) {
+                match (behaviour, state) {
+                    (WolfAI, Idle) => {
+                        animator.play("wolf_idle", 0.07, true);
+                    }
+                    (KnightPlayer, Idle) => {
+                        animator.play("knight_idle", 0.07, true);
+                    }
+                    _ => {}
                 }
             }
         }
@@ -176,6 +229,15 @@ impl Game {
 
                 renderer.push_primitive(primitive);
             }
+        }
+    }
+
+    fn do_immediate_step(&mut self, dt: f32, idx: usize, dir: f32) {
+        self.look_dirs[idx] = Some(dir);
+        if let (Some(position), Some(speed)) =
+            (self.positions[idx].as_mut(), self.move_speeds[idx])
+        {
+            position.x += dt * speed * dir;
         }
     }
 }
