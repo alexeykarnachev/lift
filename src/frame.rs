@@ -106,7 +106,7 @@ pub struct FrameAnimator {
     frame_duration: f32,
     is_repeat: bool,
 
-    pub cycle: f32,
+    pub progress: f32,
 }
 
 impl FrameAnimator {
@@ -117,7 +117,7 @@ impl FrameAnimator {
             name: "",
             frame_duration: 0.0,
             is_repeat: false,
-            cycle: 0.0,
+            progress: 0.0,
         }
     }
 
@@ -136,12 +136,12 @@ impl FrameAnimator {
             self.name = name;
             self.frame_duration = frame_duration;
             self.is_repeat = is_repeat;
-            self.cycle = 0.0;
+            self.progress = 0.0;
         }
     }
 
     pub fn is_finished(&self) -> bool {
-        !self.is_repeat && self.cycle == 1.0
+        !self.is_repeat && self.progress == 1.0
     }
 
     pub fn update(&mut self, dt: f32) -> Option<&Frame> {
@@ -157,14 +157,14 @@ impl FrameAnimator {
         let n_frames = frames.len() as f32;
         let max_idx = n_frames - 1.0;
 
-        self.cycle += dt / (n_frames * self.frame_duration);
+        self.progress += dt / (n_frames * self.frame_duration);
         if self.is_repeat {
-            self.cycle -= self.cycle.floor();
+            self.progress -= self.progress.floor();
         } else {
-            self.cycle = self.cycle.min(1.0);
+            self.progress = self.progress.min(1.0);
         };
 
-        let idx = (self.cycle * max_idx).round() as usize;
+        let idx = (self.progress * max_idx).round() as usize;
 
         Some(&frames[idx])
     }
