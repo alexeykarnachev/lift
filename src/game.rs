@@ -2,6 +2,8 @@ use crate::frame::*;
 use crate::input::*;
 use crate::renderer::*;
 use crate::vec::*;
+use sdl2::EventPump;
+use std::time::Instant;
 
 #[derive(Copy, Clone)]
 enum Behaviour {
@@ -18,8 +20,15 @@ enum State {
 const MAX_N_ENTITIES: usize = 1024;
 
 pub struct Game {
+    dt: f32,
+    prev_upd_time: Instant,
+
+    event_pump: &'static mut EventPump,
+    input: &'static mut Input,
     frame_atlas: &'static FrameAtlas,
+    renderer: &'static mut Renderer,
     camera: Camera,
+
     gravity: f32,
 
     n_entities: usize,
@@ -36,12 +45,31 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn new(frame_atlas_fp: &str) -> Self {
+    pub fn new(
+        window_size: Vec2<u32>,
+        frame_atlas_meta_fp: &str,
+        frame_atlas_image_fp: &str,
+    ) -> Self {
         let camera = Camera::new(Vec2::zeros());
-        let frame_atlas = Box::new(FrameAtlas::new(frame_atlas_fp));
+        let frame_atlas = Box::new(FrameAtlas::new(frame_atlas_meta_fp));
+        let input = Box::new(Input::new(window_size));
+
+        let sdl = sdl2::init().unwrap();
+        let event_pump = Box::new(sdl.event_pump().unwrap());
+        let renderer = Box::new(Renderer::new(
+            &sdl,
+            "Lift",
+            window_size,
+            frame_atlas_image_fp,
+        ));
 
         Self {
+            dt: 0.0,
+            prev_upd_time: Instant::now(),
+            event_pump: Box::leak(event_pump),
+            input: Box::leak(input),
             frame_atlas: Box::leak(frame_atlas),
+            renderer: Box::leak(renderer),
             camera,
             gravity: 400.0,
 
@@ -57,6 +85,57 @@ impl Game {
             attack_colliders: [None; MAX_N_ENTITIES],
             sprites: [None; MAX_N_ENTITIES],
         }
+    }
+
+    pub fn start(&mut self) {
+        self.new_knight_player(Vec2::new(0.0, 0.0));
+        self.new_wolf_ai(Vec2::new(40.0, 0.0));
+
+        while !self.input.should_quit {
+            self.update_input();
+            self.update_world();
+            self.update_renderer();
+        }
+    }
+
+    pub fn update_input(&mut self) {
+        for event in self.event_pump.poll_iter() {
+            self.input.handle_event(&event);
+        }
+        self.input.update();
+    }
+
+    pub fn update_world(&mut self) {
+        self.dt = self.prev_upd_time.elapsed().as_nanos() as f32 / 1.0e9;
+        self.update_behaviours();
+        self.update_frame_animators();
+        self.prev_upd_time = Instant::now();
+    }
+
+    pub fn update_renderer(&mut self) {
+        self.renderer.clear_queue();
+        self.renderer
+            .set_camera(self.camera.position, self.camera.get_view_size());
+
+        for idx in 0..self.n_entities {
+            if let (Some(sprite), Some(position)) =
+                (self.sprites[idx], self.positions[idx])
+            {
+                let pivot = Pivot::BotCenter(position);
+                let apply_light = false;
+                let flip = false;
+                let primitive = DrawPrimitive::world_sprite(
+                    sprite,
+                    pivot,
+                    apply_light,
+                    flip,
+                );
+
+                self.renderer.push_primitive(primitive);
+            }
+        }
+
+        self.renderer.render();
     }
 
     pub fn new_knight_player(
@@ -96,27 +175,13 @@ impl Game {
         Some(idx)
     }
 
-    pub fn update(
-        &mut self,
-        dt: f32,
-        renderer: &mut Renderer,
-        input: &mut Input,
-    ) {
-        renderer
-            .set_camera(self.camera.position, self.camera.get_view_size());
-
-        self.update_behaviours(dt, input);
-        self.update_frame_animators(dt);
-        self.update_renderer(renderer);
-    }
-
-    fn update_behaviours(&mut self, dt: f32, input: &Input) {
+    fn update_behaviours(&mut self) {
         use Behaviour::*;
 
         for idx in 0..self.n_entities {
             match self.behaviours[idx] {
                 Some(KnightPlayer) => {
-                    self.update_knight_player_behaviour(dt, idx, input);
+                    self.update_knight_player_behaviour(idx);
                 }
                 Some(WolfAI) => {
                     self.update_wolf_ai_behaviour(idx);
@@ -126,17 +191,12 @@ impl Game {
         }
     }
 
-    fn update_knight_player_behaviour(
-        &mut self,
-        dt: f32,
-        idx: usize,
-        input: &Input,
-    ) {
+    fn update_knight_player_behaviour(&mut self, idx: usize) {
         use sdl2::keyboard::Keycode::*;
         use State::*;
 
-        let is_left_action = input.key_is_down(A);
-        let is_right_action = input.key_is_down(D);
+        let is_left_action = self.input.key_is_down(A);
+        let is_right_action = self.input.key_is_down(D);
         let is_step_action = is_right_action || is_left_action;
         let dir = if is_right_action { 1.0 } else { -1.0 };
 
@@ -150,7 +210,7 @@ impl Game {
             }
             Some(Run) => {
                 if is_step_action {
-                    self.do_immediate_step(dt, idx, dir);
+                    self.do_immediate_step(idx, dir);
                 }
             }
             None => {
@@ -171,7 +231,7 @@ impl Game {
         }
     }
 
-    fn update_frame_animators(&mut self, dt: f32) {
+    fn update_frame_animators(&mut self) {
         use Behaviour::*;
         use State::*;
 
@@ -179,7 +239,7 @@ impl Game {
             if let (Some(animator), Some(position)) =
                 (self.frame_animators[idx].as_mut(), self.positions[idx])
             {
-                if let Some(frame) = animator.update(dt) {
+                if let Some(frame) = animator.update(self.dt) {
                     self.sprites[idx] = Some(frame.sprite);
                     self.rigid_colliders[idx] = frame.get_mask(
                         "rigid",
@@ -212,32 +272,12 @@ impl Game {
         }
     }
 
-    fn update_renderer(&mut self, renderer: &mut Renderer) {
-        for idx in 0..self.n_entities {
-            if let (Some(sprite), Some(position)) =
-                (self.sprites[idx], self.positions[idx])
-            {
-                let pivot = Pivot::BotCenter(position);
-                let apply_light = false;
-                let flip = false;
-                let primitive = DrawPrimitive::world_sprite(
-                    sprite,
-                    pivot,
-                    apply_light,
-                    flip,
-                );
-
-                renderer.push_primitive(primitive);
-            }
-        }
-    }
-
-    fn do_immediate_step(&mut self, dt: f32, idx: usize, dir: f32) {
+    fn do_immediate_step(&mut self, idx: usize, dir: f32) {
         self.look_dirs[idx] = Some(dir);
         if let (Some(position), Some(speed)) =
             (self.positions[idx].as_mut(), self.move_speeds[idx])
         {
-            position.x += dt * speed * dir;
+            position.x += self.dt * speed * dir;
         }
     }
 }
