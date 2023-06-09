@@ -5,26 +5,121 @@ use crate::vec::*;
 use sdl2::EventPump;
 use std::time::Instant;
 
-#[derive(Copy, Clone)]
-enum Behaviour {
-    Static,
-    KnightPlayer,
-    WolfAI,
+pub struct Camera {
+    pub position: Vec2<f32>,
+
+    pub view_width: f32,
+    pub aspect: f32,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
-enum State {
-    Idle,
-    Run,
-    Roll,
-    JumpUp,
-    JumpDown,
-    JumpLanding,
+impl Camera {
+    fn new(position: Vec2<f32>) -> Self {
+        Self {
+            position,
+            view_width: 500.0,
+            aspect: 1.77,
+        }
+    }
+
+    pub fn get_view_size(&self) -> Vec2<f32> {
+        let view_height = self.view_width / self.aspect;
+
+        Vec2::new(self.view_width, view_height)
+    }
 }
 
 #[derive(Default)]
 struct Debug {
     show_rigid_colliders: bool,
+}
+
+enum Behaviour {
+    Static,
+    KnightPlayerBehaviour(KnightPlayer),
+    WolfAIBehaviour(WolfAI),
+}
+
+#[derive(Clone, Copy, PartialEq, Debug)]
+enum KnightPlayerState {
+    Idle,
+    Run,
+    Roll,
+    Attack0,
+    Attack1,
+    Attack2,
+    JumpUp,
+    JumpDown,
+    JumpLanding,
+}
+
+struct KnightPlayer {
+    pub curr_state: KnightPlayerState,
+    pub next_state: KnightPlayerState,
+    pub can_perform_combo: bool,
+    pub is_attack2_step_done: bool,
+    pub run_speed: f32,
+    pub roll_speed: f32,
+    pub jump_speed: f32,
+    pub landing_speed: f32,
+    pub attack2_step: f32,
+}
+
+impl KnightPlayer {
+    pub fn new(
+        run_speed: f32,
+        roll_speed: f32,
+        jump_speed: f32,
+        landing_speed: f32,
+        attack2_step: f32,
+    ) -> Self {
+        Self {
+            curr_state: KnightPlayerState::Idle,
+            next_state: KnightPlayerState::Idle,
+            can_perform_combo: false,
+            is_attack2_step_done: false,
+            run_speed,
+            roll_speed,
+            jump_speed,
+            landing_speed,
+            attack2_step,
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq)]
+enum WolfAIState {
+    Idle,
+    Run,
+    Attack,
+}
+
+struct WolfAI {
+    pub curr_state: WolfAIState,
+    pub next_state: WolfAIState,
+}
+
+impl WolfAI {
+    pub fn new() -> Self {
+        Self {
+            curr_state: WolfAIState::Idle,
+            next_state: WolfAIState::Idle,
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+struct Kinematic {
+    velocity: Vec2<f32>,
+    is_grounded: bool,
+}
+
+impl Kinematic {
+    pub fn new() -> Self {
+        Self {
+            velocity: Vec2::zeros(),
+            is_grounded: false,
+        }
+    }
 }
 
 const MAX_N_ENTITIES: usize = 1024;
@@ -43,15 +138,11 @@ pub struct Game {
 
     n_entities: usize,
     positions: [Vec2<f32>; MAX_N_ENTITIES],
-    velocities: [Vec2<f32>; MAX_N_ENTITIES],
-    curr_states: [State; MAX_N_ENTITIES],
-    next_states: [State; MAX_N_ENTITIES],
     behaviours: [Behaviour; MAX_N_ENTITIES],
     look_dirs: [f32; MAX_N_ENTITIES],
-    are_grounded: [bool; MAX_N_ENTITIES],
-    are_kinematic: [bool; MAX_N_ENTITIES],
 
     frame_animators: [Option<FrameAnimator>; MAX_N_ENTITIES],
+    kinematics: [Option<Kinematic>; MAX_N_ENTITIES],
     rigid_colliders: [Option<Rect>; MAX_N_ENTITIES],
     attack_colliders: [Option<Rect>; MAX_N_ENTITIES],
     sprites: [Option<XYWH>; MAX_N_ENTITIES],
@@ -85,24 +176,22 @@ impl Game {
         Self {
             dt: 0.0,
             prev_upd_time: Instant::now(),
+
             event_pump: Box::leak(event_pump),
             input: Box::leak(input),
             frame_atlas: Box::leak(frame_atlas),
             renderer: Box::leak(renderer),
             camera,
+
             gravity: 400.0,
 
             n_entities: 0,
             positions: [Vec2::zeros(); MAX_N_ENTITIES],
-            velocities: [Vec2::zeros(); MAX_N_ENTITIES],
-            behaviours: [Behaviour::Static; MAX_N_ENTITIES],
-            curr_states: [State::Idle; MAX_N_ENTITIES],
-            next_states: [State::Idle; MAX_N_ENTITIES],
+            behaviours: [(); MAX_N_ENTITIES].map(|_| Behaviour::Static),
             look_dirs: [1.0; MAX_N_ENTITIES],
-            are_grounded: [false; MAX_N_ENTITIES],
-            are_kinematic: [false; MAX_N_ENTITIES],
 
-            frame_animators: [None; MAX_N_ENTITIES],
+            frame_animators: [(); MAX_N_ENTITIES].map(|_| None),
+            kinematics: [(); MAX_N_ENTITIES].map(|_| None),
             rigid_colliders: [None; MAX_N_ENTITIES],
             attack_colliders: [None; MAX_N_ENTITIES],
             sprites: [None; MAX_N_ENTITIES],
@@ -124,22 +213,6 @@ impl Game {
             self.update_world();
             self.update_renderer();
         }
-    }
-
-    pub fn get_rigid_collider(&mut self, idx: usize) -> Option<Rect> {
-        if let Some(rect) = self.rigid_colliders[idx] {
-            return Some(rect.translate(self.positions[idx]));
-        }
-
-        None
-    }
-
-    pub fn get_attack_collider(&mut self, idx: usize) -> Option<Rect> {
-        if let Some(rect) = self.attack_colliders[idx] {
-            return Some(rect.translate(self.positions[idx]));
-        }
-
-        None
     }
 
     fn update_input(&mut self) {
@@ -178,10 +251,11 @@ impl Game {
                 self.renderer.push_primitive(primitive);
             }
 
-            if let (Some(rect), true) = (
-                self.get_rigid_collider(idx),
+            if let (Some(mut rect), true) = (
+                self.rigid_colliders[idx],
                 self.debug.show_rigid_colliders,
             ) {
+                rect = rect.translate(self.positions[idx]);
                 let primitive =
                     DrawPrimitive::world_rect(rect, Color::red(0.2));
                 self.renderer.push_primitive(primitive);
@@ -196,11 +270,24 @@ impl Game {
 
         for idx in 0..self.n_entities {
             match self.behaviours[idx] {
-                KnightPlayer => {
-                    self.update_knight_player_behaviour(idx);
+                KnightPlayerBehaviour(ref mut knight) => {
+                    update_knight_player(
+                        knight,
+                        self.input,
+                        self.dt,
+                        &mut self.positions[idx],
+                        &mut self.kinematics[idx].as_mut().unwrap(),
+                        &mut self.frame_animators[idx].as_mut().unwrap(),
+                        &mut self.look_dirs[idx],
+                    );
                 }
-                WolfAI => {
-                    self.update_wolf_ai_behaviour(idx);
+                WolfAIBehaviour(ref mut wolf) => {
+                    update_wolf_ai(
+                        wolf,
+                        &mut self.kinematics[idx].as_mut().unwrap(),
+                        &mut self.frame_animators[idx].as_mut().unwrap(),
+                        &mut self.look_dirs[idx],
+                    );
                 }
                 Static => {}
             }
@@ -209,14 +296,18 @@ impl Game {
 
     fn update_kinematics(&mut self) {
         for idx in 0..self.n_entities {
-            if !self.are_kinematic[idx] {
-                continue;
-            }
+            let mut kinematic =
+                if let Some(kinematic) = self.kinematics[idx] {
+                    kinematic
+                } else {
+                    continue;
+                };
 
-            self.velocities[idx].y -= self.gravity * self.dt;
-            self.positions[idx] += self.velocities[idx].scale(self.dt);
+            kinematic.velocity.y -= self.gravity * self.dt;
+            self.positions[idx] += kinematic.velocity.scale(self.dt);
 
-            if let Some(collider) = self.get_rigid_collider(idx) {
+            if let Some(mut collider) = self.rigid_colliders[idx] {
+                collider = collider.translate(self.positions[idx]);
                 let mut is_grounded = false;
 
                 for other_idx in 0..self.n_entities {
@@ -224,166 +315,60 @@ impl Game {
                         continue;
                     }
 
-                    if let (Some(other_collider), false) = (
-                        self.get_rigid_collider(other_idx),
-                        self.are_kinematic[other_idx],
+                    if let (Some(mut other_collider), None) = (
+                        self.rigid_colliders[other_idx],
+                        self.kinematics[other_idx],
                     ) {
+                        other_collider = other_collider
+                            .translate(self.positions[other_idx]);
                         let mtv = collider.collide_aabb(other_collider);
                         self.positions[idx] += mtv;
 
                         if mtv.y.abs() > 0.0 {
-                            self.velocities[idx].y = 0.0;
+                            kinematic.velocity.y = 0.0;
                         }
 
                         if mtv.x.abs() > 0.0 {
-                            self.velocities[idx].x = 0.0;
+                            kinematic.velocity.x = 0.0;
                         }
 
                         is_grounded |= mtv.y > 0.0;
                     }
                 }
 
-                self.are_grounded[idx] = is_grounded;
+                kinematic.is_grounded = is_grounded;
             }
-        }
-    }
 
-    fn update_knight_player_behaviour(&mut self, idx: usize) {
-        use sdl2::keyboard::Keycode::*;
-        use State::*;
-
-        let jump_speed = 150.0;
-
-        let is_jump_action = self.input.key_is_pressed(W);
-        let is_roll_action = self.input.key_is_pressed(LCtrl);
-        let is_left_action = self.input.key_is_down(A);
-        let is_right_action = self.input.key_is_down(D);
-        let is_step_action = is_right_action || is_left_action;
-        let dir = if is_right_action { 1.0 } else { -1.0 };
-
-        let animator = self.frame_animators[idx].as_ref().expect(
-            "Kinight Player should have the FrameAnimator component",
-        );
-        match self.curr_states[idx] {
-            Idle => {
-                if is_jump_action {
-                    self.set_curr_state(idx, JumpUp);
-                    self.velocities[idx].y += jump_speed;
-                } else if is_step_action {
-                    self.set_curr_state(idx, Run);
-                }
-            }
-            Run => {
-                if is_roll_action {
-                    self.set_curr_state(idx, Roll);
-                } else if is_jump_action {
-                    self.set_curr_state(idx, JumpUp);
-                    self.velocities[idx].y += jump_speed;
-                } else if is_step_action {
-                    self.do_immediate_step(idx, 100.0, dir);
-                } else {
-                    self.set_curr_state(idx, Idle);
-                }
-            }
-            Roll => {
-                let speed = 150.0 * (1.0 - animator.progress.powf(2.0));
-                self.do_immediate_step(idx, speed, self.look_dirs[idx]);
-            }
-            JumpUp => {
-                if self.velocities[idx].y > 0.0 {
-                    self.set_next_state(idx, JumpUp);
-                } else {
-                    self.set_next_state(idx, JumpDown);
-                }
-
-                if is_step_action {
-                    self.do_immediate_step(idx, 100.0, dir)
-                }
-            }
-            JumpDown => {
-                if self.are_grounded[idx] {
-                    self.set_next_state(idx, JumpLanding);
-                } else {
-                    self.set_next_state(idx, JumpDown);
-                }
-
-                if is_step_action {
-                    self.do_immediate_step(idx, 100.0, dir);
-                }
-            }
-            JumpLanding => {
-                if is_step_action {
-                    self.do_immediate_step(idx, 70.0, dir);
-                }
-            }
-        }
-    }
-
-    fn update_wolf_ai_behaviour(&mut self, idx: usize) {
-        use State::*;
-
-        match self.curr_states[idx] {
-            Idle => {}
-            _ => {}
+            self.kinematics[idx] = Some(kinematic);
         }
     }
 
     fn update_frame_animators(&mut self) {
-        use Behaviour::*;
-        use State::*;
-
         for idx in 0..self.n_entities {
-            let animator = if let Some(animator) =
-                self.frame_animators[idx].as_mut()
-            {
-                animator
-            } else {
-                continue;
-            };
+            let mut animator =
+                if let Some(animator) = self.frame_animators[idx] {
+                    animator
+                } else {
+                    continue;
+                };
 
             if let Some(frame) = animator.update(self.dt) {
                 let position = self.positions[idx];
+                let flip = self.look_dirs[idx] < 0.0;
                 self.sprites[idx] = Some(frame.sprite);
                 self.rigid_colliders[idx] = frame.get_mask(
                     "rigid",
                     Pivot::BotCenter(Vec2::zeros()),
-                    false,
+                    flip,
                 );
                 self.attack_colliders[idx] = frame.get_mask(
                     "attack",
                     Pivot::BotCenter(Vec2::zeros()),
-                    false,
+                    flip,
                 );
             }
 
-            match (self.behaviours[idx], self.curr_states[idx]) {
-                (WolfAI, Idle) => {
-                    animator.play("wolf_idle", 0.07, true);
-                }
-                (KnightPlayer, Idle) => {
-                    animator.play("knight_idle", 0.07, true);
-                }
-                (KnightPlayer, Run) => {
-                    animator.play("knight_run", 0.07, true);
-                }
-                (KnightPlayer, Roll) => {
-                    animator.play("knight_roll", 0.07, false);
-                }
-                (KnightPlayer, JumpUp) => {
-                    animator.play("knight_jump_up", 0.07, false);
-                }
-                (KnightPlayer, JumpDown) => {
-                    animator.play("knight_jump_down", 0.07, false);
-                }
-                (KnightPlayer, JumpLanding) => {
-                    animator.play("knight_jump_landing", 0.07, false);
-                }
-                _ => {}
-            }
-
-            if animator.is_finished() {
-                self.set_curr_state(idx, self.next_states[idx]);
-            }
+            self.frame_animators[idx] = Some(animator);
         }
     }
 
@@ -400,23 +385,29 @@ impl Game {
 
     fn new_knight_player(&mut self, position: Vec2<f32>) {
         if let Some(idx) = self.new_entity() {
+            let knight_player =
+                KnightPlayer::new(100.0, 150.0, 150.0, 70.0, 8.0);
+            let behaviour =
+                Behaviour::KnightPlayerBehaviour(knight_player);
+
             self.positions[idx] = position;
-            self.behaviours[idx] = Behaviour::KnightPlayer;
-            self.curr_states[idx] = State::Idle;
+            self.behaviours[idx] = behaviour;
             self.frame_animators[idx] =
                 Some(self.frame_atlas.new_animator());
-            self.are_kinematic[idx] = true;
+            self.kinematics[idx] = Some(Kinematic::new());
         }
     }
 
     pub fn new_wolf_ai(&mut self, position: Vec2<f32>) {
         if let Some(idx) = self.new_entity() {
+            let wolf_ai = WolfAI::new();
+            let behaviour = Behaviour::WolfAIBehaviour(wolf_ai);
+
             self.positions[idx] = position;
-            self.behaviours[idx] = Behaviour::WolfAI;
-            self.curr_states[idx] = State::Idle;
+            self.behaviours[idx] = behaviour;
             self.frame_animators[idx] =
                 Some(self.frame_atlas.new_animator());
-            self.are_kinematic[idx] = true;
+            self.kinematics[idx] = Some(Kinematic::new());
         }
     }
 
@@ -426,44 +417,160 @@ impl Game {
             self.rigid_colliders[idx] = Some(rect);
         }
     }
+}
 
-    fn do_immediate_step(&mut self, idx: usize, speed: f32, dir: f32) {
-        self.look_dirs[idx] = dir;
-        self.positions[idx].x += self.dt * speed * dir;
+fn update_knight_player(
+    knight: &mut KnightPlayer,
+    input: &mut Input,
+    dt: f32,
+    position: &mut Vec2<f32>,
+    kinematic: &mut Kinematic,
+    animator: &mut FrameAnimator,
+    look_dir: &mut f32,
+) {
+    use sdl2::keyboard::Keycode::*;
+    use KnightPlayerState::*;
+
+    let is_attack_action = input.key_is_pressed(Space);
+    let is_left_action = input.key_is_down(A);
+    let is_right_action = input.key_is_down(D);
+    let is_jump_action = input.key_is_pressed(W);
+    let is_roll_action = input.key_is_pressed(LCtrl);
+    let is_step_action = is_right_action || is_left_action;
+    let dir = if is_right_action { 1.0 } else { -1.0 };
+
+    if animator.is_finished() {
+        knight.curr_state = knight.next_state;
+        knight.next_state = Idle;
     }
 
-    fn set_curr_state(&mut self, idx: usize, state: State) {
-        if self.curr_states[idx] != state {
-            self.next_states[idx] = State::Idle;
+    match knight.curr_state {
+        Idle => {
+            if is_attack_action {
+                knight.curr_state = Attack0;
+                knight.next_state = Idle;
+                knight.can_perform_combo = true;
+            } else if is_jump_action {
+                knight.curr_state = JumpUp;
+                kinematic.velocity.y += knight.jump_speed;
+            } else if is_step_action {
+                knight.curr_state = Run;
+            }
         }
+        Attack0 => {
+            knight.is_attack2_step_done = false;
+            if is_attack_action && knight.can_perform_combo {
+                if animator.progress > 0.7 {
+                    knight.next_state = Attack1;
+                } else {
+                    knight.can_perform_combo = false;
+                }
+            }
+        }
+        Attack1 => {
+            if is_attack_action && knight.can_perform_combo {
+                if animator.progress > 0.7 {
+                    knight.next_state = Attack2;
+                } else {
+                    knight.can_perform_combo = false;
+                }
+            }
+        }
+        Attack2 => {
+            knight.next_state = Idle;
+            if !knight.is_attack2_step_done {
+                position.x += *look_dir * knight.attack2_step;
+                knight.is_attack2_step_done = true;
+            }
+        }
+        Run => {
+            if is_roll_action {
+                knight.curr_state = Roll;
+            } else if is_jump_action {
+                knight.curr_state = JumpUp;
+                kinematic.velocity.y += knight.jump_speed;
+            } else if is_attack_action {
+                knight.curr_state = Attack0;
+                knight.can_perform_combo = true;
+            } else if is_step_action {
+                position.x += dir * dt * knight.run_speed;
+                *look_dir = dir;
+            } else {
+                knight.curr_state = Idle;
+            }
+        }
+        Roll => {
+            knight.next_state = Idle;
+            let speed =
+                knight.roll_speed * (1.0 - animator.progress.powf(2.0));
+            position.x += *look_dir * dt * speed;
+        }
+        JumpUp => {
+            if kinematic.velocity.y > 0.0 {
+                knight.next_state = JumpUp;
+            } else {
+                knight.curr_state = JumpDown;
+            }
 
-        self.curr_states[idx] = state;
+            if is_step_action {
+                position.x += dir * dt * knight.run_speed;
+                *look_dir = dir;
+            }
+        }
+        JumpDown => {
+            if !kinematic.is_grounded {
+                knight.next_state = JumpDown;
+            } else {
+                knight.curr_state = JumpLanding;
+            }
+
+            if is_step_action {
+                position.x += dir * dt * knight.run_speed;
+                *look_dir = dir;
+            }
+        }
+        JumpLanding => {
+            knight.next_state = Idle;
+            if is_step_action {
+                position.x += dir * dt * knight.landing_speed;
+                *look_dir = dir;
+            }
+        }
     }
 
-    fn set_next_state(&mut self, idx: usize, state: State) {
-        self.next_states[idx] = state;
+    match knight.curr_state {
+        Idle => animator.play("knight_idle", 0.07, true),
+        Run => animator.play("knight_run", 0.07, true),
+        Roll => animator.play("knight_roll", 0.07, false),
+        JumpUp => animator.play("knight_jump_up", 0.07, false),
+        JumpDown => animator.play("knight_jump_down", 0.07, false),
+        JumpLanding => animator.play("knight_jump_landing", 0.07, false),
+        Attack0 => animator.play("knight_attack_0", 0.07, false),
+        Attack1 => animator.play("knight_attack_1", 0.07, false),
+        Attack2 => animator.play("knight_attack_2", 0.07, false),
     }
 }
 
-pub struct Camera {
-    pub position: Vec2<f32>,
+fn update_wolf_ai(
+    wolf: &mut WolfAI,
+    kinematic: &mut Kinematic,
+    animator: &mut FrameAnimator,
+    look_dir: &mut f32,
+) {
+    use WolfAIState::*;
 
-    pub view_width: f32,
-    pub aspect: f32,
-}
-
-impl Camera {
-    fn new(position: Vec2<f32>) -> Self {
-        Self {
-            position,
-            view_width: 500.0,
-            aspect: 1.77,
-        }
+    if animator.is_finished() {
+        wolf.curr_state = wolf.next_state;
     }
 
-    pub fn get_view_size(&self) -> Vec2<f32> {
-        let view_height = self.view_width / self.aspect;
+    match wolf.curr_state {
+        Idle => {}
+        _ => {}
+    }
 
-        Vec2::new(self.view_width, view_height)
+    match wolf.curr_state {
+        Idle => animator.play("wolf_idle", 0.07, true),
+        Run => animator.play("wolf_run", 0.07, true),
+        Attack => animator.play("wolf_attack", 0.07, false),
     }
 }

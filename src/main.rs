@@ -14,10 +14,10 @@ mod vec;
 fn main() {
     let window_size: Vec2<u32> = Vec2::new(1500, 800);
 
-    let mut game = Game::new(
+    let game = Box::leak(Box::new(Game::new(
         window_size,
         "./assets/sprites/atlas.json",
         "./assets/sprites/atlas.png",
-    );
+    )));
     game.start();
 }

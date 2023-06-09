@@ -97,7 +97,7 @@ impl FrameAtlas {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Copy, Clone)]
 pub struct FrameAnimator {
     atlas: &'static FrameAtlas,
     is_started: bool,
