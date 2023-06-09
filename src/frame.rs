@@ -2,6 +2,7 @@ use crate::vec::*;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Deserialize, Copy, Clone, Debug)]
 pub struct XYWH {
@@ -101,6 +102,7 @@ impl FrameAtlas {
 pub struct FrameAnimator {
     atlas: &'static FrameAtlas,
     is_started: bool,
+    animation_id: u128,
 
     name: &'static str,
     frame_duration: f32,
@@ -114,6 +116,7 @@ impl FrameAnimator {
         Self {
             atlas,
             is_started: false,
+            animation_id: 0,
             name: "",
             frame_duration: 0.0,
             is_repeat: false,
@@ -137,6 +140,10 @@ impl FrameAnimator {
             self.frame_duration = frame_duration;
             self.is_repeat = is_repeat;
             self.progress = 0.0;
+            self.animation_id = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("Clock may have gone backwards")
+                .as_nanos();
         }
     }
 
@@ -144,9 +151,9 @@ impl FrameAnimator {
         !self.is_repeat && self.progress == 1.0
     }
 
-    pub fn update(&mut self, dt: f32) -> Option<&Frame> {
+    pub fn update(&mut self, dt: f32) -> (u128, Option<&Frame>) {
         if !self.is_started {
-            return None;
+            return (0, None);
         }
 
         let frames = self
@@ -166,6 +173,6 @@ impl FrameAnimator {
 
         let idx = (self.progress * max_idx).round() as usize;
 
-        Some(&frames[idx])
+        (self.animation_id, Some(&frames[idx]))
     }
 }

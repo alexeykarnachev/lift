@@ -132,15 +132,74 @@ impl Kinematic {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Default)]
 struct Attack {
+    id: u128,
     collider: Option<Rect>,
     damage: f32,
+    is_player_friendly: bool,
+
+    attacked_entitiy_ids: [usize; 32],
+    n_attacked_entities: usize,
 }
 
 impl Attack {
-    pub fn new(collider: Option<Rect>, damage: f32) -> Self {
-        Self { collider, damage }
+    pub fn update(
+        &mut self,
+        id: u128,
+        collider: Option<Rect>,
+        damage: f32,
+        is_player_friendly: bool,
+    ) {
+        if self.id != id {
+            self.n_attacked_entities = 0;
+        }
+
+        self.id = id;
+        self.collider = collider;
+        self.damage = damage;
+        self.is_player_friendly = is_player_friendly;
+    }
+
+    pub fn attack_entity(&mut self, entity_id: usize) {
+        if self.n_attacked_entities < self.attacked_entitiy_ids.len() {
+            for id in self.attacked_entitiy_ids
+                [0..self.n_attacked_entities]
+                .iter()
+            {
+                if *id == entity_id {
+                    return;
+                }
+            }
+
+            self.attacked_entitiy_ids[self.n_attacked_entities] =
+                entity_id;
+            self.n_attacked_entities += 1;
+        }
+    }
+
+    pub fn check_if_entity_attacked(&self, entity_id: usize) -> bool {
+        for id in
+            self.attacked_entitiy_ids[0..self.n_attacked_entities].iter()
+        {
+            if *id == entity_id {
+                return true;
+            }
+        }
+
+        false
+    }
+}
+
+#[derive(Clone, Copy, Default)]
+struct Health {
+    pub max: f32,
+    pub curr: f32,
+}
+
+impl Health {
+    pub fn new(max: f32) -> Self {
+        Self { max, curr: max }
     }
 }
 
@@ -162,12 +221,14 @@ pub struct Game {
     positions: [Vec2<f32>; MAX_N_ENTITIES],
     behaviours: [Behaviour; MAX_N_ENTITIES],
     look_dirs: [f32; MAX_N_ENTITIES],
+    are_player_friendly: [bool; MAX_N_ENTITIES],
 
     frame_animators: [Option<FrameAnimator>; MAX_N_ENTITIES],
     kinematics: [Option<Kinematic>; MAX_N_ENTITIES],
     rigid_colliders: [Option<Rect>; MAX_N_ENTITIES],
-    attacks: [Option<Attack>; MAX_N_ENTITIES],
+    attacks: [Attack; MAX_N_ENTITIES],
     damages: [f32; MAX_N_ENTITIES],
+    healths: [Option<Health>; MAX_N_ENTITIES],
     sprites: [Option<XYWH>; MAX_N_ENTITIES],
 
     debug: Debug,
@@ -213,12 +274,14 @@ impl Game {
             positions: [Vec2::zeros(); MAX_N_ENTITIES],
             behaviours: [(); MAX_N_ENTITIES].map(|_| Behaviour::Static),
             look_dirs: [1.0; MAX_N_ENTITIES],
+            are_player_friendly: [false; MAX_N_ENTITIES],
 
             frame_animators: [(); MAX_N_ENTITIES].map(|_| None),
             kinematics: [(); MAX_N_ENTITIES].map(|_| None),
             rigid_colliders: [None; MAX_N_ENTITIES],
-            attacks: [None; MAX_N_ENTITIES],
+            attacks: [Attack::default(); MAX_N_ENTITIES],
             damages: [0.0; MAX_N_ENTITIES],
+            healths: [None; MAX_N_ENTITIES],
             sprites: [None; MAX_N_ENTITIES],
 
             debug,
@@ -252,6 +315,7 @@ impl Game {
         self.update_behaviours();
         self.update_frame_animators();
         self.update_kinematics();
+        self.update_attacks();
         self.prev_upd_time = Instant::now();
     }
 
@@ -287,7 +351,7 @@ impl Game {
             }
 
             if let (Some(mut rect), true) = (
-                self.attacks[idx].and_then(|a| a.collider),
+                self.attacks[idx].collider,
                 self.debug.show_attack_colliders,
             ) {
                 rect = rect.translate(self.positions[idx]);
@@ -318,6 +382,7 @@ impl Game {
                     );
                 }
                 WolfAIBehaviour(ref mut wolf) => {
+                    println!("{:?}", self.healths[idx].unwrap().curr);
                     update_wolf_ai(
                         wolf,
                         &mut self.kinematics[idx].as_mut().unwrap(),
@@ -379,6 +444,49 @@ impl Game {
         }
     }
 
+    fn update_attacks(&mut self) {
+        for idx in 0..self.n_entities {
+            let mut attack = self.attacks[idx];
+
+            if let Some(mut collider) = attack.collider {
+                collider = collider.translate(self.positions[idx]);
+
+                for other_idx in 0..self.n_entities {
+                    if idx == other_idx {
+                        continue;
+                    }
+
+                    let is_player_friendly =
+                        self.are_player_friendly[other_idx];
+                    let is_already_attacked =
+                        attack.check_if_entity_attacked(other_idx);
+                    if let (
+                        false,
+                        true,
+                        Some(mut other_collider),
+                        Some(mut health),
+                    ) = (
+                        is_already_attacked,
+                        is_player_friendly ^ attack.is_player_friendly,
+                        self.rigid_colliders[other_idx],
+                        self.healths[other_idx].as_mut(),
+                    ) {
+                        other_collider = other_collider
+                            .translate(self.positions[other_idx]);
+                        if other_collider
+                            .check_if_collides_with_rect(collider)
+                        {
+                            attack.attack_entity(other_idx);
+                            health.curr -= attack.damage;
+                        }
+                    }
+                }
+            }
+
+            self.attacks[idx] = attack;
+        }
+    }
+
     fn update_frame_animators(&mut self) {
         for idx in 0..self.n_entities {
             let mut animator =
@@ -388,7 +496,7 @@ impl Game {
                     continue;
                 };
 
-            if let Some(frame) = animator.update(self.dt) {
+            if let (id, Some(frame)) = animator.update(self.dt) {
                 let position = self.positions[idx];
                 let flip = self.look_dirs[idx] < 0.0;
                 self.sprites[idx] = Some(frame.sprite);
@@ -398,13 +506,19 @@ impl Game {
                     flip,
                 );
 
-                let attack_rect = frame.get_mask(
+                let collider = frame.get_mask(
                     "attack",
                     Pivot::BotCenter(Vec2::zeros()),
                     flip,
                 );
                 let damage = self.damages[idx];
-                self.attacks[idx] = Some(Attack::new(attack_rect, damage));
+                let is_player_friendly = self.are_player_friendly[idx];
+                self.attacks[idx].update(
+                    id,
+                    collider,
+                    damage,
+                    is_player_friendly,
+                );
             }
 
             self.frame_animators[idx] = Some(animator);
@@ -435,6 +549,8 @@ impl Game {
             self.frame_animators[idx] =
                 Some(self.frame_atlas.new_animator());
             self.kinematics[idx] = Some(Kinematic::new());
+            self.are_player_friendly[idx] = true;
+            self.healths[idx] = Some(Health::new(1000.0));
         }
     }
 
@@ -448,6 +564,7 @@ impl Game {
             self.frame_animators[idx] =
                 Some(self.frame_atlas.new_animator());
             self.kinematics[idx] = Some(Kinematic::new());
+            self.healths[idx] = Some(Health::new(1000.0));
         }
     }
 
