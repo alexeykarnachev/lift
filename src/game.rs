@@ -31,6 +31,7 @@ impl Camera {
 #[derive(Default)]
 struct Debug {
     show_rigid_colliders: bool,
+    show_attack_colliders: bool,
 }
 
 enum Behaviour {
@@ -57,6 +58,9 @@ struct KnightPlayer {
     pub next_state: KnightPlayerState,
     pub can_perform_combo: bool,
     pub is_attack2_step_done: bool,
+    pub attack0_damage: f32,
+    pub attack1_damage: f32,
+    pub attack2_damage: f32,
     pub run_speed: f32,
     pub roll_speed: f32,
     pub jump_speed: f32,
@@ -66,6 +70,9 @@ struct KnightPlayer {
 
 impl KnightPlayer {
     pub fn new(
+        attack0_damage: f32,
+        attack1_damage: f32,
+        attack2_damage: f32,
         run_speed: f32,
         roll_speed: f32,
         jump_speed: f32,
@@ -77,6 +84,9 @@ impl KnightPlayer {
             next_state: KnightPlayerState::Idle,
             can_perform_combo: false,
             is_attack2_step_done: false,
+            attack0_damage,
+            attack1_damage,
+            attack2_damage,
             run_speed,
             roll_speed,
             jump_speed,
@@ -122,6 +132,18 @@ impl Kinematic {
     }
 }
 
+#[derive(Clone, Copy)]
+struct Attack {
+    collider: Option<Rect>,
+    damage: f32,
+}
+
+impl Attack {
+    pub fn new(collider: Option<Rect>, damage: f32) -> Self {
+        Self { collider, damage }
+    }
+}
+
 const MAX_N_ENTITIES: usize = 1024;
 
 pub struct Game {
@@ -144,7 +166,8 @@ pub struct Game {
     frame_animators: [Option<FrameAnimator>; MAX_N_ENTITIES],
     kinematics: [Option<Kinematic>; MAX_N_ENTITIES],
     rigid_colliders: [Option<Rect>; MAX_N_ENTITIES],
-    attack_colliders: [Option<Rect>; MAX_N_ENTITIES],
+    attacks: [Option<Attack>; MAX_N_ENTITIES],
+    damages: [f32; MAX_N_ENTITIES],
     sprites: [Option<XYWH>; MAX_N_ENTITIES],
 
     debug: Debug,
@@ -171,6 +194,7 @@ impl Game {
 
         let debug = Debug {
             show_rigid_colliders: true,
+            show_attack_colliders: true,
         };
 
         Self {
@@ -193,7 +217,8 @@ impl Game {
             frame_animators: [(); MAX_N_ENTITIES].map(|_| None),
             kinematics: [(); MAX_N_ENTITIES].map(|_| None),
             rigid_colliders: [None; MAX_N_ENTITIES],
-            attack_colliders: [None; MAX_N_ENTITIES],
+            attacks: [None; MAX_N_ENTITIES],
+            damages: [0.0; MAX_N_ENTITIES],
             sprites: [None; MAX_N_ENTITIES],
 
             debug,
@@ -260,6 +285,16 @@ impl Game {
                     DrawPrimitive::world_rect(rect, Color::red(0.2));
                 self.renderer.push_primitive(primitive);
             }
+
+            if let (Some(mut rect), true) = (
+                self.attacks[idx].and_then(|a| a.collider),
+                self.debug.show_attack_colliders,
+            ) {
+                rect = rect.translate(self.positions[idx]);
+                let primitive =
+                    DrawPrimitive::world_rect(rect, Color::yellow(0.2));
+                self.renderer.push_primitive(primitive);
+            }
         }
 
         self.renderer.render();
@@ -278,6 +313,7 @@ impl Game {
                         &mut self.positions[idx],
                         &mut self.kinematics[idx].as_mut().unwrap(),
                         &mut self.frame_animators[idx].as_mut().unwrap(),
+                        &mut self.damages[idx],
                         &mut self.look_dirs[idx],
                     );
                 }
@@ -361,11 +397,14 @@ impl Game {
                     Pivot::BotCenter(Vec2::zeros()),
                     flip,
                 );
-                self.attack_colliders[idx] = frame.get_mask(
+
+                let attack_rect = frame.get_mask(
                     "attack",
                     Pivot::BotCenter(Vec2::zeros()),
                     flip,
                 );
+                let damage = self.damages[idx];
+                self.attacks[idx] = Some(Attack::new(attack_rect, damage));
             }
 
             self.frame_animators[idx] = Some(animator);
@@ -385,8 +424,9 @@ impl Game {
 
     fn new_knight_player(&mut self, position: Vec2<f32>) {
         if let Some(idx) = self.new_entity() {
-            let knight_player =
-                KnightPlayer::new(100.0, 150.0, 150.0, 70.0, 8.0);
+            let knight_player = KnightPlayer::new(
+                1.0, 2.0, 3.0, 100.0, 150.0, 150.0, 70.0, 8.0,
+            );
             let behaviour =
                 Behaviour::KnightPlayerBehaviour(knight_player);
 
@@ -426,6 +466,7 @@ fn update_knight_player(
     position: &mut Vec2<f32>,
     kinematic: &mut Kinematic,
     animator: &mut FrameAnimator,
+    damage: &mut f32,
     look_dir: &mut f32,
 ) {
     use sdl2::keyboard::Keycode::*;
@@ -458,6 +499,7 @@ fn update_knight_player(
             }
         }
         Attack0 => {
+            *damage = knight.attack0_damage;
             knight.is_attack2_step_done = false;
             if is_attack_action && knight.can_perform_combo {
                 if animator.progress > 0.7 {
@@ -468,6 +510,7 @@ fn update_knight_player(
             }
         }
         Attack1 => {
+            *damage = knight.attack1_damage;
             if is_attack_action && knight.can_perform_combo {
                 if animator.progress > 0.7 {
                     knight.next_state = Attack2;
@@ -477,6 +520,7 @@ fn update_knight_player(
             }
         }
         Attack2 => {
+            *damage = knight.attack2_damage;
             knight.next_state = Idle;
             if !knight.is_attack2_step_done {
                 position.x += *look_dir * knight.attack2_step;
